@@ -240,48 +240,30 @@ function hdrs()       { return { 'Authorization': `Bearer ${token}`, 'Content-Ty
 const screenLogin = document.getElementById('screenLogin')
 const appEl       = document.getElementById('app')
 
-// Pre-warm the server on page load so cold-start doesn't block login
-let serverWarm = false
-function warmServer() {
-  fetch(`${SERVER}/health`, { method: 'GET', cache: 'no-store' })
-    .then(() => { serverWarm = true })
-    .catch(() => {})
+// Ping server on load to pre-warm it (non-blocking)
+fetch(`${SERVER}/health`, { cache: 'no-store' }).catch(() => {})
+setInterval(() => fetch(`${SERVER}/health`, { cache: 'no-store' }).catch(() => {}), 10 * 60 * 1000)
+
+// Password hash for instant client-side check (no server round-trip on login)
+const PASS_HASH = '0b5d27d8f08b385908c3288839e10d3086d2b91a7108fed6319b8c067ab5142b'
+async function hashPass(p) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(p))
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('')
 }
-warmServer()
-setInterval(warmServer, 10 * 60 * 1000) // ping every 10 min to prevent sleep
 
 async function doLogin() {
   const btn  = document.getElementById('loginBtn')
   const err  = document.getElementById('loginErr')
   const pass = document.getElementById('passInput').value
   if (!pass) return
-  err.textContent = ''; btn.disabled = true
-  // If server not warm yet, show waking message then retry
-  if (!serverWarm) {
-    btn.textContent = 'Waking server…'
-    for (let i = 0; i < 12; i++) {
-      await new Promise(r => setTimeout(r, 5000))
-      try { await fetch(`${SERVER}/health`, { cache: 'no-store' }); serverWarm = true; break } catch {}
-    }
-    if (!serverWarm) {
-      err.textContent = 'Server unavailable — try again in a moment'
-      btn.disabled = false; btn.textContent = 'Sign in'; return
-    }
+  err.textContent = ''; btn.disabled = true; btn.textContent = 'Signing in…'
+  const h = await hashPass(pass)
+  if (h !== PASS_HASH) {
+    err.textContent = 'Wrong password'
+    btn.disabled = false; btn.textContent = 'Sign in'; return
   }
-  btn.textContent = 'Signing in…'
-  try {
-    const res = await fetch(`${SERVER}/api/auth/login`, {
-      method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ email: EMAIL, password: pass })
-    })
-    const json = await res.json()
-    if (!res.ok) throw new Error(json.error || 'Login failed')
-    saveToken(json.token)
-    launchApp()
-  } catch (e) {
-    err.textContent = e.message || 'Something went wrong'
-    btn.disabled = false; btn.textContent = 'Sign in'
-  }
+  saveToken(pass)
+  launchApp()
 }
 
 document.getElementById('loginBtn').addEventListener('click', doLogin)
