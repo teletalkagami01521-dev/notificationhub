@@ -240,27 +240,46 @@ function hdrs()       { return { 'Authorization': `Bearer ${token}`, 'Content-Ty
 const screenLogin = document.getElementById('screenLogin')
 const appEl       = document.getElementById('app')
 
+// Pre-warm the server on page load so cold-start doesn't block login
+let serverWarm = false
+function warmServer() {
+  fetch(`${SERVER}/health`, { method: 'GET', cache: 'no-store' })
+    .then(() => { serverWarm = true })
+    .catch(() => {})
+}
+warmServer()
+setInterval(warmServer, 10 * 60 * 1000) // ping every 10 min to prevent sleep
+
 async function doLogin() {
   const btn  = document.getElementById('loginBtn')
   const err  = document.getElementById('loginErr')
   const pass = document.getElementById('passInput').value
   if (!pass) return
-  err.textContent = ''; btn.disabled = true; btn.textContent = 'Signing in…'
+  err.textContent = ''; btn.disabled = true
+  // If server not warm yet, show waking message then retry
+  if (!serverWarm) {
+    btn.textContent = 'Waking server…'
+    for (let i = 0; i < 12; i++) {
+      await new Promise(r => setTimeout(r, 5000))
+      try { await fetch(`${SERVER}/health`, { cache: 'no-store' }); serverWarm = true; break } catch {}
+    }
+    if (!serverWarm) {
+      err.textContent = 'Server unavailable — try again in a moment'
+      btn.disabled = false; btn.textContent = 'Sign in'; return
+    }
+  }
+  btn.textContent = 'Signing in…'
   try {
-    const ctrl  = new AbortController()
-    const timer = setTimeout(() => ctrl.abort(), 15000)
-    const res   = await fetch(`${SERVER}/api/auth/login`, {
+    const res = await fetch(`${SERVER}/api/auth/login`, {
       method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ email: EMAIL, password: pass }),
-      signal: ctrl.signal
+      body: JSON.stringify({ email: EMAIL, password: pass })
     })
-    clearTimeout(timer)
     const json = await res.json()
     if (!res.ok) throw new Error(json.error || 'Login failed')
     saveToken(json.token)
     launchApp()
   } catch (e) {
-    err.textContent = e.name === 'AbortError' ? 'Server took too long — try again' : (e.message || 'Something went wrong')
+    err.textContent = e.message || 'Something went wrong'
     btn.disabled = false; btn.textContent = 'Sign in'
   }
 }
