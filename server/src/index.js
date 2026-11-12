@@ -3,6 +3,7 @@ import express from 'express'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import { auth } from './middleware/auth.js'
+import authRouter from './routes/auth.js'
 import notificationsRouter from './routes/notifications.js'
 import { startCleanupJob } from './cron.js'
 
@@ -27,7 +28,10 @@ app.use(express.static(dashboardPath))
 // Health check — no auth required
 app.get('/health', (_req, res) => res.json({ status: 'ok', uptime: process.uptime() }))
 
-// All /api/* routes require authentication
+// Auth routes — public, no middleware
+app.use('/api/auth', authRouter)
+
+// All other /api/* routes require authentication
 app.use('/api', auth)
 app.use('/api/notifications', notificationsRouter)
 

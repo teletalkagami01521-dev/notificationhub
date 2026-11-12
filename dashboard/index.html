@@ -3,22 +3,19 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400&display=swap">
 
 <style>
-/* === Dark command center — light override === */
 :root {
-  --bg:           #0d1117;
-  --surface:      #161b22;
-  --surface-hi:   #1c2129;
-  --border:       #21262d;
-  --fg:           #e6edf3;
-  --fg-muted:     #7d8590;
-  --fg-subtle:    #3d444d;
-  --accent:       #2f81f7;
-  --accent-bg:    rgba(47,129,247,.12);
-  --unread:       #f85149;
-  --live:         #3fb950;
-  --warn:         #d29922;
-  --font-ui: 'Inter', system-ui, sans-serif;
-  --font-mono: 'JetBrains Mono', monospace;
+  --bg:         #0d1117;
+  --surface:    #161b22;
+  --surface-hi: #1c2129;
+  --border:     #21262d;
+  --fg:         #e6edf3;
+  --fg-muted:   #7d8590;
+  --fg-subtle:  #3d444d;
+  --accent:     #2f81f7;
+  --accent-bg:  rgba(47,129,247,.12);
+  --unread:     #f85149;
+  --live:       #3fb950;
+  --warn:       #d29922;
   color-scheme: dark;
 }
 @media (prefers-color-scheme: light) {
@@ -55,384 +52,217 @@
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; }
+html, body { height: 100%; font-family: 'Inter', system-ui, sans-serif; font-size: 14px; background: var(--bg); color: var(--fg); }
 
-html, body {
-  height: 100%;
-  font-family: var(--font-ui);
-  font-size: 14px;
-  background: var(--bg);
-  color: var(--fg);
-}
-
-/* ── Setup screen ── */
-.setup-overlay {
+/* ── Auth screens ── */
+.auth-screen {
   position: fixed; inset: 0;
-  background: var(--bg);
   display: flex; align-items: center; justify-content: center;
-  z-index: 100;
+  background: var(--bg); z-index: 100;
   padding: max(16px, env(safe-area-inset-left,0px));
 }
-.setup-card {
+.auth-card {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 12px;
-  padding: 32px;
-  width: 100%;
-  max-width: 400px;
+  padding: 36px 32px;
+  width: 100%; max-width: 380px;
 }
-.setup-logo {
-  display: flex; align-items: center; gap: 10px;
+.auth-logo { display: flex; align-items: center; gap: 10px; margin-bottom: 28px; }
+.auth-logo-mark {
+  width: 34px; height: 34px; background: var(--accent);
+  border-radius: 9px; display: grid; place-items: center;
+  font-size: 17px; font-weight: 700; color: #fff;
+}
+.auth-logo span { font-size: 18px; font-weight: 600; letter-spacing: -.3px; }
+.auth-card h2 { font-size: 16px; font-weight: 600; margin-bottom: 6px; }
+.auth-card p { font-size: 13px; color: var(--fg-muted); line-height: 1.5; margin-bottom: 24px; }
+.auth-email-pill {
+  display: inline-block;
+  background: var(--accent-bg);
+  color: var(--accent);
+  border-radius: 20px;
+  padding: 3px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  font-family: 'JetBrains Mono', monospace;
   margin-bottom: 24px;
 }
-.setup-logo-mark {
-  width: 32px; height: 32px;
-  background: var(--accent);
-  border-radius: 8px;
-  display: grid; place-items: center;
-  font-size: 16px; font-weight: 700; color: #fff;
+.auth-btn {
+  width: 100%; background: var(--accent); color: #fff;
+  border: none; border-radius: 7px; padding: 11px;
+  font-size: 14px; font-weight: 600; cursor: pointer;
+  font-family: inherit; transition: opacity .15s;
 }
-.setup-logo span { font-size: 18px; font-weight: 600; }
-.setup-card h2 { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
-.setup-card p { font-size: 13px; color: var(--fg-muted); margin-bottom: 20px; line-height: 1.5; }
-.setup-field { margin-bottom: 16px; }
-.setup-field label { display: block; font-size: 12px; font-weight: 500; margin-bottom: 6px; color: var(--fg-muted); }
-.setup-field input {
-  width: 100%;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 7px;
-  padding: 8px 12px;
-  font-size: 13px;
-  font-family: var(--font-mono);
-  color: var(--fg);
-  outline: none;
+.auth-btn:hover { opacity: .88; }
+.auth-btn:disabled { opacity: .5; cursor: default; }
+.auth-otp-wrap { display: flex; gap: 8px; margin-bottom: 20px; }
+.auth-otp-wrap input {
+  width: 44px; height: 52px;
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: 8px; text-align: center;
+  font-size: 22px; font-weight: 600;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--fg); outline: none;
+  transition: border-color .15s;
 }
-.setup-field input:focus { border-color: var(--accent); }
-.setup-btn {
-  width: 100%;
-  background: var(--accent);
-  color: #fff;
-  border: none;
-  border-radius: 7px;
-  padding: 10px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  font-family: var(--font-ui);
-  margin-top: 4px;
+.auth-otp-wrap input:focus { border-color: var(--accent); }
+.auth-resend {
+  background: none; border: none; color: var(--accent);
+  font-size: 13px; cursor: pointer; font-family: inherit;
+  padding: 0; margin-top: 12px;
 }
-.setup-btn:hover { opacity: .9; }
-.setup-err { font-size: 12px; color: var(--unread); margin-top: 10px; display: none; }
+.auth-resend:disabled { color: var(--fg-muted); cursor: default; }
+.auth-err { font-size: 12px; color: var(--unread); margin-top: 10px; min-height: 18px; }
+.auth-back {
+  background: none; border: none; color: var(--fg-muted);
+  font-size: 13px; cursor: pointer; font-family: inherit;
+  padding: 0; margin-top: 16px; display: block;
+}
+.auth-back:hover { color: var(--fg); }
 
-/* ── Layout shell ── */
+/* ── App shell ── */
 .shell {
   display: grid;
   grid-template-rows: 48px 1fr;
   grid-template-columns: 220px 1fr;
-  grid-template-areas:
-    "header header"
-    "sidebar main";
-  height: 100%;
-  overflow: hidden;
+  grid-template-areas: "header header" "sidebar main";
+  height: 100%; overflow: hidden;
 }
 @media (max-width: 640px) {
-  .shell {
-    grid-template-columns: 1fr;
-    grid-template-areas:
-      "header"
-      "main";
-  }
+  .shell { grid-template-columns: 1fr; grid-template-areas: "header" "main"; }
   .sidebar { display: none; }
 }
 
-/* ── Header ── */
 header {
   grid-area: header;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding-left: max(16px, env(safe-area-inset-left, 0px));
-  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex; align-items: center; gap: 12px;
+  padding-left: max(16px, env(safe-area-inset-left,0px));
+  padding-right: max(16px, env(safe-area-inset-right,0px));
   padding-block: 0;
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
-  position: sticky;
-  top: env(safe-area-inset-top, 0px);
-  z-index: 10;
+  background: var(--surface); border-bottom: 1px solid var(--border);
+  position: sticky; top: env(safe-area-inset-top,0px); z-index: 10;
 }
-.logo {
-  display: flex; align-items: center; gap: 8px;
-  font-weight: 600; font-size: 15px; letter-spacing: -.3px;
-  flex-shrink: 0;
-}
-.logo-mark {
-  width: 22px; height: 22px;
-  background: var(--accent);
-  border-radius: 6px;
-  display: grid; place-items: center;
-  font-size: 11px; font-weight: 700; color: #fff;
-}
-.status-dot {
-  width: 8px; height: 8px;
-  border-radius: 50%;
-  background: var(--warn);
-  flex-shrink: 0;
-  transition: background .3s;
-}
+.logo { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 15px; letter-spacing: -.3px; flex-shrink: 0; }
+.logo-mark { width: 22px; height: 22px; background: var(--accent); border-radius: 6px; display: grid; place-items: center; font-size: 11px; font-weight: 700; color: #fff; }
+.status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--warn); flex-shrink: 0; transition: background .3s; }
 .status-dot.live { background: var(--live); }
 .status-label { font-size: 12px; color: var(--fg-muted); flex-shrink: 0; }
-
-.search-wrap {
-  flex: 1; max-width: 320px; margin-left: auto; position: relative;
-}
-.search-wrap svg {
-  position: absolute; left: 10px; top: 50%;
-  transform: translateY(-50%);
-  pointer-events: none; color: var(--fg-muted);
-}
-#search {
-  width: 100%;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 5px 10px 5px 32px;
-  font-size: 13px; color: var(--fg);
-  font-family: var(--font-ui); outline: none;
-}
+.search-wrap { flex: 1; max-width: 320px; margin-left: auto; position: relative; }
+.search-wrap svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); pointer-events: none; color: var(--fg-muted); }
+#search { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 5px 10px 5px 32px; font-size: 13px; color: var(--fg); font-family: inherit; outline: none; }
 #search:focus { border-color: var(--accent); }
 #search::placeholder { color: var(--fg-muted); }
-
 .header-actions { display: flex; gap: 4px; margin-left: 8px; }
-.icon-btn {
-  width: 32px; height: 32px;
-  border: none; background: none; cursor: pointer;
-  color: var(--fg-muted); border-radius: 6px;
-  display: grid; place-items: center;
-  transition: background .15s, color .15s;
-}
+.icon-btn { width: 32px; height: 32px; border: none; background: none; cursor: pointer; color: var(--fg-muted); border-radius: 6px; display: grid; place-items: center; transition: background .15s, color .15s; }
 .icon-btn:hover { background: var(--surface-hi); color: var(--fg); }
 
-/* ── Sidebar ── */
-.sidebar {
-  grid-area: sidebar;
-  background: var(--surface);
-  border-right: 1px solid var(--border);
-  overflow-y: auto; padding: 12px 0;
-}
-.sidebar-label {
-  font-size: 11px; font-weight: 600;
-  letter-spacing: .06em; text-transform: uppercase;
-  color: var(--fg-muted); padding: 0 14px 6px;
-}
-.app-row {
-  display: flex; align-items: center; gap: 9px;
-  padding: 6px 14px; cursor: pointer;
-  border-left: 2px solid transparent;
-  transition: background .12s; user-select: none;
-}
+.sidebar { grid-area: sidebar; background: var(--surface); border-right: 1px solid var(--border); overflow-y: auto; padding: 12px 0; }
+.sidebar-label { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--fg-muted); padding: 0 14px 6px; }
+.app-row { display: flex; align-items: center; gap: 9px; padding: 6px 14px; cursor: pointer; border-left: 2px solid transparent; transition: background .12s; user-select: none; }
 .app-row:hover { background: var(--surface-hi); }
 .app-row.active { background: var(--accent-bg); border-left-color: var(--accent); }
-.app-icon {
-  width: 24px; height: 24px; border-radius: 6px;
-  display: grid; place-items: center;
-  font-size: 11px; font-weight: 600; color: #fff; flex-shrink: 0;
-}
+.app-icon { width: 24px; height: 24px; border-radius: 6px; display: grid; place-items: center; font-size: 11px; font-weight: 600; color: #fff; flex-shrink: 0; }
 .app-name { flex: 1; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.app-badge {
-  font-size: 11px; font-variant-numeric: tabular-nums;
-  background: var(--unread); color: #fff;
-  border-radius: 10px; padding: 1px 6px;
-  font-weight: 600; min-width: 20px; text-align: center;
-}
+.app-badge { font-size: 11px; font-variant-numeric: tabular-nums; background: var(--unread); color: #fff; border-radius: 10px; padding: 1px 6px; font-weight: 600; min-width: 20px; text-align: center; }
 .app-badge:empty { display: none; }
 
-/* ── Main feed ── */
 main { grid-area: main; overflow-y: auto; }
-.feed-header {
-  display: flex; align-items: center; gap: 10px;
-  padding: 12px max(16px, env(safe-area-inset-left, 0px)) 10px;
-  border-bottom: 1px solid var(--border);
-  position: sticky; top: 0;
-  background: var(--bg); z-index: 5;
-}
+.feed-header { display: flex; align-items: center; gap: 10px; padding: 12px max(16px, env(safe-area-inset-left,0px)) 10px; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--bg); z-index: 5; }
 .feed-title { font-size: 14px; font-weight: 600; }
 .feed-count { font-size: 12px; color: var(--fg-muted); font-variant-numeric: tabular-nums; }
-.mark-all-btn {
-  margin-left: auto; font-size: 12px; color: var(--accent);
-  background: none; border: none; cursor: pointer;
-  padding: 4px 8px; border-radius: 5px; font-family: var(--font-ui);
-}
+.mark-all-btn { margin-left: auto; font-size: 12px; color: var(--accent); background: none; border: none; cursor: pointer; padding: 4px 8px; border-radius: 5px; font-family: inherit; }
 .mark-all-btn:hover { background: var(--accent-bg); }
+#newBanner { display: none; position: sticky; top: 45px; z-index: 4; background: var(--accent); color: #fff; font-size: 12px; font-weight: 600; text-align: center; padding: 7px; cursor: pointer; }
 
-#newBanner {
-  display: none; position: sticky; top: 45px; z-index: 4;
-  background: var(--accent); color: #fff;
-  font-size: 12px; font-weight: 600;
-  text-align: center; padding: 7px; cursor: pointer;
-}
-
-/* ── Cards ── */
-.notif-feed {
-  padding: 8px max(16px, env(safe-area-inset-right, 0px)) 8px max(16px, env(safe-area-inset-left, 0px));
-  display: flex; flex-direction: column; gap: 4px;
-}
-.notif-card {
-  display: grid;
-  grid-template-columns: 36px 1fr auto;
-  gap: 10px; align-items: start;
-  padding: 10px 12px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  transition: border-color .15s, opacity .2s;
-  animation: slideIn .15s ease-out;
-}
-@keyframes slideIn {
-  from { opacity: 0; transform: translateY(-6px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
+.notif-feed { padding: 8px max(16px, env(safe-area-inset-right,0px)) 8px max(16px, env(safe-area-inset-left,0px)); display: flex; flex-direction: column; gap: 4px; }
+.notif-card { display: grid; grid-template-columns: 36px 1fr auto; gap: 10px; align-items: start; padding: 10px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; transition: border-color .15s, opacity .2s; animation: slideIn .15s ease-out; }
+@keyframes slideIn { from { opacity:0; transform:translateY(-6px) } to { opacity:1; transform:translateY(0) } }
 .notif-card.read { opacity: .55; }
 .notif-card:hover { border-color: var(--fg-subtle); }
-.card-icon {
-  width: 32px; height: 32px; border-radius: 8px;
-  display: grid; place-items: center;
-  font-size: 13px; font-weight: 600; color: #fff;
-  flex-shrink: 0; margin-top: 1px;
-}
+.card-icon { width: 32px; height: 32px; border-radius: 8px; display: grid; place-items: center; font-size: 13px; font-weight: 600; color: #fff; flex-shrink: 0; margin-top: 1px; }
 .card-body { min-width: 0; }
 .card-app-row { display: flex; align-items: center; gap: 6px; margin-bottom: 2px; }
-.card-app-name {
-  font-size: 11px; font-weight: 600;
-  color: var(--fg-muted); letter-spacing: .02em; text-transform: uppercase;
-}
-.card-unread-dot {
-  width: 6px; height: 6px; border-radius: 50%;
-  background: var(--accent); flex-shrink: 0;
-}
-.card-title {
-  font-size: 13px; font-weight: 500;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.4;
-}
-.card-text {
-  font-size: 13px; color: var(--fg-muted); line-height: 1.4;
-  overflow: hidden;
-  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
-  word-break: break-word;
-}
-.card-meta {
-  display: flex; flex-direction: column;
-  align-items: flex-end; gap: 6px; flex-shrink: 0;
-}
-.card-time {
-  font-size: 11px; color: var(--fg-muted);
-  font-variant-numeric: tabular-nums; white-space: nowrap;
-  font-family: var(--font-mono);
-}
+.card-app-name { font-size: 11px; font-weight: 600; color: var(--fg-muted); letter-spacing: .02em; text-transform: uppercase; }
+.card-unread-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
+.card-title { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.4; }
+.card-text { font-size: 13px; color: var(--fg-muted); line-height: 1.4; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; word-break: break-word; }
+.card-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex-shrink: 0; }
+.card-time { font-size: 11px; color: var(--fg-muted); font-variant-numeric: tabular-nums; white-space: nowrap; font-family: 'JetBrains Mono', monospace; }
 .card-actions { display: flex; gap: 2px; }
-.card-btn {
-  width: 24px; height: 24px;
-  border: none; background: none; cursor: pointer;
-  color: var(--fg-subtle); border-radius: 4px;
-  display: grid; place-items: center;
-  transition: background .12s, color .12s;
-}
+.card-btn { width: 24px; height: 24px; border: none; background: none; cursor: pointer; color: var(--fg-subtle); border-radius: 4px; display: grid; place-items: center; transition: background .12s, color .12s; }
 .card-btn:hover { background: var(--surface-hi); color: var(--fg-muted); }
 .card-btn.archive:hover { color: var(--unread); }
-
-.empty-state {
-  padding: 60px 16px; text-align: center; color: var(--fg-muted);
-}
+.empty-state { padding: 60px 16px; text-align: center; color: var(--fg-muted); }
 .empty-state svg { opacity: .3; margin-bottom: 12px; }
-.load-more {
-  display: block; width: 100%; padding: 12px;
-  background: none; border: 1px solid var(--border);
-  border-radius: 8px; color: var(--fg-muted);
-  font-size: 13px; cursor: pointer; font-family: var(--font-ui);
-  margin: 4px 0 20px;
-  transition: background .12s, color .12s;
-}
+.load-more { display: block; width: 100%; padding: 12px; background: none; border: 1px solid var(--border); border-radius: 8px; color: var(--fg-muted); font-size: 13px; cursor: pointer; font-family: inherit; margin: 4px 0 20px; transition: background .12s, color .12s; }
 .load-more:hover { background: var(--surface); color: var(--fg); }
 .load-more:disabled { opacity: .4; cursor: default; }
-
-.skeleton-card {
-  height: 76px; background: var(--surface);
-  border: 1px solid var(--border); border-radius: 8px;
-  overflow: hidden; position: relative;
-}
-.skeleton-card::after {
-  content: ""; position: absolute; inset: 0;
-  background: linear-gradient(90deg, transparent 0%, var(--surface-hi) 50%, transparent 100%);
-  animation: shimmer 1.4s infinite;
-}
+.skeleton-card { height: 76px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; position: relative; }
+.skeleton-card::after { content:""; position:absolute; inset:0; background:linear-gradient(90deg,transparent,var(--surface-hi),transparent); animation:shimmer 1.4s infinite; }
 @keyframes shimmer { 0%{transform:translateX(-100%)} 100%{transform:translateX(100%)} }
-@media (prefers-reduced-motion: reduce) {
-  .notif-card { animation: none; }
-  .skeleton-card::after { animation: none; }
-}
+@media (prefers-reduced-motion: reduce) { .notif-card,.skeleton-card::after { animation:none } }
 </style>
 
-<!-- Setup screen -->
-<div class="setup-overlay" id="setupOverlay">
-  <div class="setup-card">
-    <div class="setup-logo">
-      <div class="setup-logo-mark">N</div>
+<!-- ── Step 1: Request OTP ── -->
+<div class="auth-screen" id="screenRequest">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <div class="auth-logo-mark">N</div>
       <span>NotifyHub</span>
     </div>
-    <h2>Connect to your server</h2>
-    <p>Enter your server URL and API key to start receiving notifications from your Android devices.</p>
-    <div class="setup-field">
-      <label>Server URL</label>
-      <input type="url" id="setupUrl" placeholder="https://your-server.onrender.com" spellcheck="false">
-    </div>
-    <div class="setup-field">
-      <label>API Key</label>
-      <input type="password" id="setupKey" placeholder="Your API key" spellcheck="false">
-    </div>
-    <button class="setup-btn" id="setupBtn">Connect</button>
-    <div class="setup-err" id="setupErr">Could not connect. Check the URL and key.</div>
+    <h2>Sign in</h2>
+    <p>We'll send a one-time code to your email.</p>
+    <div class="auth-email-pill">shaibal.tiller@gmail.com</div>
+    <button class="auth-btn" id="sendCodeBtn">Send login code</button>
+    <div class="auth-err" id="requestErr"></div>
   </div>
 </div>
 
-<!-- Main app (hidden until connected) -->
+<!-- ── Step 2: Verify OTP ── -->
+<div class="auth-screen" id="screenVerify" hidden>
+  <div class="auth-card">
+    <div class="auth-logo">
+      <div class="auth-logo-mark">N</div>
+      <span>NotifyHub</span>
+    </div>
+    <h2>Enter your code</h2>
+    <p>Check <strong>shaibal.tiller@gmail.com</strong> for a 6-digit code. It expires in 10 minutes.</p>
+    <div class="auth-otp-wrap" id="otpWrap">
+      <input type="text" inputmode="numeric" maxlength="1" id="d0" autocomplete="one-time-code">
+      <input type="text" inputmode="numeric" maxlength="1" id="d1">
+      <input type="text" inputmode="numeric" maxlength="1" id="d2">
+      <input type="text" inputmode="numeric" maxlength="1" id="d3">
+      <input type="text" inputmode="numeric" maxlength="1" id="d4">
+      <input type="text" inputmode="numeric" maxlength="1" id="d5">
+    </div>
+    <button class="auth-btn" id="verifyBtn" disabled>Verify</button>
+    <div class="auth-err" id="verifyErr"></div>
+    <button class="auth-resend" id="resendBtn" disabled>Resend code (<span id="resendTimer">60</span>s)</button>
+    <button class="auth-back" id="backBtn">← Back</button>
+  </div>
+</div>
+
+<!-- ── Main app ── -->
 <div class="shell" id="app" hidden>
   <header>
-    <div class="logo">
-      <div class="logo-mark">N</div>
-      NotifyHub
-    </div>
+    <div class="logo"><div class="logo-mark">N</div>NotifyHub</div>
     <div class="status-dot" id="statusDot"></div>
     <span class="status-label" id="statusLabel">Connecting…</span>
-
     <div class="search-wrap">
-      <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-        <circle cx="6.5" cy="6.5" r="4.5" stroke="currentColor" stroke-width="1.5"/>
-        <path d="M10 10l3.5 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-      </svg>
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="6.5" cy="6.5" r="4.5" stroke="currentColor" stroke-width="1.5"/><path d="M10 10l3.5 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
       <input type="search" id="search" placeholder="Search notifications…" autocomplete="off">
     </div>
-
     <div class="header-actions">
       <button class="icon-btn" id="themeBtn" title="Toggle theme">
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-          <path d="M8 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-1 0v-1A.5.5 0 0 1 8 1zM3.05 3.05a.5.5 0 0 1 .707 0l.707.707a.5.5 0 0 1-.707.707l-.707-.707a.5.5 0 0 1 0-.707zm9.9 0a.5.5 0 0 1 0 .707l-.707.707a.5.5 0 0 1-.707-.707l.707-.707a.5.5 0 0 1 .707 0zm-9.95 9.9a.5.5 0 0 1 .707-.707l.707.707a.5.5 0 0 1-.707.707l-.707-.707zm9.9 0a.5.5 0 0 1 0 .707l-.707.707a.5.5 0 0 1-.707-.707l.707-.707a.5.5 0 0 1 .707 0zM1 7.5h1a.5.5 0 0 1 0 1H1a.5.5 0 0 1 0-1zm13 0h1a.5.5 0 0 1 0 1h-1a.5.5 0 0 1 0-1zM8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z"/>
-        </svg>
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-1 0v-1A.5.5 0 0 1 8 1zM3.05 3.05a.5.5 0 0 1 .707 0l.707.707a.5.5 0 0 1-.707.707l-.707-.707a.5.5 0 0 1 0-.707zm9.9 0a.5.5 0 0 1 0 .707l-.707.707a.5.5 0 0 1-.707-.707l.707-.707a.5.5 0 0 1 .707 0zm-9.95 9.9a.5.5 0 0 1 .707-.707l.707.707a.5.5 0 0 1-.707.707l-.707-.707zm9.9 0a.5.5 0 0 1 0 .707l-.707.707a.5.5 0 0 1-.707-.707l.707-.707a.5.5 0 0 1 .707 0zM1 7.5h1a.5.5 0 0 1 0 1H1a.5.5 0 0 1 0-1zm13 0h1a.5.5 0 0 1 0 1h-1a.5.5 0 0 1 0-1zM8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z"/></svg>
       </button>
-      <button class="icon-btn" id="logoutBtn" title="Disconnect">
-        <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor">
-          <path d="M10 3.5a.5.5 0 0 0-.5-.5h-7a.5.5 0 0 0-.5.5v9a.5.5 0 0 0 .5.5h7a.5.5 0 0 0 .5-.5v-2a.5.5 0 0 1 1 0v2A1.5 1.5 0 0 1 9.5 14h-7A1.5 1.5 0 0 1 1 12.5v-9A1.5 1.5 0 0 1 2.5 2h7A1.5 1.5 0 0 1 11 3.5v2a.5.5 0 0 1-1 0v-2z"/>
-          <path d="M15.854 8.354a.5.5 0 0 0 0-.708l-3-3a.5.5 0 0 0-.708.708L14.293 7.5H5.5a.5.5 0 0 0 0 1h8.793l-2.147 2.146a.5.5 0 0 0 .708.708l3-3z"/>
-        </svg>
+      <button class="icon-btn" id="signOutBtn" title="Sign out">
+        <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor"><path d="M10 3.5a.5.5 0 0 0-.5-.5h-7a.5.5 0 0 0-.5.5v9a.5.5 0 0 0 .5.5h7a.5.5 0 0 0 .5-.5v-2a.5.5 0 0 1 1 0v2A1.5 1.5 0 0 1 9.5 14h-7A1.5 1.5 0 0 1 1 12.5v-9A1.5 1.5 0 0 1 2.5 2h7A1.5 1.5 0 0 1 11 3.5v2a.5.5 0 0 1-1 0v-2z"/><path d="M15.854 8.354a.5.5 0 0 0 0-.708l-3-3a.5.5 0 0 0-.708.708L14.293 7.5H5.5a.5.5 0 0 0 0 1h8.793l-2.147 2.146a.5.5 0 0 0 .708.708l3-3z"/></svg>
       </button>
     </div>
   </header>
-
-  <nav class="sidebar" id="sidebar">
-    <div class="sidebar-section">
-      <div class="sidebar-label">Apps</div>
-      <div id="appList"></div>
-    </div>
-  </nav>
-
+  <nav class="sidebar"><div class="sidebar-label">Apps</div><div id="appList"></div></nav>
   <main id="main">
     <div class="feed-header">
       <span class="feed-title" id="feedTitle">All Notifications</span>
@@ -441,170 +271,178 @@ main { grid-area: main; overflow-y: auto; }
     </div>
     <div id="newBanner"></div>
     <div class="notif-feed" id="feed">
-      <div class="skeleton-card"></div>
-      <div class="skeleton-card"></div>
-      <div class="skeleton-card"></div>
+      <div class="skeleton-card"></div><div class="skeleton-card"></div><div class="skeleton-card"></div>
     </div>
   </main>
 </div>
 
 <script>
-// ── Config persisted in localStorage ──
-let SERVER = '', API_KEY = ''
-function loadConfig() {
-  try {
-    SERVER  = localStorage.getItem('nh-server') || ''
-    API_KEY = localStorage.getItem('nh-key')    || ''
-  } catch {}
-  return !!(SERVER && API_KEY)
-}
-function saveConfig(url, key) {
-  try {
-    localStorage.setItem('nh-server', url.replace(/\/$/, ''))
-    localStorage.setItem('nh-key', key)
-  } catch {}
-}
-function clearConfig() {
-  try { localStorage.removeItem('nh-server'); localStorage.removeItem('nh-key') } catch {}
-}
+const SERVER = 'https://notificationhub-10g2.onrender.com'
+const EMAIL  = 'shaibal.tiller@gmail.com'
 
-// ── Setup screen ──
-const setupOverlay = document.getElementById('setupOverlay')
-const appEl        = document.getElementById('app')
+// ── Token storage ──
+let token = ''
+function saveToken(t) { token = t; try { localStorage.setItem('nh-token', t) } catch {} }
+function loadToken()  { try { return localStorage.getItem('nh-token') || '' } catch { return '' } }
+function clearToken() { token = ''; try { localStorage.removeItem('nh-token') } catch {} }
+function hdrs()       { return { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' } }
 
-document.getElementById('setupBtn').addEventListener('click', async () => {
-  const url = document.getElementById('setupUrl').value.trim()
-  const key = document.getElementById('setupKey').value.trim()
-  const errEl = document.getElementById('setupErr')
-  errEl.style.display = 'none'
-  if (!url || !key) { errEl.style.display = 'block'; errEl.textContent = 'Both fields are required.'; return }
+// ── OTP flow ──
+const screenRequest = document.getElementById('screenRequest')
+const screenVerify  = document.getElementById('screenVerify')
+const appEl         = document.getElementById('app')
 
-  document.getElementById('setupBtn').textContent = 'Connecting…'
+// Step 1: send code
+document.getElementById('sendCodeBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('sendCodeBtn')
+  const err = document.getElementById('requestErr')
+  err.textContent = ''; btn.disabled = true; btn.textContent = 'Sending…'
   try {
-    const res = await fetch(`${url.replace(/\/$/,'')}/health`)
-    if (!res.ok) throw new Error()
-    // Test auth
-    const r2 = await fetch(`${url.replace(/\/$/,'')}/api/notifications?limit=1`, {
-      headers: { 'X-API-Key': key }
-    })
-    if (r2.status === 401) { errEl.style.display = 'block'; errEl.textContent = 'Wrong API key.'; document.getElementById('setupBtn').textContent = 'Connect'; return }
-    saveConfig(url, key)
-    SERVER  = url.replace(/\/$/, '')
-    API_KEY = key
-    launchApp()
-  } catch {
-    errEl.style.display = 'block'
-    errEl.textContent = 'Could not reach server. Check the URL.'
-    document.getElementById('setupBtn').textContent = 'Connect'
+    const res  = await fetch(`${SERVER}/api/auth/request-otp`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ email: EMAIL }) })
+    const json = await res.json()
+    if (!res.ok) throw new Error(json.error || 'Failed')
+    screenRequest.hidden = true
+    screenVerify.hidden  = false
+    document.getElementById('d0').focus()
+    startResendTimer()
+  } catch (e) {
+    err.textContent = e.message
+    btn.disabled = false; btn.textContent = 'Send login code'
   }
 })
 
-function launchApp() {
-  setupOverlay.hidden = true
-  appEl.hidden = false
-  loadNotifications(true)
-  connectSSE()
+// Step 2: OTP inputs
+const digits = [0,1,2,3,4,5].map(i => document.getElementById(`d${i}`))
+digits.forEach((inp, i) => {
+  inp.addEventListener('input', e => {
+    const val = e.target.value.replace(/\D/g, '')
+    e.target.value = val.slice(-1)
+    if (val && i < 5) digits[i+1].focus()
+    checkOtpReady()
+  })
+  inp.addEventListener('keydown', e => {
+    if (e.key === 'Backspace' && !e.target.value && i > 0) { digits[i-1].focus(); digits[i-1].value = '' }
+  })
+  inp.addEventListener('paste', e => {
+    e.preventDefault()
+    const pasted = (e.clipboardData.getData('text') || '').replace(/\D/g,'').slice(0,6)
+    pasted.split('').forEach((ch, j) => { if (digits[j]) digits[j].value = ch })
+    if (pasted.length === 6) { digits[5].focus(); checkOtpReady() }
+  })
+})
+function checkOtpReady() {
+  document.getElementById('verifyBtn').disabled = digits.some(d => !d.value)
 }
+function getOtpCode() { return digits.map(d => d.value).join('') }
 
-document.getElementById('logoutBtn').addEventListener('click', () => {
-  clearConfig()
-  if (evtSource) evtSource.close()
-  location.reload()
+document.getElementById('verifyBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('verifyBtn')
+  const err = document.getElementById('verifyErr')
+  err.textContent = ''; btn.disabled = true; btn.textContent = 'Verifying…'
+  try {
+    const res  = await fetch(`${SERVER}/api/auth/verify-otp`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ email: EMAIL, code: getOtpCode() }) })
+    const json = await res.json()
+    if (!res.ok) throw new Error(json.error || 'Invalid code')
+    saveToken(json.token)
+    launchApp()
+  } catch (e) {
+    err.textContent = e.message
+    btn.disabled = false; btn.textContent = 'Verify'
+  }
 })
 
-// ── State ──
-const headers = () => ({ 'X-API-Key': API_KEY, 'Content-Type': 'application/json' })
+document.getElementById('backBtn').addEventListener('click', () => {
+  screenVerify.hidden = true; screenRequest.hidden = false
+  digits.forEach(d => d.value = '')
+  document.getElementById('sendCodeBtn').disabled = false
+  document.getElementById('sendCodeBtn').textContent = 'Send login code'
+})
+
+// Resend timer
+let resendInterval
+function startResendTimer() {
+  let t = 60
+  const btn = document.getElementById('resendBtn')
+  const span = document.getElementById('resendTimer')
+  btn.disabled = true
+  clearInterval(resendInterval)
+  resendInterval = setInterval(() => {
+    t--; span.textContent = t
+    if (t <= 0) { clearInterval(resendInterval); btn.disabled = false; btn.textContent = 'Resend code' }
+  }, 1000)
+}
+document.getElementById('resendBtn').addEventListener('click', async () => {
+  document.getElementById('resendBtn').disabled = true
+  document.getElementById('verifyErr').textContent = ''
+  try {
+    await fetch(`${SERVER}/api/auth/request-otp`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ email: EMAIL }) })
+    digits.forEach(d => d.value = ''); digits[0].focus()
+    startResendTimer()
+  } catch { document.getElementById('verifyErr').textContent = 'Failed to resend.' }
+})
+
+function launchApp() {
+  screenRequest.hidden = true; screenVerify.hidden = true; appEl.hidden = false
+  loadNotifications(true); connectSSE()
+}
+
+// ── App state ──
 let notifications = [], appFilter = null, searchQuery = ''
-let page = 1, totalCount = 0, hasMore = false
-let newPendingCount = 0, appCounts = {}
+let page = 1, totalCount = 0, hasMore = false, newPendingCount = 0, appCounts = {}
 
-// ── App colors ──
 const PALETTE = ['#1a7f37','#cf222e','#9a3412','#1d4ed8','#7e22ce','#0891b2','#d97706','#15803d','#b91c1c','#6d28d9']
-function appColor(pkg) {
-  let h = 0
-  for (let i = 0; i < pkg.length; i++) h = ((h << 5) - h + pkg.charCodeAt(i)) | 0
-  return PALETTE[Math.abs(h) % PALETTE.length]
-}
-function appInitial(label) { return (label || '?').trim()[0].toUpperCase() }
+function appColor(pkg) { let h=0; for(let i=0;i<pkg.length;i++) h=((h<<5)-h+pkg.charCodeAt(i))|0; return PALETTE[Math.abs(h)%PALETTE.length] }
+function appInitial(l) { return (l||'?').trim()[0].toUpperCase() }
+function relTime(iso) { const s=Math.floor((Date.now()-new Date(iso))/1000); if(s<60) return 'just now'; if(s<3600) return Math.floor(s/60)+'m ago'; if(s<86400) return Math.floor(s/3600)+'h ago'; return Math.floor(s/86400)+'d ago' }
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;') }
 
-// ── Relative time ──
-function relTime(iso) {
-  const s = Math.floor((Date.now() - new Date(iso).getTime()) / 1000)
-  if (s < 60)    return 'just now'
-  if (s < 3600)  return Math.floor(s/60) + 'm ago'
-  if (s < 86400) return Math.floor(s/3600) + 'h ago'
-  return Math.floor(s/86400) + 'd ago'
-}
-
-// ── Escape HTML ──
-function esc(s) {
-  if (!s) return ''
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')
-}
-
-// ── Card HTML ──
 function cardHTML(n) {
-  const color = appColor(n.package_name)
-  return `
-    <div class="notif-card${n.is_read?' read':''}" data-id="${n.id}" data-pkg="${n.package_name}">
-      <div class="card-icon" style="background:${color}">${appInitial(n.app_label||n.package_name)}</div>
-      <div class="card-body">
-        <div class="card-app-row">
-          <span class="card-app-name">${esc(n.app_label||n.package_name.split('.').pop())}</span>
-          ${!n.is_read?'<span class="card-unread-dot"></span>':''}
-        </div>
-        ${n.title?`<div class="card-title">${esc(n.title)}</div>`:''}
-        ${n.text_body?`<div class="card-text">${esc(n.text_body)}</div>`:''}
+  return `<div class="notif-card${n.is_read?' read':''}" data-id="${n.id}">
+    <div class="card-icon" style="background:${appColor(n.package_name)}">${appInitial(n.app_label||n.package_name)}</div>
+    <div class="card-body">
+      <div class="card-app-row">
+        <span class="card-app-name">${esc(n.app_label||n.package_name.split('.').pop())}</span>
+        ${!n.is_read?'<span class="card-unread-dot"></span>':''}
       </div>
-      <div class="card-meta">
-        <span class="card-time">${relTime(n.received_at||n.posted_at)}</span>
-        <div class="card-actions">
-          ${!n.is_read?`<button class="card-btn" title="Mark read" onclick="markRead(${n.id},this)">
-            <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z"/></svg>
-          </button>`:''}
-          <button class="card-btn archive" title="Archive" onclick="archiveNotif(${n.id},this)">
-            <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M1.75 2.5a.25.25 0 000 .5h12.5a.25.25 0 000-.5H1.75zM1 4.75C1 4.336 1.336 4 1.75 4h12.5c.414 0 .75.336.75.75v8c0 .414-.336.75-.75.75H1.75A.75.75 0 011 12.75v-8zm1.5.75v7h11v-7h-11zm4.25 1.5a.75.75 0 011.5 0v3.44l1.22-1.22a.75.75 0 111.06 1.06l-2.5 2.5a.75.75 0 01-1.06 0l-2.5-2.5a.75.75 0 111.06-1.06l1.22 1.22V7z"/></svg>
-          </button>
-        </div>
+      ${n.title?`<div class="card-title">${esc(n.title)}</div>`:''}
+      ${n.text_body?`<div class="card-text">${esc(n.text_body)}</div>`:''}
+    </div>
+    <div class="card-meta">
+      <span class="card-time">${relTime(n.received_at||n.posted_at)}</span>
+      <div class="card-actions">
+        ${!n.is_read?`<button class="card-btn" title="Mark read" onclick="markRead(${n.id},this)"><svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z"/></svg></button>`:''}
+        <button class="card-btn archive" title="Archive" onclick="archiveNotif(${n.id})"><svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M1.75 2.5a.25.25 0 000 .5h12.5a.25.25 0 000-.5H1.75zM1 4.75C1 4.336 1.336 4 1.75 4h12.5c.414 0 .75.336.75.75v8c0 .414-.336.75-.75.75H1.75A.75.75 0 011 12.75v-8zm1.5.75v7h11v-7h-11zm4.25 1.5a.75.75 0 011.5 0v3.44l1.22-1.22a.75.75 0 111.06 1.06l-2.5 2.5a.75.75 0 01-1.06 0l-2.5-2.5a.75.75 0 111.06-1.06l1.22 1.22V7z"/></svg></button>
       </div>
-    </div>`
+    </div>
+  </div>`
 }
 
-// ── Sidebar ──
 function renderSidebar() {
-  const apps = Object.entries(appCounts).sort((a,b) => b[1].total - a[1].total)
-  const totalUnread = apps.reduce((s,[,v]) => s + v.unread, 0)
-  let html = `
-    <div class="app-row${appFilter===null?' active':''}" onclick="setFilter(null)">
-      <div class="app-icon" style="background:#3d444d">
-        <svg width="13" height="13" viewBox="0 0 16 16" fill="#fff"><path d="M2 2h4v4H2zm0 6h4v4H2zm6-6h4v4H8zm0 6h4v4H8z"/></svg>
-      </div>
-      <span class="app-name">All apps</span>
-      ${totalUnread?`<span class="app-badge">${totalUnread}</span>`:''}
+  const apps = Object.entries(appCounts).sort((a,b)=>b[1].total-a[1].total)
+  const totalUnread = apps.reduce((s,[,v])=>s+v.unread,0)
+  let html = `<div class="app-row${appFilter===null?' active':''}" onclick="setFilter(null)">
+    <div class="app-icon" style="background:#3d444d"><svg width="13" height="13" viewBox="0 0 16 16" fill="#fff"><path d="M2 2h4v4H2zm0 6h4v4H2zm6-6h4v4H8zm0 6h4v4H8z"/></svg></div>
+    <span class="app-name">All apps</span>${totalUnread?`<span class="app-badge">${totalUnread}</span>`:''}
+  </div>`
+  for (const [pkg,c] of apps) {
+    const label = c.label||pkg.split('.').pop()
+    html += `<div class="app-row${appFilter===pkg?' active':''}" onclick="setFilter('${pkg}')">
+      <div class="app-icon" style="background:${appColor(pkg)}">${appInitial(label)}</div>
+      <span class="app-name">${esc(label)}</span>${c.unread?`<span class="app-badge">${c.unread}</span>`:''}
     </div>`
-  for (const [pkg, c] of apps) {
-    const label = c.label || pkg.split('.').pop()
-    html += `
-      <div class="app-row${appFilter===pkg?' active':''}" onclick="setFilter('${pkg}')">
-        <div class="app-icon" style="background:${appColor(pkg)}">${appInitial(label)}</div>
-        <span class="app-name">${esc(label)}</span>
-        ${c.unread?`<span class="app-badge">${c.unread}</span>`:''}
-      </div>`
   }
   document.getElementById('appList').innerHTML = html
 }
 
-// ── Feed ──
 function renderFeed() {
   const feed = document.getElementById('feed')
-  const visible = filteredNotifs()
+  const vis = filteredNotifs()
   document.getElementById('feedCount').textContent = `${totalCount.toLocaleString()} total`
-  if (!visible.length && !notifications.length) {
-    feed.innerHTML = `<div class="empty-state"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/></svg><p>No notifications yet</p></div>`
-    return
+  if (!vis.length && !notifications.length) {
+    feed.innerHTML = `<div class="empty-state"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/></svg><p>No notifications yet</p></div>`; return
   }
-  if (!visible.length) { feed.innerHTML = `<div class="empty-state"><p>No notifications match this filter</p></div>`; return }
-  let html = visible.map(n => cardHTML(n)).join('')
+  if (!vis.length) { feed.innerHTML = `<div class="empty-state"><p>No notifications match this filter</p></div>`; return }
+  let html = vis.map(n=>cardHTML(n)).join('')
   if (hasMore) html += `<button class="load-more" id="loadMoreBtn" onclick="loadMore()">Load more</button>`
   feed.innerHTML = html
 }
@@ -612,158 +450,88 @@ function renderFeed() {
 function filteredNotifs() {
   return notifications.filter(n => {
     if (appFilter && n.package_name !== appFilter) return false
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase()
-      return (n.title||'').toLowerCase().includes(q)||(n.text_body||'').toLowerCase().includes(q)||(n.app_label||'').toLowerCase().includes(q)
-    }
+    if (searchQuery) { const q=searchQuery.toLowerCase(); return (n.title||'').toLowerCase().includes(q)||(n.text_body||'').toLowerCase().includes(q)||(n.app_label||'').toLowerCase().includes(q) }
     return true
   })
 }
 
-// ── Load ──
-async function loadNotifications(reset = false) {
-  if (reset) { page = 1; notifications = [] }
-  const params = new URLSearchParams({ page, limit: 30 })
-  if (appFilter) params.set('package', appFilter)
-  if (searchQuery) params.set('search', searchQuery)
+async function loadNotifications(reset=false) {
+  if (reset) { page=1; notifications=[] }
+  const p = new URLSearchParams({ page, limit:30 })
+  if (appFilter) p.set('package', appFilter)
+  if (searchQuery) p.set('search', searchQuery)
   try {
-    const res  = await fetch(`${SERVER}/api/notifications?${params}`, { headers: headers() })
+    const res = await fetch(`${SERVER}/api/notifications?${p}`, { headers: hdrs() })
+    if (res.status === 401) { clearToken(); location.reload(); return }
     const json = await res.json()
-    const rows = json.data || []
-    if (reset) {
-      notifications = rows; appCounts = {}
-      for (const n of rows) {
-        if (!appCounts[n.package_name]) appCounts[n.package_name] = { total:0, unread:0, label:n.app_label }
-        appCounts[n.package_name].total++
-        if (!n.is_read) appCounts[n.package_name].unread++
-      }
-    } else { notifications = [...notifications, ...rows] }
-    totalCount = json.pagination?.total ?? notifications.length
-    hasMore    = json.pagination?.hasMore ?? false
+    const rows = json.data||[]
+    if (reset) { notifications=rows; appCounts={}; for(const n of rows){ if(!appCounts[n.package_name]) appCounts[n.package_name]={total:0,unread:0,label:n.app_label}; appCounts[n.package_name].total++; if(!n.is_read) appCounts[n.package_name].unread++ } }
+    else notifications=[...notifications,...rows]
+    totalCount=json.pagination?.total??notifications.length; hasMore=json.pagination?.hasMore??false
     renderSidebar(); renderFeed()
-  } catch {
-    document.getElementById('feed').innerHTML = `<div class="empty-state"><p style="color:var(--unread)">Could not load — check server.</p></div>`
-  }
+  } catch { document.getElementById('feed').innerHTML=`<div class="empty-state"><p style="color:var(--unread)">Could not load — check connection.</p></div>` }
 }
-async function loadMore() {
-  const btn = document.getElementById('loadMoreBtn')
-  if (btn) btn.disabled = true
-  page++; await loadNotifications(false)
-}
+async function loadMore() { const btn=document.getElementById('loadMoreBtn'); if(btn) btn.disabled=true; page++; await loadNotifications(false) }
 
-// ── Filters ──
 function setFilter(pkg) {
-  appFilter = pkg
-  document.getElementById('feedTitle').textContent = pkg ? (appCounts[pkg]?.label || pkg.split('.').pop()) : 'All Notifications'
-  page = 1; loadNotifications(true)
+  appFilter=pkg; document.getElementById('feedTitle').textContent=pkg?(appCounts[pkg]?.label||pkg.split('.').pop()):'All Notifications'
+  page=1; loadNotifications(true)
 }
 let searchTimer
-document.getElementById('search').addEventListener('input', e => {
-  clearTimeout(searchTimer); searchQuery = e.target.value.trim()
-  searchTimer = setTimeout(() => loadNotifications(true), 350)
-})
+document.getElementById('search').addEventListener('input', e => { clearTimeout(searchTimer); searchQuery=e.target.value.trim(); searchTimer=setTimeout(()=>loadNotifications(true),350) })
 
-// ── Actions ──
 async function markRead(id, btn) {
   try {
-    await fetch(`${SERVER}/api/notifications/${id}/read`, { method:'PATCH', headers:headers() })
-    const n = notifications.find(x => x.id == id)
-    if (n) { n.is_read = true; if (appCounts[n.package_name]) appCounts[n.package_name].unread = Math.max(0, appCounts[n.package_name].unread-1) }
-    const card = document.querySelector(`[data-id="${id}"]`)
-    if (card) {
-      card.classList.add('read')
-      btn.closest('.card-actions').querySelector('.card-btn:not(.archive)')?.remove()
-      card.querySelector('.card-unread-dot')?.remove()
-    }
+    await fetch(`${SERVER}/api/notifications/${id}/read`, { method:'PATCH', headers:hdrs() })
+    const n=notifications.find(x=>x.id==id); if(n){ n.is_read=true; if(appCounts[n.package_name]) appCounts[n.package_name].unread=Math.max(0,appCounts[n.package_name].unread-1) }
+    const card=document.querySelector(`[data-id="${id}"]`); if(card){ card.classList.add('read'); btn.closest('.card-actions').querySelector('.card-btn:not(.archive)')?.remove(); card.querySelector('.card-unread-dot')?.remove() }
     renderSidebar()
   } catch {}
 }
 async function archiveNotif(id) {
   try {
-    await fetch(`${SERVER}/api/notifications/${id}/archive`, { method:'PATCH', headers:headers() })
-    const idx = notifications.findIndex(x => x.id == id)
-    if (idx !== -1) {
-      const n = notifications[idx]
-      if (!n.is_read && appCounts[n.package_name]) appCounts[n.package_name].unread = Math.max(0, appCounts[n.package_name].unread-1)
-      if (appCounts[n.package_name]) appCounts[n.package_name].total = Math.max(0, appCounts[n.package_name].total-1)
-      notifications.splice(idx,1); totalCount = Math.max(0, totalCount-1)
-    }
-    const card = document.querySelector(`[data-id="${id}"]`)
-    if (card) {
-      card.style.transition = 'opacity .2s, transform .2s'
-      card.style.opacity = '0'; card.style.transform = 'translateX(20px)'
-      setTimeout(() => { card.remove(); renderSidebar() }, 200)
-    }
+    await fetch(`${SERVER}/api/notifications/${id}/archive`, { method:'PATCH', headers:hdrs() })
+    const idx=notifications.findIndex(x=>x.id==id)
+    if(idx!==-1){ const n=notifications[idx]; if(!n.is_read&&appCounts[n.package_name]) appCounts[n.package_name].unread=Math.max(0,appCounts[n.package_name].unread-1); if(appCounts[n.package_name]) appCounts[n.package_name].total=Math.max(0,appCounts[n.package_name].total-1); notifications.splice(idx,1); totalCount=Math.max(0,totalCount-1) }
+    const card=document.querySelector(`[data-id="${id}"]`); if(card){ card.style.transition='opacity .2s,transform .2s'; card.style.opacity='0'; card.style.transform='translateX(20px)'; setTimeout(()=>{ card.remove(); renderSidebar() },200) }
   } catch {}
 }
 document.getElementById('markAllBtn').addEventListener('click', async () => {
-  try {
-    await fetch(`${SERVER}/api/notifications/mark-all-read`, { method:'PATCH', headers:headers() })
-    notifications.forEach(n => n.is_read = true)
-    Object.values(appCounts).forEach(c => c.unread = 0)
-    renderSidebar(); renderFeed()
-  } catch {}
+  try { await fetch(`${SERVER}/api/notifications/mark-all-read`,{method:'PATCH',headers:hdrs()}); notifications.forEach(n=>n.is_read=true); Object.values(appCounts).forEach(c=>c.unread=0); renderSidebar(); renderFeed() } catch {}
 })
+document.getElementById('signOutBtn').addEventListener('click', () => { clearToken(); location.reload() })
 
-// ── SSE ──
-let evtSource = null, reconnectTimer = null
+// ── SSE (uses token in query param — EventSource can't set headers) ──
+let evtSource=null, reconnectTimer=null
 function connectSSE() {
-  const dot = document.getElementById('statusDot')
-  const lbl = document.getElementById('statusLabel')
-  if (evtSource) evtSource.close()
-  evtSource = new EventSource(`${SERVER}/api/notifications/stream?key=${API_KEY}`)
-  evtSource.addEventListener('connected', () => { dot.className='status-dot live'; lbl.textContent='Live'; clearTimeout(reconnectTimer) })
+  const dot=document.getElementById('statusDot'), lbl=document.getElementById('statusLabel')
+  if(evtSource) evtSource.close()
+  evtSource=new EventSource(`${SERVER}/api/notifications/stream?token=${token}`)
+  evtSource.addEventListener('connected',()=>{ dot.className='status-dot live'; lbl.textContent='Live'; clearTimeout(reconnectTimer) })
   evtSource.addEventListener('notification', e => {
     try {
-      const n = JSON.parse(e.data)
-      notifications.unshift(n); totalCount++
-      if (!appCounts[n.package_name]) appCounts[n.package_name] = { total:0, unread:0, label:n.app_label }
-      appCounts[n.package_name].total++
-      if (!n.is_read) appCounts[n.package_name].unread++
+      const n=JSON.parse(e.data); notifications.unshift(n); totalCount++
+      if(!appCounts[n.package_name]) appCounts[n.package_name]={total:0,unread:0,label:n.app_label}
+      appCounts[n.package_name].total++; if(!n.is_read) appCounts[n.package_name].unread++
       renderSidebar()
-      if (appFilter && n.package_name !== appFilter) return
-      const mainEl = document.getElementById('main')
-      if (mainEl.scrollTop > 200) {
-        newPendingCount++
-        const banner = document.getElementById('newBanner')
-        banner.style.display = 'block'
-        banner.textContent = `↑ ${newPendingCount} new notification${newPendingCount>1?'s':''} — click to refresh`
-        banner.onclick = () => { newPendingCount=0; banner.style.display='none'; loadNotifications(true); mainEl.scrollTop=0 }
-      } else {
-        const feed = document.getElementById('feed')
-        const tmp = document.createElement('div')
-        tmp.innerHTML = cardHTML(n)
-        feed.prepend(tmp.firstElementChild)
-        document.getElementById('feedCount').textContent = `${totalCount.toLocaleString()} total`
-      }
+      if(appFilter&&n.package_name!==appFilter) return
+      const mainEl=document.getElementById('main')
+      if(mainEl.scrollTop>200){ newPendingCount++; const banner=document.getElementById('newBanner'); banner.style.display='block'; banner.textContent=`↑ ${newPendingCount} new notification${newPendingCount>1?'s':''} — click to refresh`; banner.onclick=()=>{ newPendingCount=0; banner.style.display='none'; loadNotifications(true); mainEl.scrollTop=0 } }
+      else { const feed=document.getElementById('feed'); const tmp=document.createElement('div'); tmp.innerHTML=cardHTML(n); feed.prepend(tmp.firstElementChild); document.getElementById('feedCount').textContent=`${totalCount.toLocaleString()} total` }
     } catch {}
   })
-  evtSource.onerror = () => {
-    dot.className='status-dot'; lbl.textContent='Reconnecting…'
-    evtSource.close()
-    reconnectTimer = setTimeout(connectSSE, 5000)
-  }
+  evtSource.onerror=()=>{ dot.className='status-dot'; lbl.textContent='Reconnecting…'; evtSource.close(); reconnectTimer=setTimeout(connectSSE,5000) }
 }
 
 // ── Theme ──
-let theme = 'dark'
-try { theme = localStorage.getItem('nh-theme') || 'dark' } catch {}
-function applyTheme(t) {
-  document.documentElement.setAttribute('data-theme', t)
-  try { localStorage.setItem('nh-theme', t) } catch {}
-}
+let theme='dark'; try{ theme=localStorage.getItem('nh-theme')||'dark' }catch{}
+function applyTheme(t){ document.documentElement.setAttribute('data-theme',t); try{ localStorage.setItem('nh-theme',t) }catch{} }
 applyTheme(theme)
-document.getElementById('themeBtn').addEventListener('click', () => { theme = theme==='dark'?'light':'dark'; applyTheme(theme) })
+document.getElementById('themeBtn').addEventListener('click',()=>{ theme=theme==='dark'?'light':'dark'; applyTheme(theme) })
 
-// ── Tick relative times ──
-setInterval(() => {
-  const cards = document.querySelectorAll('.notif-card')
-  const visible = filteredNotifs()
-  cards.forEach((card, i) => {
-    if (visible[i]) card.querySelector('.card-time').textContent = relTime(visible[i].received_at||visible[i].posted_at)
-  })
-}, 30000)
+setInterval(()=>{ const cards=document.querySelectorAll('.notif-card'); filteredNotifs().forEach((n,i)=>{ const el=cards[i]?.querySelector('.card-time'); if(el) el.textContent=relTime(n.received_at||n.posted_at) }) },30000)
 
 // ── Init ──
-if (loadConfig()) launchApp()
+token = loadToken()
+if (token) launchApp()
 </script>
