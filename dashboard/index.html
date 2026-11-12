@@ -177,20 +177,7 @@ main { grid-area: main; overflow-y: auto; }
 @media (prefers-reduced-motion: reduce) { .notif-card,.skeleton-card::after { animation:none } }
 </style>
 
-<!-- ── Login ── -->
-<div class="auth-screen" id="screenLogin">
-  <div class="auth-card">
-    <div class="auth-logo">
-      <div class="auth-logo-mark">N</div>
-      <span>NotifyHub</span>
-    </div>
-    <h2>Sign in</h2>
-    <p>Enter your password to access the dashboard.</p>
-    <input class="auth-input" type="password" id="passInput" placeholder="Password" autocomplete="current-password">
-    <button class="auth-btn" id="loginBtn">Sign in</button>
-    <div class="auth-err" id="loginErr"></div>
-  </div>
-</div>
+
 
 <!-- ── Main app ── -->
 <div class="shell" id="app" hidden>
@@ -229,48 +216,22 @@ main { grid-area: main; overflow-y: auto; }
 const SERVER = 'https://notificationhub-10g2.onrender.com'
 const EMAIL  = 'teletalkagami01521@gmail.com'
 
-// ── Token storage ──
-let token = ''
-function saveToken(t) { token = t; try { localStorage.setItem('nh-token', t) } catch {} }
-function loadToken()  { try { return localStorage.getItem('nh-token') || '' } catch { return '' } }
-function clearToken() { token = ''; try { localStorage.removeItem('nh-token') } catch {} }
+// ── Auth — use fixed API key, no login ──
+const token = 'solaimankabiranik'
+function saveToken() {}
+function loadToken()  { return token }
+function clearToken() {}
 function hdrs()       { return { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' } }
 
 // ── Login flow ──
 const screenLogin = document.getElementById('screenLogin')
 const appEl       = document.getElementById('app')
 
-// Ping server on load to pre-warm it (non-blocking)
+// Pre-warm server
 fetch(`${SERVER}/health`, { cache: 'no-store' }).catch(() => {})
-setInterval(() => fetch(`${SERVER}/health`, { cache: 'no-store' }).catch(() => {}), 10 * 60 * 1000)
-
-// Password hash for instant client-side check (no server round-trip on login)
-const PASS_HASH = '0b5d27d8f08b385908c3288839e10d3086d2b91a7108fed6319b8c067ab5142b'
-async function hashPass(p) {
-  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(p))
-  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('')
-}
-
-async function doLogin() {
-  const btn  = document.getElementById('loginBtn')
-  const err  = document.getElementById('loginErr')
-  const pass = document.getElementById('passInput').value
-  if (!pass) return
-  err.textContent = ''; btn.disabled = true; btn.textContent = 'Signing in…'
-  const h = await hashPass(pass)
-  if (h !== PASS_HASH) {
-    err.textContent = 'Wrong password'
-    btn.disabled = false; btn.textContent = 'Sign in'; return
-  }
-  saveToken(pass)
-  launchApp()
-}
-
-document.getElementById('loginBtn').addEventListener('click', doLogin)
-document.getElementById('passInput').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin() })
 
 function launchApp() {
-  screenLogin.hidden = true; appEl.hidden = false
+  appEl.hidden = false
   loadNotifications(true); connectSSE()
 }
 
@@ -420,6 +381,5 @@ document.getElementById('themeBtn').addEventListener('click',()=>{ theme=theme==
 setInterval(()=>{ const cards=document.querySelectorAll('.notif-card'); filteredNotifs().forEach((n,i)=>{ const el=cards[i]?.querySelector('.card-time'); if(el) el.textContent=relTime(n.received_at||n.posted_at) }) },30000)
 
 // ── Init ──
-token = loadToken()
-if (token) launchApp()
+launchApp()
 </script>
