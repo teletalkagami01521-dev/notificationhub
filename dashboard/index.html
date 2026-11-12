@@ -238,7 +238,7 @@ main { grid-area: main; overflow-y: auto; }
     </div>
     <button class="auth-btn" id="verifyBtn" disabled>Verify</button>
     <div class="auth-err" id="verifyErr"></div>
-    <button class="auth-resend" id="resendBtn" disabled>Resend code (<span id="resendTimer">60</span>s)</button>
+    <button class="auth-resend" id="resendBtn" disabled>Resend code (60s)</button>
     <button class="auth-back" id="backBtn">← Back</button>
   </div>
 </div>
@@ -363,12 +363,13 @@ let resendInterval
 function startResendTimer() {
   let t = 60
   const btn = document.getElementById('resendBtn')
-  const span = document.getElementById('resendTimer')
   btn.disabled = true
+  btn.textContent = `Resend code (${t}s)`
   clearInterval(resendInterval)
   resendInterval = setInterval(() => {
-    t--; span.textContent = t
+    t--
     if (t <= 0) { clearInterval(resendInterval); btn.disabled = false; btn.textContent = 'Resend code' }
+    else btn.textContent = `Resend code (${t}s)`
   }, 1000)
 }
 document.getElementById('resendBtn').addEventListener('click', async () => {
