@@ -1,5 +1,6 @@
 {
   "version": 2,
+  "scope": "teletalkagami01521-gmailcoms-projects",
   "builds": [
     { "src": "dashboard/**", "use": "@vercel/static" }
   ],
