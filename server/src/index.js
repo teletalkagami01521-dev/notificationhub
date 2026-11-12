@@ -10,6 +10,15 @@ const app = express()
 
 app.use(express.json({ limit: '64kb' }))
 
+// CORS — personal dashboard access from any origin
+app.use((req, res, next) => {
+    res.setHeader('Access-Control-Allow-Origin', '*')
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-API-Key')
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, OPTIONS')
+    if (req.method === 'OPTIONS') return res.sendStatus(204)
+    next()
+})
+
 // Serve the dashboard from the sibling dashboard/ directory
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const dashboardPath = path.join(__dirname, '..', '..', 'dashboard')
