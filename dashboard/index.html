@@ -54,7 +54,7 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; }
 html, body { height: 100%; font-family: 'Inter', system-ui, sans-serif; font-size: 14px; background: var(--bg); color: var(--fg); }
 
-/* ── Auth screens ── */
+/* ── Auth screen ── */
 .auth-screen {
   position: fixed; inset: 0;
   display: flex; align-items: center; justify-content: center;
@@ -77,17 +77,13 @@ html, body { height: 100%; font-family: 'Inter', system-ui, sans-serif; font-siz
 .auth-logo span { font-size: 18px; font-weight: 600; letter-spacing: -.3px; }
 .auth-card h2 { font-size: 16px; font-weight: 600; margin-bottom: 6px; }
 .auth-card p { font-size: 13px; color: var(--fg-muted); line-height: 1.5; margin-bottom: 24px; }
-.auth-email-pill {
-  display: inline-block;
-  background: var(--accent-bg);
-  color: var(--accent);
-  border-radius: 20px;
-  padding: 3px 10px;
-  font-size: 12px;
-  font-weight: 500;
-  font-family: 'JetBrains Mono', monospace;
-  margin-bottom: 24px;
+.auth-input {
+  width: 100%; background: var(--bg); border: 1px solid var(--border);
+  border-radius: 7px; padding: 10px 12px; font-size: 14px;
+  color: var(--fg); font-family: inherit; outline: none;
+  transition: border-color .15s; margin-bottom: 12px;
 }
+.auth-input:focus { border-color: var(--accent); }
 .auth-btn {
   width: 100%; background: var(--accent); color: #fff;
   border: none; border-radius: 7px; padding: 11px;
@@ -96,30 +92,7 @@ html, body { height: 100%; font-family: 'Inter', system-ui, sans-serif; font-siz
 }
 .auth-btn:hover { opacity: .88; }
 .auth-btn:disabled { opacity: .5; cursor: default; }
-.auth-otp-wrap { display: flex; gap: 8px; margin-bottom: 20px; }
-.auth-otp-wrap input {
-  width: 44px; height: 52px;
-  background: var(--bg); border: 1px solid var(--border);
-  border-radius: 8px; text-align: center;
-  font-size: 22px; font-weight: 600;
-  font-family: 'JetBrains Mono', monospace;
-  color: var(--fg); outline: none;
-  transition: border-color .15s;
-}
-.auth-otp-wrap input:focus { border-color: var(--accent); }
-.auth-resend {
-  background: none; border: none; color: var(--accent);
-  font-size: 13px; cursor: pointer; font-family: inherit;
-  padding: 0; margin-top: 12px;
-}
-.auth-resend:disabled { color: var(--fg-muted); cursor: default; }
 .auth-err { font-size: 12px; color: var(--unread); margin-top: 10px; min-height: 18px; }
-.auth-back {
-  background: none; border: none; color: var(--fg-muted);
-  font-size: 13px; cursor: pointer; font-family: inherit;
-  padding: 0; margin-top: 16px; display: block;
-}
-.auth-back:hover { color: var(--fg); }
 
 /* ── App shell ── */
 .shell {
@@ -204,42 +177,18 @@ main { grid-area: main; overflow-y: auto; }
 @media (prefers-reduced-motion: reduce) { .notif-card,.skeleton-card::after { animation:none } }
 </style>
 
-<!-- ── Step 1: Request OTP ── -->
-<div class="auth-screen" id="screenRequest">
+<!-- ── Login ── -->
+<div class="auth-screen" id="screenLogin">
   <div class="auth-card">
     <div class="auth-logo">
       <div class="auth-logo-mark">N</div>
       <span>NotifyHub</span>
     </div>
     <h2>Sign in</h2>
-    <p>We'll send a one-time code to your email.</p>
-    <div class="auth-email-pill">teletalkagami01521@gmail.com</div>
-    <button class="auth-btn" id="sendCodeBtn">Send login code</button>
-    <div class="auth-err" id="requestErr"></div>
-  </div>
-</div>
-
-<!-- ── Step 2: Verify OTP ── -->
-<div class="auth-screen" id="screenVerify" hidden>
-  <div class="auth-card">
-    <div class="auth-logo">
-      <div class="auth-logo-mark">N</div>
-      <span>NotifyHub</span>
-    </div>
-    <h2>Enter your code</h2>
-    <p>Check <strong>teletalkagami01521@gmail.com</strong> for a 6-digit code. It expires in 10 minutes.</p>
-    <div class="auth-otp-wrap" id="otpWrap">
-      <input type="text" inputmode="numeric" maxlength="1" id="d0" autocomplete="one-time-code">
-      <input type="text" inputmode="numeric" maxlength="1" id="d1">
-      <input type="text" inputmode="numeric" maxlength="1" id="d2">
-      <input type="text" inputmode="numeric" maxlength="1" id="d3">
-      <input type="text" inputmode="numeric" maxlength="1" id="d4">
-      <input type="text" inputmode="numeric" maxlength="1" id="d5">
-    </div>
-    <button class="auth-btn" id="verifyBtn" disabled>Verify</button>
-    <div class="auth-err" id="verifyErr"></div>
-    <button class="auth-resend" id="resendBtn" disabled>Resend code (60s)</button>
-    <button class="auth-back" id="backBtn">← Back</button>
+    <p>Enter your password to access the dashboard.</p>
+    <input class="auth-input" type="password" id="passInput" placeholder="Password" autocomplete="current-password">
+    <button class="auth-btn" id="loginBtn">Sign in</button>
+    <div class="auth-err" id="loginErr"></div>
   </div>
 </div>
 
@@ -287,106 +236,40 @@ function loadToken()  { try { return localStorage.getItem('nh-token') || '' } ca
 function clearToken() { token = ''; try { localStorage.removeItem('nh-token') } catch {} }
 function hdrs()       { return { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' } }
 
-// ── OTP flow ──
-const screenRequest = document.getElementById('screenRequest')
-const screenVerify  = document.getElementById('screenVerify')
-const appEl         = document.getElementById('app')
+// ── Login flow ──
+const screenLogin = document.getElementById('screenLogin')
+const appEl       = document.getElementById('app')
 
-// Step 1: send code
-document.getElementById('sendCodeBtn').addEventListener('click', async () => {
-  const btn = document.getElementById('sendCodeBtn')
-  const err = document.getElementById('requestErr')
-  err.textContent = ''; btn.disabled = true; btn.textContent = 'Sending…'
+async function doLogin() {
+  const btn  = document.getElementById('loginBtn')
+  const err  = document.getElementById('loginErr')
+  const pass = document.getElementById('passInput').value
+  if (!pass) return
+  err.textContent = ''; btn.disabled = true; btn.textContent = 'Signing in…'
   try {
-    const res  = await fetch(`${SERVER}/api/auth/request-otp`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ email: EMAIL }) })
-    const json = await res.json()
-    if (!res.ok) throw new Error(json.error || 'Failed')
-    screenRequest.hidden = true
-    screenVerify.hidden  = false
-    document.getElementById('d0').focus()
-    startResendTimer()
-  } catch (e) {
-    err.textContent = e.message
-    btn.disabled = false; btn.textContent = 'Send login code'
-  }
-})
-
-// Step 2: OTP inputs
-const digits = [0,1,2,3,4,5].map(i => document.getElementById(`d${i}`))
-digits.forEach((inp, i) => {
-  inp.addEventListener('input', e => {
-    const val = e.target.value.replace(/\D/g, '')
-    e.target.value = val.slice(-1)
-    if (val && i < 5) digits[i+1].focus()
-    checkOtpReady()
-  })
-  inp.addEventListener('keydown', e => {
-    if (e.key === 'Backspace' && !e.target.value && i > 0) { digits[i-1].focus(); digits[i-1].value = '' }
-  })
-  inp.addEventListener('paste', e => {
-    e.preventDefault()
-    const pasted = (e.clipboardData.getData('text') || '').replace(/\D/g,'').slice(0,6)
-    pasted.split('').forEach((ch, j) => { if (digits[j]) digits[j].value = ch })
-    if (pasted.length === 6) { digits[5].focus(); checkOtpReady() }
-  })
-})
-function checkOtpReady() {
-  document.getElementById('verifyBtn').disabled = digits.some(d => !d.value)
-}
-function getOtpCode() { return digits.map(d => d.value).join('') }
-
-document.getElementById('verifyBtn').addEventListener('click', async () => {
-  const btn = document.getElementById('verifyBtn')
-  const err = document.getElementById('verifyErr')
-  err.textContent = ''; btn.disabled = true; btn.textContent = 'Verifying…'
-  try {
-    const ctrl = new AbortController()
+    const ctrl  = new AbortController()
     const timer = setTimeout(() => ctrl.abort(), 15000)
-    const res  = await fetch(`${SERVER}/api/auth/verify-otp`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ email: EMAIL, code: getOtpCode() }), signal: ctrl.signal })
+    const res   = await fetch(`${SERVER}/api/auth/login`, {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ email: EMAIL, password: pass }),
+      signal: ctrl.signal
+    })
     clearTimeout(timer)
     const json = await res.json()
-    if (!res.ok) throw new Error(json.error || 'Invalid code')
+    if (!res.ok) throw new Error(json.error || 'Login failed')
     saveToken(json.token)
     launchApp()
   } catch (e) {
     err.textContent = e.name === 'AbortError' ? 'Server took too long — try again' : (e.message || 'Something went wrong')
-    btn.disabled = false; btn.textContent = 'Verify'
+    btn.disabled = false; btn.textContent = 'Sign in'
   }
-})
-
-document.getElementById('backBtn').addEventListener('click', () => {
-  screenVerify.hidden = true; screenRequest.hidden = false
-  digits.forEach(d => d.value = '')
-  document.getElementById('sendCodeBtn').disabled = false
-  document.getElementById('sendCodeBtn').textContent = 'Send login code'
-})
-
-// Resend timer
-let resendInterval
-function startResendTimer() {
-  let t = 60
-  const btn = document.getElementById('resendBtn')
-  btn.disabled = true
-  btn.textContent = `Resend code (${t}s)`
-  clearInterval(resendInterval)
-  resendInterval = setInterval(() => {
-    t--
-    if (t <= 0) { clearInterval(resendInterval); btn.disabled = false; btn.textContent = 'Resend code' }
-    else btn.textContent = `Resend code (${t}s)`
-  }, 1000)
 }
-document.getElementById('resendBtn').addEventListener('click', async () => {
-  document.getElementById('resendBtn').disabled = true
-  document.getElementById('verifyErr').textContent = ''
-  try {
-    await fetch(`${SERVER}/api/auth/request-otp`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ email: EMAIL }) })
-    digits.forEach(d => d.value = ''); digits[0].focus()
-    startResendTimer()
-  } catch { document.getElementById('verifyErr').textContent = 'Failed to resend.' }
-})
+
+document.getElementById('loginBtn').addEventListener('click', doLogin)
+document.getElementById('passInput').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin() })
 
 function launchApp() {
-  screenRequest.hidden = true; screenVerify.hidden = true; appEl.hidden = false
+  screenLogin.hidden = true; appEl.hidden = false
   loadNotifications(true); connectSSE()
 }
 

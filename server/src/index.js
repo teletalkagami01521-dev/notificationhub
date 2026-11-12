@@ -6,7 +6,6 @@ import { auth } from './middleware/auth.js'
 import authRouter from './routes/auth.js'
 import notificationsRouter from './routes/notifications.js'
 import { startCleanupJob } from './cron.js'
-import { initOtpTable } from './auth/otp.js'
 
 const app = express()
 
@@ -37,7 +36,6 @@ app.use('/api', auth)
 app.use('/api/notifications', notificationsRouter)
 
 startCleanupJob()
-initOtpTable().catch(err => console.error('[otp] Table init failed:', err.message))
 
 const PORT = process.env.PORT ?? 3000
 app.listen(PORT, () => {
