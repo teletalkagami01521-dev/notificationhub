@@ -3,7 +3,7 @@ import { generateOtp, verifyOtp } from '../auth/otp.js'
 import { sendOtpEmail } from '../auth/email.js'
 import { createToken } from '../auth/token.js'
 
-const ALLOWED_EMAIL = 'shaibal.tiller@gmail.com'
+const ALLOWED_EMAIL = 'teletalkagami01521@gmail.com'
 
 const router = Router()
 
@@ -19,7 +19,7 @@ router.post('/request-otp', async (req, res) => {
         return res.json({ ok: true })
     } catch (err) {
         console.error('[auth] Email send failed:', err.message)
-        return res.status(500).json({ error: 'Failed to send email', detail: err.message })
+        return res.status(500).json({ error: 'Failed to send email' })
     }
 })
 
