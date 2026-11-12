@@ -1,0 +1,19 @@
+# Environment — never commit secrets
+.env
+server/.env
+
+# Android build outputs
+android/local.properties
+android/.gradle/
+android/app/build/
+android/build/
+android/gradle/wrapper/gradle-wrapper.jar
+*.apk
+*.aab
+
+# Node
+server/node_modules/
+node_modules/
+
+# macOS
+.DS_Store

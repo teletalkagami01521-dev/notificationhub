@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NotifyHub</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- Auth gate: shown until API key is entered -->
+    <div id="auth-gate" hidden>
+        <h1>NotifyHub</h1>
+        <p>Enter your API key to connect to the notification feed.</p>
+        <input
+            id="key-input"
+            type="password"
+            placeholder="API key"
+            autocomplete="off"
+            onkeydown="if(event.key==='Enter') App.setKey()"
+        >
+        <button class="btn btn-primary" onclick="App.setKey()">Connect</button>
+    </div>
+
+    <!-- Main app: revealed after authentication -->
+    <div id="main" hidden>
+        <header>
+            <h1>NotifyHub</h1>
+            <input
+                id="search"
+                type="search"
+                placeholder="Search notifications…"
+                oninput="App.filterBySearch(this.value)"
+            >
+            <select id="app-filter" onchange="App.filterByApp(this.value)">
+                <option value="">All apps</option>
+            </select>
+            <button class="btn btn-ghost" onclick="App.markAllRead()">Mark all read</button>
+            <span id="status">Connecting…</span>
+        </header>
+
+        <div id="feed">
+            <p id="empty-state">Loading…</p>
+        </div>
+
+        <div style="text-align:center; padding: 0 16px 24px;">
+            <button id="load-more" class="btn btn-ghost" onclick="App.loadMore()">Load older</button>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

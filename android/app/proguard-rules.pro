@@ -1,0 +1,4 @@
+-keep class com.notifyhub.** { *; }
+-keep class androidx.room.** { *; }
+-dontwarn okhttp3.**
+-keep class okhttp3.** { *; }

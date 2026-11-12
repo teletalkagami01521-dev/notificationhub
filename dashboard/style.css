@@ -1,0 +1,212 @@
+:root {
+    --bg: #0f0f0f;
+    --surface: #1a1a1a;
+    --surface2: #242424;
+    --border: #2e2e2e;
+    --text: #e8e8e8;
+    --text-muted: #888;
+    --accent: #3b82f6;
+    --accent-hover: #2563eb;
+    --danger: #ef4444;
+    --unread-dot: #3b82f6;
+    --radius: 10px;
+    --transition: 0.15s ease;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 14px;
+    line-height: 1.5;
+    min-height: 100vh;
+}
+
+/* ── Auth Gate ─────────────────────────────────────────────────────────────── */
+#auth-gate {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    gap: 12px;
+    padding: 24px;
+}
+
+#auth-gate h1 { font-size: 24px; margin-bottom: 8px; }
+#auth-gate p  { color: var(--text-muted); margin-bottom: 16px; }
+
+#key-input {
+    width: 100%;
+    max-width: 360px;
+    padding: 10px 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-size: 15px;
+    outline: none;
+}
+
+#key-input:focus { border-color: var(--accent); }
+
+/* ── Layout ─────────────────────────────────────────────────────────────────── */
+#main { display: flex; flex-direction: column; min-height: 100vh; }
+
+header {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+header h1 { font-size: 18px; flex-shrink: 0; }
+
+#search, #app-filter {
+    padding: 7px 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 13px;
+    outline: none;
+}
+
+#search { flex: 1; min-width: 160px; }
+#search:focus, #app-filter:focus { border-color: var(--accent); }
+
+#app-filter option { background: var(--surface); }
+
+.btn {
+    padding: 7px 14px;
+    border-radius: 8px;
+    border: none;
+    font-size: 13px;
+    cursor: pointer;
+    transition: background var(--transition);
+    white-space: nowrap;
+}
+
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:hover { background: var(--accent-hover); }
+.btn-ghost   { background: var(--surface); color: var(--text); }
+.btn-ghost:hover { background: var(--surface2); }
+
+#status {
+    margin-left: auto;
+    font-size: 12px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    background: var(--surface2);
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+
+#status.connected { background: #14532d; color: #4ade80; }
+#status.error     { background: #450a0a; color: #f87171; }
+
+/* ── Feed ────────────────────────────────────────────────────────────────────── */
+#feed {
+    flex: 1;
+    max-width: 800px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+#empty-state {
+    text-align: center;
+    color: var(--text-muted);
+    margin-top: 80px;
+    font-size: 15px;
+}
+
+/* ── Notification Card ───────────────────────────────────────────────────────── */
+.notif-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    cursor: pointer;
+    transition: background var(--transition), border-color var(--transition);
+    animation: slideIn 0.2s ease;
+}
+
+.notif-card:hover { background: var(--surface2); border-color: #3a3a3a; }
+.notif-card.read  { opacity: 0.55; }
+
+@keyframes slideIn {
+    from { opacity: 0; transform: translateY(-8px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.notif-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--unread-dot);
+    flex-shrink: 0;
+    margin-top: 6px;
+}
+
+.notif-card.read .notif-dot { background: transparent; }
+
+.notif-body { flex: 1; min-width: 0; }
+
+.notif-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 2px;
+    flex-wrap: wrap;
+}
+
+.notif-app {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--accent);
+    background: rgba(59, 130, 246, 0.12);
+    padding: 1px 7px;
+    border-radius: 4px;
+}
+
+.notif-time { font-size: 11px; color: var(--text-muted); margin-left: auto; }
+
+.notif-title { font-weight: 600; font-size: 13px; margin-bottom: 2px; }
+.notif-text  { font-size: 13px; color: var(--text-muted); white-space: pre-wrap; word-break: break-word; }
+
+.notif-actions {
+    display: flex;
+    gap: 6px;
+    margin-top: 8px;
+}
+
+.notif-actions .btn { padding: 4px 10px; font-size: 12px; }
+
+/* ── Load more ───────────────────────────────────────────────────────────────── */
+#load-more {
+    display: none;
+    margin: 12px auto 0;
+}
+
+/* ── Responsive ──────────────────────────────────────────────────────────────── */
+@media (max-width: 600px) {
+    header { padding: 10px 12px; }
+    #feed   { padding: 12px; }
+}
