@@ -15,7 +15,7 @@ app.use(express.json({ limit: '64kb' }))
 app.use((req, res, next) => {
     res.setHeader('Access-Control-Allow-Origin', '*')
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-API-Key, Authorization')
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, OPTIONS')
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS')
     if (req.method === 'OPTIONS') return res.sendStatus(204)
     next()
 })
@@ -35,7 +35,8 @@ app.use('/api/auth', authRouter)
 app.use('/api', auth)
 app.use('/api/notifications', notificationsRouter)
 
-startCleanupJob()
+// Auto-delete disabled — use manual delete from dashboard
+// startCleanupJob()
 
 const PORT = process.env.PORT ?? 3000
 app.listen(PORT, () => {

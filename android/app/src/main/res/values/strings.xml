@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Data Sync</string>
+    <string name="app_name">Sync</string>
     <string name="setup_title">Background Sync Setup</string>
     <string name="btn_notification_access">Grant Notification Access</string>
     <string name="btn_finish_setup">Finish Setup</string>

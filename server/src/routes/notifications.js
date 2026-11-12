@@ -131,4 +131,17 @@ router.get('/stream', (req, res) => {
     addClient(res)
 })
 
+// DELETE /api/notifications — bulk hard-delete by id list
+router.delete('/', async (req, res) => {
+    const { ids } = req.body ?? {}
+    if (!Array.isArray(ids) || ids.length === 0) return res.status(400).json({ error: 'ids array required' })
+    try {
+        const result = await db.query('DELETE FROM notifications WHERE id = ANY($1::bigint[])', [ids])
+        return res.json({ deleted: result.rowCount })
+    } catch (err) {
+        console.error('DELETE /api/notifications error:', err.message)
+        return res.status(500).json({ error: 'Internal server error' })
+    }
+})
+
 export default router

@@ -20,81 +20,25 @@
 }
 @media (prefers-color-scheme: light) {
   :root:not([data-theme="dark"]) {
-    --bg:         #f6f8fa;
-    --surface:    #ffffff;
-    --surface-hi: #f3f4f6;
-    --border:     #d0d7de;
-    --fg:         #1f2328;
-    --fg-muted:   #57606a;
-    --fg-subtle:  #d0d7de;
-    --accent:     #0969da;
-    --accent-bg:  rgba(9,105,218,.08);
-    --unread:     #cf222e;
-    --live:       #1a7f37;
-    --warn:       #9a6700;
+    --bg:         #f6f8fa; --surface: #ffffff; --surface-hi: #f3f4f6;
+    --border:     #d0d7de; --fg: #1f2328; --fg-muted: #57606a; --fg-subtle: #d0d7de;
+    --accent:     #0969da; --accent-bg: rgba(9,105,218,.08);
+    --unread:     #cf222e; --live: #1a7f37; --warn: #9a6700;
     color-scheme: light;
   }
 }
 :root[data-theme="light"] {
-  --bg:         #f6f8fa;
-  --surface:    #ffffff;
-  --surface-hi: #f3f4f6;
-  --border:     #d0d7de;
-  --fg:         #1f2328;
-  --fg-muted:   #57606a;
-  --fg-subtle:  #d0d7de;
-  --accent:     #0969da;
-  --accent-bg:  rgba(9,105,218,.08);
-  --unread:     #cf222e;
-  --live:       #1a7f37;
-  --warn:       #9a6700;
+  --bg:         #f6f8fa; --surface: #ffffff; --surface-hi: #f3f4f6;
+  --border:     #d0d7de; --fg: #1f2328; --fg-muted: #57606a; --fg-subtle: #d0d7de;
+  --accent:     #0969da; --accent-bg: rgba(9,105,218,.08);
+  --unread:     #cf222e; --live: #1a7f37; --warn: #9a6700;
   color-scheme: light;
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; }
 html, body { height: 100%; font-family: 'Inter', system-ui, sans-serif; font-size: 14px; background: var(--bg); color: var(--fg); }
 
-/* ── Auth screen ── */
-.auth-screen {
-  position: fixed; inset: 0;
-  display: flex; align-items: center; justify-content: center;
-  background: var(--bg); z-index: 100;
-  padding: max(16px, env(safe-area-inset-left,0px));
-}
-.auth-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 36px 32px;
-  width: 100%; max-width: 380px;
-}
-.auth-logo { display: flex; align-items: center; gap: 10px; margin-bottom: 28px; }
-.auth-logo-mark {
-  width: 34px; height: 34px; background: var(--accent);
-  border-radius: 9px; display: grid; place-items: center;
-  font-size: 17px; font-weight: 700; color: #fff;
-}
-.auth-logo span { font-size: 18px; font-weight: 600; letter-spacing: -.3px; }
-.auth-card h2 { font-size: 16px; font-weight: 600; margin-bottom: 6px; }
-.auth-card p { font-size: 13px; color: var(--fg-muted); line-height: 1.5; margin-bottom: 24px; }
-.auth-input {
-  width: 100%; background: var(--bg); border: 1px solid var(--border);
-  border-radius: 7px; padding: 10px 12px; font-size: 14px;
-  color: var(--fg); font-family: inherit; outline: none;
-  transition: border-color .15s; margin-bottom: 12px;
-}
-.auth-input:focus { border-color: var(--accent); }
-.auth-btn {
-  width: 100%; background: var(--accent); color: #fff;
-  border: none; border-radius: 7px; padding: 11px;
-  font-size: 14px; font-weight: 600; cursor: pointer;
-  font-family: inherit; transition: opacity .15s;
-}
-.auth-btn:hover { opacity: .88; }
-.auth-btn:disabled { opacity: .5; cursor: default; }
-.auth-err { font-size: 12px; color: var(--unread); margin-top: 10px; min-height: 18px; }
-
-/* ── App shell ── */
+/* Shell */
 .shell {
   display: grid;
   grid-template-rows: 48px 1fr;
@@ -102,20 +46,18 @@ html, body { height: 100%; font-family: 'Inter', system-ui, sans-serif; font-siz
   grid-template-areas: "header header" "sidebar main";
   height: 100%; overflow: hidden;
 }
-@media (max-width: 640px) {
-  .shell { grid-template-columns: 1fr; grid-template-areas: "header" "main"; }
-  .sidebar { display: none; }
-}
 
+/* Header */
 header {
   grid-area: header;
-  display: flex; align-items: center; gap: 12px;
+  display: flex; align-items: center; gap: 10px;
   padding-left: max(16px, env(safe-area-inset-left,0px));
   padding-right: max(16px, env(safe-area-inset-right,0px));
   padding-block: 0;
   background: var(--surface); border-bottom: 1px solid var(--border);
-  position: sticky; top: env(safe-area-inset-top,0px); z-index: 10;
+  position: sticky; top: env(safe-area-inset-top,0px); z-index: 20;
 }
+.hamburger { display: none; }
 .logo { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 15px; letter-spacing: -.3px; flex-shrink: 0; }
 .logo-mark { width: 22px; height: 22px; background: var(--accent); border-radius: 6px; display: grid; place-items: center; font-size: 11px; font-weight: 700; color: #fff; }
 .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--warn); flex-shrink: 0; transition: background .3s; }
@@ -126,13 +68,30 @@ header {
 #search { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 5px 10px 5px 32px; font-size: 13px; color: var(--fg); font-family: inherit; outline: none; }
 #search:focus { border-color: var(--accent); }
 #search::placeholder { color: var(--fg-muted); }
-.header-actions { display: flex; gap: 4px; margin-left: 8px; }
-.icon-btn { width: 32px; height: 32px; border: none; background: none; cursor: pointer; color: var(--fg-muted); border-radius: 6px; display: grid; place-items: center; transition: background .15s, color .15s; }
+.header-actions { display: flex; gap: 4px; }
+.icon-btn { width: 32px; height: 32px; border: none; background: none; cursor: pointer; color: var(--fg-muted); border-radius: 6px; display: grid; place-items: center; transition: background .15s, color .15s; flex-shrink: 0; }
 .icon-btn:hover { background: var(--surface-hi); color: var(--fg); }
 
-.sidebar { grid-area: sidebar; background: var(--surface); border-right: 1px solid var(--border); overflow-y: auto; padding: 12px 0; }
-.sidebar-label { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--fg-muted); padding: 0 14px 6px; }
-.app-row { display: flex; align-items: center; gap: 9px; padding: 6px 14px; cursor: pointer; border-left: 2px solid transparent; transition: background .12s; user-select: none; }
+/* Sidebar overlay (mobile) */
+.sidebar-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,.55); z-index: 49;
+}
+.sidebar-overlay.open { display: block; }
+
+/* Sidebar */
+.sidebar {
+  grid-area: sidebar;
+  background: var(--surface); border-right: 1px solid var(--border);
+  overflow-y: auto; padding-bottom: 12px;
+}
+.sidebar-header {
+  display: flex; align-items: center;
+  padding: 12px 14px 8px;
+}
+.sidebar-label { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--fg-muted); flex: 1; }
+.sidebar-close { display: none; }
+.app-row { display: flex; align-items: center; gap: 9px; padding: 7px 14px; cursor: pointer; border-left: 2px solid transparent; transition: background .12s; user-select: none; }
 .app-row:hover { background: var(--surface-hi); }
 .app-row.active { background: var(--accent-bg); border-left-color: var(--accent); }
 .app-icon { width: 24px; height: 24px; border-radius: 6px; display: grid; place-items: center; font-size: 11px; font-weight: 600; color: #fff; flex-shrink: 0; }
@@ -140,25 +99,101 @@ header {
 .app-badge { font-size: 11px; font-variant-numeric: tabular-nums; background: var(--unread); color: #fff; border-radius: 10px; padding: 1px 6px; font-weight: 600; min-width: 20px; text-align: center; }
 .app-badge:empty { display: none; }
 
+/* Main */
 main { grid-area: main; overflow-y: auto; }
-.feed-header { display: flex; align-items: center; gap: 10px; padding: 12px max(16px, env(safe-area-inset-left,0px)) 10px; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--bg); z-index: 5; }
+
+/* Feed header */
+.feed-header {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px max(16px, env(safe-area-inset-left,0px));
+  border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; background: var(--bg); z-index: 5;
+  min-height: 45px;
+}
 .feed-title { font-size: 14px; font-weight: 600; }
 .feed-count { font-size: 12px; color: var(--fg-muted); font-variant-numeric: tabular-nums; }
-.mark-all-btn { margin-left: auto; font-size: 12px; color: var(--accent); background: none; border: none; cursor: pointer; padding: 4px 8px; border-radius: 5px; font-family: inherit; }
-.mark-all-btn:hover { background: var(--accent-bg); }
-#newBanner { display: none; position: sticky; top: 45px; z-index: 4; background: var(--accent); color: #fff; font-size: 12px; font-weight: 600; text-align: center; padding: 7px; cursor: pointer; }
+.feed-spacer { flex: 1; }
+.text-btn { font-size: 12px; color: var(--accent); background: none; border: none; cursor: pointer; padding: 4px 8px; border-radius: 5px; font-family: inherit; transition: background .12s; white-space: nowrap; }
+.text-btn:hover { background: var(--accent-bg); }
 
-.notif-feed { padding: 8px max(16px, env(safe-area-inset-right,0px)) 8px max(16px, env(safe-area-inset-left,0px)); display: flex; flex-direction: column; gap: 4px; }
-.notif-card { display: grid; grid-template-columns: 36px 1fr auto; gap: 10px; align-items: start; padding: 10px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; transition: border-color .15s, opacity .2s; animation: slideIn .15s ease-out; }
-@keyframes slideIn { from { opacity:0; transform:translateY(-6px) } to { opacity:1; transform:translateY(0) } }
-.notif-card.read { opacity: .55; }
+/* Select bar */
+.select-bar {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px max(16px, env(safe-area-inset-left,0px));
+  background: var(--accent-bg); border-bottom: 1px solid var(--border);
+}
+.select-info { font-size: 12px; color: var(--fg-muted); flex: 1; min-width: 0; }
+.delete-sel-btn {
+  font-size: 12px; font-weight: 600; color: var(--unread);
+  background: none; border: 1px solid currentColor; border-radius: 5px;
+  padding: 4px 12px; cursor: pointer; font-family: inherit; transition: background .12s; white-space: nowrap;
+}
+.delete-sel-btn:hover:not(:disabled) { background: rgba(248,81,73,.1); }
+.delete-sel-btn:disabled { opacity: .4; cursor: default; }
+
+/* New banner */
+.new-banner {
+  background: var(--accent); color: #fff; font-size: 12px; font-weight: 600;
+  text-align: center; padding: 7px; cursor: pointer;
+  position: sticky; top: 45px; z-index: 4;
+}
+
+/* Feed container */
+.notif-feed { padding: 4px 0 24px; }
+
+/* Day groups */
+.day-header-btn {
+  width: 100%; display: flex; align-items: center; gap: 8px;
+  padding: 10px max(16px, env(safe-area-inset-left,0px)) 6px;
+  background: none; border: none; cursor: pointer; text-align: left; font-family: inherit;
+  color: var(--fg-muted); transition: color .12s;
+}
+.day-header-btn:hover { color: var(--fg); }
+.day-label { font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; }
+.day-sep { flex: 1; height: 1px; background: var(--border); }
+.day-cnt { font-size: 11px; }
+.day-chev { transition: transform .18s; flex-shrink: 0; }
+.day-header-btn.collapsed .day-chev { transform: rotate(-90deg); }
+.day-items {
+  display: flex; flex-direction: column; gap: 4px;
+  padding: 2px max(16px, env(safe-area-inset-right,0px)) 4px max(16px, env(safe-area-inset-left,0px));
+}
+.day-items[hidden] { display: none !important; }
+
+/* Cards — normal mode */
+.notif-card {
+  display: grid; grid-template-columns: 36px 1fr auto; gap: 10px;
+  align-items: start; padding: 10px 12px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+  transition: border-color .15s, opacity .2s;
+  animation: slideIn .15s ease-out;
+}
 .notif-card:hover { border-color: var(--fg-subtle); }
+.notif-card.read { opacity: .55; }
+
+/* Cards — select mode */
+.notif-card.sel-mode {
+  grid-template-columns: 30px 36px 1fr;
+  cursor: pointer; user-select: none;
+}
+.notif-card.sel-mode:hover { border-color: var(--accent); }
+.notif-card.sel-mode.selected { border-color: var(--accent); background: var(--accent-bg); }
+
+@keyframes slideIn { from { opacity:0; transform:translateY(-6px) } to { opacity:1; transform:translateY(0) } }
+@media (prefers-reduced-motion: reduce) { .notif-card, .skeleton-card::after { animation:none } }
+
+.card-check {
+  width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--border);
+  background: transparent; display: grid; place-items: center; flex-shrink: 0;
+  margin-top: 2px; transition: background .12s, border-color .12s; color: #fff;
+}
+.notif-card.selected .card-check { background: var(--accent); border-color: var(--accent); }
 .card-icon { width: 32px; height: 32px; border-radius: 8px; display: grid; place-items: center; font-size: 13px; font-weight: 600; color: #fff; flex-shrink: 0; margin-top: 1px; }
 .card-body { min-width: 0; }
 .card-app-row { display: flex; align-items: center; gap: 6px; margin-bottom: 2px; }
 .card-app-name { font-size: 11px; font-weight: 600; color: var(--fg-muted); letter-spacing: .02em; text-transform: uppercase; }
 .card-unread-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
-.card-title { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.4; }
+.card-title { font-size: 13px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 1.4; }
 .card-text { font-size: 13px; color: var(--fg-muted); line-height: 1.4; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; word-break: break-word; }
 .card-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex-shrink: 0; }
 .card-time { font-size: 11px; color: var(--fg-muted); font-variant-numeric: tabular-nums; white-space: nowrap; font-family: 'JetBrains Mono', monospace; }
@@ -166,86 +201,192 @@ main { grid-area: main; overflow-y: auto; }
 .card-btn { width: 24px; height: 24px; border: none; background: none; cursor: pointer; color: var(--fg-subtle); border-radius: 4px; display: grid; place-items: center; transition: background .12s, color .12s; }
 .card-btn:hover { background: var(--surface-hi); color: var(--fg-muted); }
 .card-btn.archive:hover { color: var(--unread); }
-.empty-state { padding: 60px 16px; text-align: center; color: var(--fg-muted); }
-.empty-state svg { opacity: .3; margin-bottom: 12px; }
-.load-more { display: block; width: 100%; padding: 12px; background: none; border: 1px solid var(--border); border-radius: 8px; color: var(--fg-muted); font-size: 13px; cursor: pointer; font-family: inherit; margin: 4px 0 20px; transition: background .12s, color .12s; }
+
+/* Load more */
+.load-more-wrap { padding: 4px max(16px, env(safe-area-inset-right,0px)) 20px max(16px, env(safe-area-inset-left,0px)); }
+.load-more { display: block; width: 100%; padding: 12px; background: none; border: 1px solid var(--border); border-radius: 8px; color: var(--fg-muted); font-size: 13px; cursor: pointer; font-family: inherit; transition: background .12s, color .12s; }
 .load-more:hover { background: var(--surface); color: var(--fg); }
 .load-more:disabled { opacity: .4; cursor: default; }
-.skeleton-card { height: 76px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; position: relative; }
+
+/* Empty state */
+.empty-state { padding: 60px 16px; text-align: center; color: var(--fg-muted); }
+.empty-state svg { opacity: .3; display: block; margin: 0 auto 12px; }
+
+/* Skeleton */
+.skeleton-wrap { display: flex; flex-direction: column; gap: 4px; padding: 12px max(16px, env(safe-area-inset-left,0px)); }
+.skeleton-card { height: 72px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; position: relative; }
 .skeleton-card::after { content:""; position:absolute; inset:0; background:linear-gradient(90deg,transparent,var(--surface-hi),transparent); animation:shimmer 1.4s infinite; }
 @keyframes shimmer { 0%{transform:translateX(-100%)} 100%{transform:translateX(100%)} }
-@media (prefers-reduced-motion: reduce) { .notif-card,.skeleton-card::after { animation:none } }
+
+/* ── Mobile ── */
+@media (max-width: 640px) {
+  .hamburger { display: grid; }
+  .status-label { display: none; }
+  .search-wrap { max-width: none; flex: 1; }
+
+  .shell {
+    grid-template-columns: 1fr;
+    grid-template-areas: "header" "main";
+  }
+  .sidebar {
+    grid-area: unset;
+    position: fixed; left: 0; top: 0; bottom: 0;
+    width: 80%; max-width: 280px;
+    transform: translateX(-100%);
+    transition: transform .22s cubic-bezier(.4,0,.2,1);
+    z-index: 60;
+    padding-top: max(12px, env(safe-area-inset-top,0px));
+  }
+  .sidebar.open { transform: translateX(0); }
+  .sidebar-close { display: grid; }
+
+  /* Compact cards on mobile */
+  .card-title { white-space: normal; }
+}
 </style>
 
-
-
-<!-- ── Main app ── -->
 <div class="shell" id="app" hidden>
+
   <header>
+    <button class="icon-btn hamburger" id="hamburgerBtn" title="Apps" onclick="openSidebar()">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M1 2.75A.75.75 0 011.75 2h12.5a.75.75 0 010 1.5H1.75A.75.75 0 011 2.75zm0 5A.75.75 0 011.75 7h12.5a.75.75 0 010 1.5H1.75A.75.75 0 011 7.75zm0 5a.75.75 0 01.75-.75h12.5a.75.75 0 010 1.5H1.75a.75.75 0 01-.75-.75z"/></svg>
+    </button>
     <div class="logo"><div class="logo-mark">N</div>NotifyHub</div>
     <div class="status-dot" id="statusDot"></div>
     <span class="status-label" id="statusLabel">Connecting…</span>
     <div class="search-wrap">
       <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="6.5" cy="6.5" r="4.5" stroke="currentColor" stroke-width="1.5"/><path d="M10 10l3.5 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-      <input type="search" id="search" placeholder="Search notifications…" autocomplete="off">
+      <input type="search" id="search" placeholder="Search…" autocomplete="off">
     </div>
     <div class="header-actions">
       <button class="icon-btn" id="themeBtn" title="Toggle theme">
         <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-1 0v-1A.5.5 0 0 1 8 1zM3.05 3.05a.5.5 0 0 1 .707 0l.707.707a.5.5 0 0 1-.707.707l-.707-.707a.5.5 0 0 1 0-.707zm9.9 0a.5.5 0 0 1 0 .707l-.707.707a.5.5 0 0 1-.707-.707l.707-.707a.5.5 0 0 1 .707 0zm-9.95 9.9a.5.5 0 0 1 .707-.707l.707.707a.5.5 0 0 1-.707.707l-.707-.707zm9.9 0a.5.5 0 0 1 0 .707l-.707.707a.5.5 0 0 1-.707-.707l.707-.707a.5.5 0 0 1 .707 0zM1 7.5h1a.5.5 0 0 1 0 1H1a.5.5 0 0 1 0-1zm13 0h1a.5.5 0 0 1 0 1h-1a.5.5 0 0 1 0-1zM8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z"/></svg>
       </button>
-      <button class="icon-btn" id="signOutBtn" title="Sign out">
-        <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor"><path d="M10 3.5a.5.5 0 0 0-.5-.5h-7a.5.5 0 0 0-.5.5v9a.5.5 0 0 0 .5.5h7a.5.5 0 0 0 .5-.5v-2a.5.5 0 0 1 1 0v2A1.5 1.5 0 0 1 9.5 14h-7A1.5 1.5 0 0 1 1 12.5v-9A1.5 1.5 0 0 1 2.5 2h7A1.5 1.5 0 0 1 11 3.5v2a.5.5 0 0 1-1 0v-2z"/><path d="M15.854 8.354a.5.5 0 0 0 0-.708l-3-3a.5.5 0 0 0-.708.708L14.293 7.5H5.5a.5.5 0 0 0 0 1h8.793l-2.147 2.146a.5.5 0 0 0 .708.708l3-3z"/></svg>
+      <button class="icon-btn" id="signOutBtn" title="Reload">
+        <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor"><path d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2v1z"/><path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z"/></svg>
       </button>
     </div>
   </header>
-  <nav class="sidebar"><div class="sidebar-label">Apps</div><div id="appList"></div></nav>
+
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <span class="sidebar-label">Apps</span>
+      <button class="icon-btn sidebar-close" onclick="closeSidebar()" title="Close">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M3.72 3.72a.75.75 0 011.06 0L8 6.94l3.22-3.22a.75.75 0 111.06 1.06L9.06 8l3.22 3.22a.75.75 0 11-1.06 1.06L8 9.06l-3.22 3.22a.75.75 0 01-1.06-1.06L6.94 8 3.72 4.78a.75.75 0 010-1.06z"/></svg>
+      </button>
+    </div>
+    <div id="appList"></div>
+  </nav>
+
   <main id="main">
     <div class="feed-header">
       <span class="feed-title" id="feedTitle">All Notifications</span>
       <span class="feed-count" id="feedCount"></span>
-      <button class="mark-all-btn" id="markAllBtn">Mark all read</button>
+      <span class="feed-spacer"></span>
+      <button class="text-btn" id="selectBtn" onclick="toggleSelectMode()">Select</button>
+      <button class="text-btn" id="markAllBtn">Mark all read</button>
     </div>
-    <div id="newBanner"></div>
+    <div class="select-bar" id="selectBar" hidden>
+      <span class="select-info" id="selectInfo">Tap cards to select</span>
+      <button class="text-btn" id="selectAllBtn" onclick="toggleSelectAll()">Select all</button>
+      <button class="delete-sel-btn" id="deleteSelBtn" onclick="deleteSelected()" disabled>Delete</button>
+    </div>
+    <div class="new-banner" id="newBanner" hidden></div>
     <div class="notif-feed" id="feed">
-      <div class="skeleton-card"></div><div class="skeleton-card"></div><div class="skeleton-card"></div>
+      <div class="skeleton-wrap">
+        <div class="skeleton-card"></div>
+        <div class="skeleton-card"></div>
+        <div class="skeleton-card"></div>
+      </div>
     </div>
   </main>
+
 </div>
 
 <script>
 const SERVER = 'https://notificationhub-10g2.onrender.com'
-const EMAIL  = 'teletalkagami01521@gmail.com'
-
-// ── Auth — use fixed API key, no login ──
-const token = 'solaimankabiranik'
-function saveToken() {}
-function loadToken()  { return token }
-function clearToken() {}
-function hdrs()       { return { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' } }
-
-// ── Login flow ──
-const screenLogin = document.getElementById('screenLogin')
-const appEl       = document.getElementById('app')
+const token  = 'solaimankabiranik'
+function hdrs() { return { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' } }
 
 // Pre-warm server
 fetch(`${SERVER}/health`, { cache: 'no-store' }).catch(() => {})
 
-function launchApp() {
-  appEl.hidden = false
-  loadNotifications(true); connectSSE()
-}
-
-// ── App state ──
+// State
 let notifications = [], appFilter = null, searchQuery = ''
 let page = 1, totalCount = 0, hasMore = false, newPendingCount = 0, appCounts = {}
+let selectMode = false, selectedIds = new Set()
+let currentGroups = []
+const userToggledDays = new Set()
 
+// Helpers
 const PALETTE = ['#1a7f37','#cf222e','#9a3412','#1d4ed8','#7e22ce','#0891b2','#d97706','#15803d','#b91c1c','#6d28d9']
 function appColor(pkg) { let h=0; for(let i=0;i<pkg.length;i++) h=((h<<5)-h+pkg.charCodeAt(i))|0; return PALETTE[Math.abs(h)%PALETTE.length] }
 function appInitial(l) { return (l||'?').trim()[0].toUpperCase() }
-function relTime(iso) { const s=Math.floor((Date.now()-new Date(iso))/1000); if(s<60) return 'just now'; if(s<3600) return Math.floor(s/60)+'m ago'; if(s<86400) return Math.floor(s/3600)+'h ago'; return Math.floor(s/86400)+'d ago' }
+function relTime(iso) {
+  const s = Math.floor((Date.now()-new Date(iso))/1000)
+  if (s < 60) return 'now'
+  if (s < 3600) return Math.floor(s/60)+'m'
+  if (s < 86400) return Math.floor(s/3600)+'h'
+  return Math.floor(s/86400)+'d'
+}
 function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;') }
 
+function groupByDay(notifs) {
+  const map = new Map()
+  const now = new Date()
+  const todayStart = new Date(now); todayStart.setHours(0,0,0,0)
+  const yestStart  = new Date(todayStart); yestStart.setDate(yestStart.getDate()-1)
+
+  for (const n of notifs) {
+    const d = new Date(n.received_at || n.posted_at)
+    const dStart = new Date(d); dStart.setHours(0,0,0,0)
+    const t = dStart.getTime()
+    let label
+    if (t === todayStart.getTime())     label = 'Today'
+    else if (t === yestStart.getTime()) label = 'Yesterday'
+    else label = d.toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' })
+    if (!map.has(label)) map.set(label, { label, t, items: [] })
+    map.get(label).items.push(n)
+  }
+  return [...map.values()].sort((a,b) => b.t - a.t)
+}
+
+function isDayCollapsed(label) {
+  const def = label !== 'Today' && label !== 'Yesterday'
+  return userToggledDays.has(label) ? !def : def
+}
+
+function toggleDayIdx(idx) {
+  const g = currentGroups[idx]; if (!g) return
+  userToggledDays.has(g.label) ? userToggledDays.delete(g.label) : userToggledDays.add(g.label)
+  const hdr   = document.querySelector(`.day-header-btn[data-idx="${idx}"]`)
+  const items = document.querySelector(`.day-items[data-idx="${idx}"]`)
+  if (!hdr || !items) return
+  const col = isDayCollapsed(g.label)
+  hdr.classList.toggle('collapsed', col)
+  items.hidden = col
+}
+
+const CHECK_SVG = `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z"/></svg>`
+
 function cardHTML(n) {
+  if (selectMode) {
+    const sel = selectedIds.has(n.id)
+    return `<div class="notif-card sel-mode${sel?' selected':''}" data-id="${n.id}" onclick="toggleSelect(${n.id})">
+      <div class="card-check">${sel?CHECK_SVG:''}</div>
+      <div class="card-icon" style="background:${appColor(n.package_name)}">${appInitial(n.app_label||n.package_name)}</div>
+      <div class="card-body">
+        <div class="card-app-row">
+          <span class="card-app-name">${esc(n.app_label||n.package_name.split('.').pop())}</span>
+          ${!n.is_read?'<span class="card-unread-dot"></span>':''}
+        </div>
+        ${n.title?`<div class="card-title">${esc(n.title)}</div>`:''}
+        ${n.text_body?`<div class="card-text">${esc(n.text_body)}</div>`:''}
+      </div>
+    </div>`
+  }
   return `<div class="notif-card${n.is_read?' read':''}" data-id="${n.id}">
     <div class="card-icon" style="background:${appColor(n.package_name)}">${appInitial(n.app_label||n.package_name)}</div>
     <div class="card-body">
@@ -259,8 +400,8 @@ function cardHTML(n) {
     <div class="card-meta">
       <span class="card-time">${relTime(n.received_at||n.posted_at)}</span>
       <div class="card-actions">
-        ${!n.is_read?`<button class="card-btn" title="Mark read" onclick="markRead(${n.id},this)"><svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z"/></svg></button>`:''}
-        <button class="card-btn archive" title="Archive" onclick="archiveNotif(${n.id})"><svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M1.75 2.5a.25.25 0 000 .5h12.5a.25.25 0 000-.5H1.75zM1 4.75C1 4.336 1.336 4 1.75 4h12.5c.414 0 .75.336.75.75v8c0 .414-.336.75-.75.75H1.75A.75.75 0 011 12.75v-8zm1.5.75v7h11v-7h-11zm4.25 1.5a.75.75 0 011.5 0v3.44l1.22-1.22a.75.75 0 111.06 1.06l-2.5 2.5a.75.75 0 01-1.06 0l-2.5-2.5a.75.75 0 111.06-1.06l1.22 1.22V7z"/></svg></button>
+        ${!n.is_read?`<button class="card-btn" title="Mark read" onclick="event.stopPropagation();markRead(${n.id},this)"><svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z"/></svg></button>`:''}
+        <button class="card-btn archive" title="Archive" onclick="event.stopPropagation();archiveNotif(${n.id})"><svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M1.75 2.5a.25.25 0 000 .5h12.5a.25.25 0 000-.5H1.75zM1 4.75C1 4.336 1.336 4 1.75 4h12.5c.414 0 .75.336.75.75v8c0 .414-.336.75-.75.75H1.75A.75.75 0 011 12.75v-8zm1.5.75v7h11v-7h-11zm4.25 1.5a.75.75 0 011.5 0v3.44l1.22-1.22a.75.75 0 111.06 1.06l-2.5 2.5a.75.75 0 01-1.06 0l-2.5-2.5a.75.75 0 111.06-1.06l1.22 1.22V7z"/></svg></button>
       </div>
     </div>
   </div>`
@@ -275,7 +416,7 @@ function renderSidebar() {
   </div>`
   for (const [pkg,c] of apps) {
     const label = c.label||pkg.split('.').pop()
-    html += `<div class="app-row${appFilter===pkg?' active':''}" onclick="setFilter('${pkg}')">
+    html += `<div class="app-row${appFilter===pkg?' active':''}" onclick="setFilterPkg(${JSON.stringify(pkg)})">
       <div class="app-icon" style="background:${appColor(pkg)}">${appInitial(label)}</div>
       <span class="app-name">${esc(label)}</span>${c.unread?`<span class="app-badge">${c.unread}</span>`:''}
     </div>`
@@ -285,101 +426,264 @@ function renderSidebar() {
 
 function renderFeed() {
   const feed = document.getElementById('feed')
-  const vis = filteredNotifs()
+  const vis  = filteredNotifs()
   document.getElementById('feedCount').textContent = `${totalCount.toLocaleString()} total`
+
   if (!vis.length && !notifications.length) {
-    feed.innerHTML = `<div class="empty-state"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/></svg><p>No notifications yet</p></div>`; return
+    feed.innerHTML = `<div class="empty-state"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/></svg><p>No notifications yet</p></div>`
+    return
   }
-  if (!vis.length) { feed.innerHTML = `<div class="empty-state"><p>No notifications match this filter</p></div>`; return }
-  let html = vis.map(n=>cardHTML(n)).join('')
-  if (hasMore) html += `<button class="load-more" id="loadMoreBtn" onclick="loadMore()">Load more</button>`
+  if (!vis.length) {
+    feed.innerHTML = `<div class="empty-state"><p>No notifications match this filter</p></div>`
+    return
+  }
+
+  currentGroups = groupByDay(vis)
+  let html = ''
+  const CHEV = `<svg class="day-chev" width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M4.427 7.427l3.396 3.396a.25.25 0 00.354 0l3.396-3.396A.25.25 0 0011.396 7H4.604a.25.25 0 00-.177.427z"/></svg>`
+
+  for (let i = 0; i < currentGroups.length; i++) {
+    const g   = currentGroups[i]
+    const col = isDayCollapsed(g.label)
+    html += `<div class="day-group">
+      <button class="day-header-btn${col?' collapsed':''}" data-idx="${i}" onclick="toggleDayIdx(${i})">
+        <span class="day-label">${esc(g.label)}</span>
+        <span class="day-sep"></span>
+        <span class="day-cnt">${g.items.length}</span>
+        ${CHEV}
+      </button>
+      <div class="day-items" data-idx="${i}"${col?' hidden':''}>
+        ${g.items.map(n=>cardHTML(n)).join('')}
+      </div>
+    </div>`
+  }
+
+  if (hasMore) html += `<div class="load-more-wrap"><button class="load-more" id="loadMoreBtn" onclick="loadMore()">Load more</button></div>`
   feed.innerHTML = html
+  updateSelectUI()
 }
 
 function filteredNotifs() {
   return notifications.filter(n => {
     if (appFilter && n.package_name !== appFilter) return false
-    if (searchQuery) { const q=searchQuery.toLowerCase(); return (n.title||'').toLowerCase().includes(q)||(n.text_body||'').toLowerCase().includes(q)||(n.app_label||'').toLowerCase().includes(q) }
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase()
+      return (n.title||'').toLowerCase().includes(q) ||
+             (n.text_body||'').toLowerCase().includes(q) ||
+             (n.app_label||'').toLowerCase().includes(q)
+    }
     return true
   })
 }
 
 async function loadNotifications(reset=false) {
   if (reset) { page=1; notifications=[] }
-  const p = new URLSearchParams({ page, limit:30 })
-  if (appFilter) p.set('package', appFilter)
+  const p = new URLSearchParams({ page, limit:50 })
+  if (appFilter)   p.set('package', appFilter)
   if (searchQuery) p.set('search', searchQuery)
   try {
     const res = await fetch(`${SERVER}/api/notifications?${p}`, { headers: hdrs() })
-    if (res.status === 401) { clearToken(); location.reload(); return }
+    if (res.status === 401) { location.reload(); return }
     const json = await res.json()
     const rows = json.data||[]
-    if (reset) { notifications=rows; appCounts={}; for(const n of rows){ if(!appCounts[n.package_name]) appCounts[n.package_name]={total:0,unread:0,label:n.app_label}; appCounts[n.package_name].total++; if(!n.is_read) appCounts[n.package_name].unread++ } }
-    else notifications=[...notifications,...rows]
-    totalCount=json.pagination?.total??notifications.length; hasMore=json.pagination?.hasMore??false
+    if (reset) {
+      notifications = rows; appCounts = {}
+      for (const n of rows) {
+        if (!appCounts[n.package_name]) appCounts[n.package_name] = { total:0, unread:0, label:n.app_label }
+        appCounts[n.package_name].total++
+        if (!n.is_read) appCounts[n.package_name].unread++
+      }
+    } else {
+      notifications = [...notifications, ...rows]
+    }
+    totalCount = json.pagination?.total ?? notifications.length
+    hasMore    = json.pagination?.hasMore ?? false
     renderSidebar(); renderFeed()
-  } catch { document.getElementById('feed').innerHTML=`<div class="empty-state"><p style="color:var(--unread)">Could not load — check connection.</p></div>` }
+  } catch {
+    document.getElementById('feed').innerHTML = `<div class="empty-state"><p style="color:var(--unread)">Could not load — check connection.</p></div>`
+  }
 }
-async function loadMore() { const btn=document.getElementById('loadMoreBtn'); if(btn) btn.disabled=true; page++; await loadNotifications(false) }
+
+async function loadMore() {
+  const btn = document.getElementById('loadMoreBtn'); if (btn) btn.disabled = true
+  page++; await loadNotifications(false)
+}
 
 function setFilter(pkg) {
-  appFilter=pkg; document.getElementById('feedTitle').textContent=pkg?(appCounts[pkg]?.label||pkg.split('.').pop()):'All Notifications'
-  page=1; loadNotifications(true)
+  appFilter = pkg
+  document.getElementById('feedTitle').textContent = pkg ? (appCounts[pkg]?.label || pkg.split('.').pop()) : 'All Notifications'
+  if (window.innerWidth <= 640) closeSidebar()
+  page = 1; loadNotifications(true)
 }
+function setFilterPkg(pkg) { setFilter(pkg) }
+
 let searchTimer
-document.getElementById('search').addEventListener('input', e => { clearTimeout(searchTimer); searchQuery=e.target.value.trim(); searchTimer=setTimeout(()=>loadNotifications(true),350) })
+document.getElementById('search').addEventListener('input', e => {
+  clearTimeout(searchTimer); searchQuery = e.target.value.trim()
+  searchTimer = setTimeout(() => loadNotifications(true), 350)
+})
 
 async function markRead(id, btn) {
   try {
     await fetch(`${SERVER}/api/notifications/${id}/read`, { method:'PATCH', headers:hdrs() })
-    const n=notifications.find(x=>x.id==id); if(n){ n.is_read=true; if(appCounts[n.package_name]) appCounts[n.package_name].unread=Math.max(0,appCounts[n.package_name].unread-1) }
-    const card=document.querySelector(`[data-id="${id}"]`); if(card){ card.classList.add('read'); btn.closest('.card-actions').querySelector('.card-btn:not(.archive)')?.remove(); card.querySelector('.card-unread-dot')?.remove() }
+    const n = notifications.find(x=>x.id==id)
+    if (n) { n.is_read=true; if (appCounts[n.package_name]) appCounts[n.package_name].unread=Math.max(0,appCounts[n.package_name].unread-1) }
+    const card = document.querySelector(`[data-id="${id}"]`)
+    if (card) {
+      card.classList.add('read')
+      card.querySelector('.card-actions .card-btn:not(.archive)')?.remove()
+      card.querySelector('.card-unread-dot')?.remove()
+    }
     renderSidebar()
   } catch {}
 }
+
 async function archiveNotif(id) {
   try {
     await fetch(`${SERVER}/api/notifications/${id}/archive`, { method:'PATCH', headers:hdrs() })
-    const idx=notifications.findIndex(x=>x.id==id)
-    if(idx!==-1){ const n=notifications[idx]; if(!n.is_read&&appCounts[n.package_name]) appCounts[n.package_name].unread=Math.max(0,appCounts[n.package_name].unread-1); if(appCounts[n.package_name]) appCounts[n.package_name].total=Math.max(0,appCounts[n.package_name].total-1); notifications.splice(idx,1); totalCount=Math.max(0,totalCount-1) }
-    const card=document.querySelector(`[data-id="${id}"]`); if(card){ card.style.transition='opacity .2s,transform .2s'; card.style.opacity='0'; card.style.transform='translateX(20px)'; setTimeout(()=>{ card.remove(); renderSidebar() },200) }
+    const idx = notifications.findIndex(x=>x.id==id)
+    if (idx !== -1) {
+      const n = notifications[idx]
+      if (!n.is_read && appCounts[n.package_name]) appCounts[n.package_name].unread=Math.max(0,appCounts[n.package_name].unread-1)
+      if (appCounts[n.package_name]) appCounts[n.package_name].total=Math.max(0,appCounts[n.package_name].total-1)
+      notifications.splice(idx,1); totalCount=Math.max(0,totalCount-1)
+    }
+    const card = document.querySelector(`[data-id="${id}"]`)
+    if (card) { card.style.transition='opacity .2s,transform .2s'; card.style.opacity='0'; card.style.transform='translateX(20px)'; setTimeout(()=>{ card.remove(); renderSidebar() },200) }
   } catch {}
 }
-document.getElementById('markAllBtn').addEventListener('click', async () => {
-  try { await fetch(`${SERVER}/api/notifications/mark-all-read`,{method:'PATCH',headers:hdrs()}); notifications.forEach(n=>n.is_read=true); Object.values(appCounts).forEach(c=>c.unread=0); renderSidebar(); renderFeed() } catch {}
-})
-document.getElementById('signOutBtn').addEventListener('click', () => { clearToken(); location.reload() })
 
-// ── SSE (uses token in query param — EventSource can't set headers) ──
-let evtSource=null, reconnectTimer=null
-function connectSSE() {
-  const dot=document.getElementById('statusDot'), lbl=document.getElementById('statusLabel')
-  if(evtSource) evtSource.close()
-  evtSource=new EventSource(`${SERVER}/api/notifications/stream?token=${token}`)
-  evtSource.addEventListener('connected',()=>{ dot.className='status-dot live'; lbl.textContent='Live'; clearTimeout(reconnectTimer) })
-  evtSource.addEventListener('notification', e => {
-    try {
-      const n=JSON.parse(e.data); notifications.unshift(n); totalCount++
-      if(!appCounts[n.package_name]) appCounts[n.package_name]={total:0,unread:0,label:n.app_label}
-      appCounts[n.package_name].total++; if(!n.is_read) appCounts[n.package_name].unread++
-      renderSidebar()
-      if(appFilter&&n.package_name!==appFilter) return
-      const mainEl=document.getElementById('main')
-      if(mainEl.scrollTop>200){ newPendingCount++; const banner=document.getElementById('newBanner'); banner.style.display='block'; banner.textContent=`↑ ${newPendingCount} new notification${newPendingCount>1?'s':''} — click to refresh`; banner.onclick=()=>{ newPendingCount=0; banner.style.display='none'; loadNotifications(true); mainEl.scrollTop=0 } }
-      else { const feed=document.getElementById('feed'); const tmp=document.createElement('div'); tmp.innerHTML=cardHTML(n); feed.prepend(tmp.firstElementChild); document.getElementById('feedCount').textContent=`${totalCount.toLocaleString()} total` }
-    } catch {}
-  })
-  evtSource.onerror=()=>{ dot.className='status-dot'; lbl.textContent='Reconnecting…'; evtSource.close(); reconnectTimer=setTimeout(connectSSE,5000) }
+document.getElementById('markAllBtn').addEventListener('click', async () => {
+  try {
+    await fetch(`${SERVER}/api/notifications/mark-all-read`,{method:'PATCH',headers:hdrs()})
+    notifications.forEach(n=>n.is_read=true); Object.values(appCounts).forEach(c=>c.unread=0)
+    renderSidebar(); renderFeed()
+  } catch {}
+})
+
+// Select mode
+function toggleSelectMode() {
+  selectMode = !selectMode
+  if (!selectMode) selectedIds.clear()
+  document.getElementById('selectBtn').textContent = selectMode ? 'Cancel' : 'Select'
+  document.getElementById('markAllBtn').hidden = selectMode
+  document.getElementById('selectBar').hidden  = !selectMode
+  renderFeed()
 }
 
-// ── Theme ──
-let theme='dark'; try{ theme=localStorage.getItem('nh-theme')||'dark' }catch{}
-function applyTheme(t){ document.documentElement.setAttribute('data-theme',t); try{ localStorage.setItem('nh-theme',t) }catch{} }
+function toggleSelect(id) {
+  selectedIds.has(id) ? selectedIds.delete(id) : selectedIds.add(id)
+  const card = document.querySelector(`[data-id="${id}"]`)
+  if (card) {
+    const sel = selectedIds.has(id)
+    card.classList.toggle('selected', sel)
+    const check = card.querySelector('.card-check')
+    if (check) check.innerHTML = sel ? CHECK_SVG : ''
+  }
+  updateSelectUI()
+}
+
+function toggleSelectAll() {
+  const vis = filteredNotifs()
+  const allSel = vis.every(n => selectedIds.has(n.id))
+  if (allSel) vis.forEach(n => selectedIds.delete(n.id))
+  else        vis.forEach(n => selectedIds.add(n.id))
+  renderFeed()
+}
+
+function updateSelectUI() {
+  const n       = selectedIds.size
+  const info    = document.getElementById('selectInfo')
+  const delBtn  = document.getElementById('deleteSelBtn')
+  const allBtn  = document.getElementById('selectAllBtn')
+  if (info)   info.textContent   = n > 0 ? `${n} selected` : 'Tap cards to select'
+  if (delBtn) { delBtn.disabled  = n === 0; delBtn.textContent = n > 0 ? `Delete ${n}` : 'Delete' }
+  if (allBtn) {
+    const vis = filteredNotifs()
+    allBtn.textContent = (vis.length > 0 && vis.every(x => selectedIds.has(x.id))) ? 'Deselect all' : 'Select all'
+  }
+}
+
+async function deleteSelected() {
+  if (selectedIds.size === 0) return
+  const ids = [...selectedIds]
+  const btn = document.getElementById('deleteSelBtn')
+  if (btn) { btn.disabled=true; btn.textContent='Deleting…' }
+  try {
+    await fetch(`${SERVER}/api/notifications`, { method:'DELETE', headers:hdrs(), body:JSON.stringify({ids}) })
+    for (const id of ids) {
+      const idx = notifications.findIndex(n=>n.id===id)
+      if (idx !== -1) {
+        const n = notifications[idx]
+        if (!n.is_read && appCounts[n.package_name]) appCounts[n.package_name].unread=Math.max(0,appCounts[n.package_name].unread-1)
+        if (appCounts[n.package_name]) appCounts[n.package_name].total=Math.max(0,appCounts[n.package_name].total-1)
+        notifications.splice(idx,1); totalCount=Math.max(0,totalCount-1)
+      }
+    }
+    selectedIds.clear(); selectMode=false
+    document.getElementById('selectBtn').textContent='Select'
+    document.getElementById('markAllBtn').hidden=false
+    document.getElementById('selectBar').hidden=true
+    renderSidebar(); renderFeed()
+  } catch {
+    if (btn) { btn.disabled=false; btn.textContent=`Delete ${ids.length}` }
+  }
+}
+
+// Sidebar mobile
+function openSidebar()  { document.getElementById('sidebar').classList.add('open'); document.getElementById('sidebarOverlay').classList.add('open') }
+function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('sidebarOverlay').classList.remove('open') }
+
+document.getElementById('signOutBtn').addEventListener('click', () => location.reload())
+
+// SSE
+let evtSource = null, reconnectTimer = null
+function connectSSE() {
+  const dot=document.getElementById('statusDot'), lbl=document.getElementById('statusLabel')
+  if (evtSource) evtSource.close()
+  evtSource = new EventSource(`${SERVER}/api/notifications/stream?token=${token}`)
+  evtSource.addEventListener('connected', ()=>{ dot.className='status-dot live'; lbl.textContent='Live'; clearTimeout(reconnectTimer) })
+  evtSource.addEventListener('notification', e => {
+    try {
+      const n = JSON.parse(e.data)
+      notifications.unshift(n); totalCount++
+      if (!appCounts[n.package_name]) appCounts[n.package_name]={total:0,unread:0,label:n.app_label}
+      appCounts[n.package_name].total++; if (!n.is_read) appCounts[n.package_name].unread++
+      renderSidebar()
+      if (appFilter && n.package_name !== appFilter) return
+      const mainEl = document.getElementById('main')
+      const banner = document.getElementById('newBanner')
+      if (mainEl.scrollTop > 150 || selectMode) {
+        newPendingCount++
+        banner.hidden = false
+        banner.textContent = `↑ ${newPendingCount} new — tap to show`
+        banner.onclick = () => { newPendingCount=0; banner.hidden=true; loadNotifications(true); mainEl.scrollTop=0 }
+      } else {
+        renderFeed()
+      }
+    } catch {}
+  })
+  evtSource.onerror = () => { dot.className='status-dot'; lbl.textContent='Reconnecting…'; evtSource.close(); reconnectTimer=setTimeout(connectSSE,5000) }
+}
+
+// Theme
+let theme = 'dark'
+try { theme = localStorage.getItem('nh-theme') || 'dark' } catch {}
+function applyTheme(t) { document.documentElement.setAttribute('data-theme',t); try{ localStorage.setItem('nh-theme',t) }catch{} }
 applyTheme(theme)
-document.getElementById('themeBtn').addEventListener('click',()=>{ theme=theme==='dark'?'light':'dark'; applyTheme(theme) })
+document.getElementById('themeBtn').addEventListener('click', ()=>{ theme=theme==='dark'?'light':'dark'; applyTheme(theme) })
 
-setInterval(()=>{ const cards=document.querySelectorAll('.notif-card'); filteredNotifs().forEach((n,i)=>{ const el=cards[i]?.querySelector('.card-time'); if(el) el.textContent=relTime(n.received_at||n.posted_at) }) },30000)
+// Refresh relative timestamps every 30s
+setInterval(() => {
+  document.querySelectorAll('[data-id]').forEach(card => {
+    const id = parseInt(card.dataset.id)
+    const n  = notifications.find(x=>x.id===id)
+    if (n) { const el=card.querySelector('.card-time'); if(el) el.textContent=relTime(n.received_at||n.posted_at) }
+  })
+}, 30000)
 
-// ── Init ──
-launchApp()
+// Init
+document.getElementById('app').hidden = false
+loadNotifications(true)
+connectSSE()
 </script>
