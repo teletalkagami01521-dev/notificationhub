@@ -340,13 +340,16 @@ document.getElementById('verifyBtn').addEventListener('click', async () => {
   const err = document.getElementById('verifyErr')
   err.textContent = ''; btn.disabled = true; btn.textContent = 'Verifying…'
   try {
-    const res  = await fetch(`${SERVER}/api/auth/verify-otp`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ email: EMAIL, code: getOtpCode() }) })
+    const ctrl = new AbortController()
+    const timer = setTimeout(() => ctrl.abort(), 15000)
+    const res  = await fetch(`${SERVER}/api/auth/verify-otp`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ email: EMAIL, code: getOtpCode() }), signal: ctrl.signal })
+    clearTimeout(timer)
     const json = await res.json()
     if (!res.ok) throw new Error(json.error || 'Invalid code')
     saveToken(json.token)
     launchApp()
   } catch (e) {
-    err.textContent = e.message
+    err.textContent = e.name === 'AbortError' ? 'Server took too long — try again' : (e.message || 'Something went wrong')
     btn.disabled = false; btn.textContent = 'Verify'
   }
 })

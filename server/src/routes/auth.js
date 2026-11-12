@@ -25,11 +25,17 @@ router.post('/request-otp', async (req, res) => {
 
 // POST /api/auth/verify-otp — no auth required
 router.post('/verify-otp', (req, res) => {
-    const email = (req.body.email || '').trim().toLowerCase()
-    const code  = String(req.body.code || '').trim()
-    if (!email || !code) return res.status(400).json({ error: 'Missing fields' })
-    if (!verifyOtp(email, code)) return res.status(401).json({ error: 'Invalid or expired code' })
-    return res.json({ token: createToken(email) })
+    try {
+        const email = (req.body.email || '').trim().toLowerCase()
+        const code  = String(req.body.code || '').trim()
+        if (!email || !code) return res.status(400).json({ error: 'Missing fields' })
+        if (!verifyOtp(email, code)) return res.status(401).json({ error: 'Invalid or expired code' })
+        const token = createToken(email)
+        return res.json({ token })
+    } catch (err) {
+        console.error('[auth] verify-otp error:', err.message)
+        return res.status(500).json({ error: err.message })
+    }
 })
 
 export default router
