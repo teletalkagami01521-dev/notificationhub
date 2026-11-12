@@ -13,23 +13,24 @@ router.post('/request-otp', async (req, res) => {
     if (email !== ALLOWED_EMAIL) {
         return res.status(403).json({ error: 'Not authorized' })
     }
-    const code = generateOtp(email)
     try {
+        const code = await generateOtp(email)
         await sendOtpEmail(email, code)
         return res.json({ ok: true })
     } catch (err) {
-        console.error('[auth] Email send failed:', err.message)
+        console.error('[auth] request-otp error:', err.message)
         return res.status(500).json({ error: 'Failed to send email' })
     }
 })
 
 // POST /api/auth/verify-otp — no auth required
-router.post('/verify-otp', (req, res) => {
+router.post('/verify-otp', async (req, res) => {
     try {
         const email = (req.body.email || '').trim().toLowerCase()
         const code  = String(req.body.code || '').trim()
         if (!email || !code) return res.status(400).json({ error: 'Missing fields' })
-        if (!verifyOtp(email, code)) return res.status(401).json({ error: 'Invalid or expired code' })
+        const ok = await verifyOtp(email, code)
+        if (!ok) return res.status(401).json({ error: 'Invalid or expired code' })
         const token = createToken(email)
         return res.json({ token })
     } catch (err) {
