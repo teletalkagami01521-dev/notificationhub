@@ -7,12 +7,14 @@ export function auth(req, res, next) {
 
     // Dashboard EventSource: ?token= query param (EventSource can't set headers)
     const qToken = req.query.token
-    if (qToken && verifyToken(qToken)) return next()
+    if (qToken && (qToken === process.env.DASHBOARD_PASSWORD || verifyToken(qToken))) return next()
 
-    // Dashboard fetch: Authorization: Bearer <jwt>
+    // Dashboard fetch: Authorization: Bearer <jwt> or Bearer <password>
     const bearer = req.headers['authorization']
     if (bearer?.startsWith('Bearer ')) {
-        const claims = verifyToken(bearer.slice(7))
+        const tok = bearer.slice(7)
+        if (tok === process.env.DASHBOARD_PASSWORD) return next()
+        const claims = verifyToken(tok)
         if (claims) return next()
     }
 
