@@ -1,689 +1,840 @@
 <title>NotifyHub</title>
 <meta name="claude:viewport-fit-sides" content="cover">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400&display=swap">
+<meta name="theme-color" id="themeColorMeta" content="#161d2a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="NotifyHub">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon.svg">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
 
 <style>
+/* ── Tokens (dark-first, indigo-navy palette) ─── */
 :root {
-  --bg:         #0d1117;
-  --surface:    #161b22;
-  --surface-hi: #1c2129;
-  --border:     #21262d;
-  --fg:         #e6edf3;
-  --fg-muted:   #7d8590;
-  --fg-subtle:  #3d444d;
-  --accent:     #2f81f7;
-  --accent-bg:  rgba(47,129,247,.12);
-  --unread:     #f85149;
-  --live:       #3fb950;
-  --warn:       #d29922;
+  --bg:    #0d1219; --surf:  #161d2a; --surf2: #1e2838;
+  --bord:  #28344a; --fg:    #dce6f5; --muted: #6b7d9a;
+  --subtle:#2a3449; --accent:#4785ff; --abg:   rgba(71,133,255,.13);
+  --danger:#ff4d4d; --live:  #34d87a; --warn:  #f59e0b; --unread:#4785ff;
   color-scheme: dark;
 }
 @media (prefers-color-scheme: light) {
   :root:not([data-theme="dark"]) {
-    --bg:         #f6f8fa; --surface: #ffffff; --surface-hi: #f3f4f6;
-    --border:     #d0d7de; --fg: #1f2328; --fg-muted: #57606a; --fg-subtle: #d0d7de;
-    --accent:     #0969da; --accent-bg: rgba(9,105,218,.08);
-    --unread:     #cf222e; --live: #1a7f37; --warn: #9a6700;
+    --bg:#f0f4f9; --surf:#fff; --surf2:#f7f9fc; --bord:#dde3ec;
+    --fg:#0a1628; --muted:#5a6a84; --subtle:#e4ebf5;
+    --accent:#2563eb; --abg:rgba(37,99,235,.1);
+    --danger:#dc2626; --live:#16a34a; --warn:#d97706; --unread:#2563eb;
     color-scheme: light;
   }
 }
 :root[data-theme="light"] {
-  --bg:         #f6f8fa; --surface: #ffffff; --surface-hi: #f3f4f6;
-  --border:     #d0d7de; --fg: #1f2328; --fg-muted: #57606a; --fg-subtle: #d0d7de;
-  --accent:     #0969da; --accent-bg: rgba(9,105,218,.08);
-  --unread:     #cf222e; --live: #1a7f37; --warn: #9a6700;
+  --bg:#f0f4f9; --surf:#fff; --surf2:#f7f9fc; --bord:#dde3ec;
+  --fg:#0a1628; --muted:#5a6a84; --subtle:#e4ebf5;
+  --accent:#2563eb; --abg:rgba(37,99,235,.1);
+  --danger:#dc2626; --live:#16a34a; --warn:#d97706; --unread:#2563eb;
   color-scheme: light;
 }
 
-*, *::before, *::after { box-sizing: border-box; margin: 0; }
-html, body { height: 100%; font-family: 'Inter', system-ui, sans-serif; font-size: 14px; background: var(--bg); color: var(--fg); }
+/* ── Reset ─── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{height:100%}
+body{height:100%;font-family:'Inter',system-ui,sans-serif;font-size:14px;
+  background:var(--bg);color:var(--fg);-webkit-font-smoothing:antialiased;overflow:hidden}
+button{font-family:inherit;cursor:pointer;border:none;background:none}
+img{max-width:100%}
 
-/* Shell */
-.shell {
-  display: grid;
-  grid-template-rows: 48px 1fr;
-  grid-template-columns: 220px 1fr;
-  grid-template-areas: "header header" "sidebar main";
-  height: 100%; overflow: hidden;
+/* ── App shell ─── */
+.shell{display:flex;flex-direction:column;height:100%;max-width:760px;margin:0 auto;position:relative}
+
+/* ── Header ─── */
+header{
+  display:flex;align-items:center;gap:6px;
+  padding-left:max(14px,env(safe-area-inset-left,0px));
+  padding-right:max(14px,env(safe-area-inset-right,0px));
+  padding-block:0;
+  min-height:calc(52px + env(safe-area-inset-top,0px));
+  padding-top:env(safe-area-inset-top,0px);
+  background:var(--surf);border-bottom:1px solid var(--bord);
+  position:sticky;top:0;z-index:20;flex-shrink:0;
 }
+.logo{display:flex;align-items:center;gap:7px;font-weight:700;font-size:15px;letter-spacing:-.3px;flex-shrink:0}
+.lm{width:28px;height:28px;border-radius:8px;background:var(--accent);display:grid;place-items:center;flex-shrink:0}
+.lm svg{width:16px;height:16px}
+.hdr-gap{flex:1}
+.sdot{width:7px;height:7px;border-radius:50%;background:var(--warn);transition:background .4s;flex-shrink:0}
+.sdot.live{background:var(--live)}
+.hdr-btns{display:flex;gap:1px}
+.ib{width:36px;height:36px;border-radius:9px;display:grid;place-items:center;
+  color:var(--muted);transition:background .12s,color .12s;flex-shrink:0}
+.ib:hover{background:var(--surf2);color:var(--fg)}
+.ib.on{color:var(--accent);background:var(--abg)}
 
-/* Header */
-header {
-  grid-area: header;
-  display: flex; align-items: center; gap: 10px;
-  padding-left: max(16px, env(safe-area-inset-left,0px));
-  padding-right: max(16px, env(safe-area-inset-right,0px));
-  padding-block: 0;
-  background: var(--surface); border-bottom: 1px solid var(--border);
-  position: sticky; top: env(safe-area-inset-top,0px); z-index: 20;
+/* ── Search bar ─── */
+.sbar{
+  display:flex;align-items:center;gap:8px;
+  padding:8px max(14px,env(safe-area-inset-right,0px)) 8px max(14px,env(safe-area-inset-left,0px));
+  background:var(--surf);border-bottom:1px solid var(--bord);flex-shrink:0;
 }
-.hamburger { display: none; }
-.logo { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 15px; letter-spacing: -.3px; flex-shrink: 0; }
-.logo-mark { width: 22px; height: 22px; background: var(--accent); border-radius: 6px; display: grid; place-items: center; font-size: 11px; font-weight: 700; color: #fff; }
-.status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--warn); flex-shrink: 0; transition: background .3s; }
-.status-dot.live { background: var(--live); }
-.status-label { font-size: 12px; color: var(--fg-muted); flex-shrink: 0; }
-.search-wrap { flex: 1; max-width: 320px; margin-left: auto; position: relative; }
-.search-wrap svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); pointer-events: none; color: var(--fg-muted); }
-#search { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 5px 10px 5px 32px; font-size: 13px; color: var(--fg); font-family: inherit; outline: none; }
-#search:focus { border-color: var(--accent); }
-#search::placeholder { color: var(--fg-muted); }
-.header-actions { display: flex; gap: 4px; }
-.icon-btn { width: 32px; height: 32px; border: none; background: none; cursor: pointer; color: var(--fg-muted); border-radius: 6px; display: grid; place-items: center; transition: background .15s, color .15s; flex-shrink: 0; }
-.icon-btn:hover { background: var(--surface-hi); color: var(--fg); }
+.sbar[hidden]{display:none}
+.swrap{flex:1;position:relative}
+.swrap svg{position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none}
+#si{width:100%;padding:8px 10px 8px 32px;background:var(--bg);border:1px solid var(--bord);
+  border-radius:10px;color:var(--fg);font-size:14px;font-family:inherit;outline:none}
+#si:focus{border-color:var(--accent)}
+#si::placeholder{color:var(--muted)}
 
-/* Sidebar overlay (mobile) */
-.sidebar-overlay {
-  display: none; position: fixed; inset: 0;
-  background: rgba(0,0,0,.55); z-index: 49;
+/* ── Time chips ─── */
+.chips{overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;
+  background:var(--surf);border-bottom:1px solid var(--bord);flex-shrink:0}
+.chips::-webkit-scrollbar{display:none}
+.chips-row{display:flex;gap:6px;padding:8px max(14px,env(safe-area-inset-right,0px)) 8px max(14px,env(safe-area-inset-left,0px));
+  width:max-content;min-width:100%}
+.chip{padding:5px 13px;border-radius:20px;border:1px solid var(--bord);color:var(--muted);
+  font-size:12px;font-weight:500;white-space:nowrap;transition:all .15s;flex-shrink:0}
+.chip:hover{background:var(--surf2);color:var(--fg)}
+.chip.on{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+
+/* ── New banner ─── */
+.nb{background:var(--accent);color:#fff;font-size:12px;font-weight:600;
+  text-align:center;padding:8px;cursor:pointer;position:sticky;top:0;z-index:10;flex-shrink:0}
+.nb[hidden]{display:none}
+
+/* ── Feed ─── */
+#feed{flex:1;overflow-y:auto;overflow-x:hidden;padding-bottom:4px}
+
+/* ── Day separator ─── */
+.dsep{
+  display:flex;align-items:center;gap:10px;
+  padding:14px max(14px,env(safe-area-inset-right,0px)) 4px max(14px,env(safe-area-inset-left,0px));
+  font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--muted);user-select:none;cursor:pointer
 }
-.sidebar-overlay.open { display: block; }
+.dsep::before,.dsep::after{content:'';flex:1;height:1px;background:var(--bord)}
+.dsep-cnt{font-size:10px}
+.dsep-chev{transition:transform .18s;flex-shrink:0}
+.dsep.col .dsep-chev{transform:rotate(-90deg)}
+.ditems[hidden]{display:none!important}
 
-/* Sidebar */
-.sidebar {
-  grid-area: sidebar;
-  background: var(--surface); border-right: 1px solid var(--border);
-  overflow-y: auto; padding-bottom: 12px;
+/* ── Message row ─── */
+.mr{
+  display:grid;grid-template-columns:0 42px 1fr;
+  gap:0 10px;align-items:flex-start;
+  padding:4px max(14px,env(safe-area-inset-right,0px)) 4px max(14px,env(safe-area-inset-left,0px));
+  transition:background .1s;
 }
-.sidebar-header {
-  display: flex; align-items: center;
-  padding: 12px 14px 8px;
+.mr.unread .mbub{border-left:3px solid var(--accent);padding-left:11px}
+.mr.read .mbub{opacity:.6}
+.mr.incoming{animation:slideUp .22s ease-out}
+.mr.out{animation:slideOut .18s ease-in forwards;overflow:hidden;pointer-events:none}
+@keyframes slideUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+@keyframes slideOut{to{opacity:0;transform:translateX(36px);max-height:0;padding-top:0;padding-bottom:0}}
+@media(prefers-reduced-motion:reduce){.mr.incoming,.mr.out{animation:none}}
+
+/* Select mode grid shift */
+#feed.sel .mr{grid-template-columns:28px 42px 1fr;cursor:pointer}
+#feed.sel .mr:hover{background:var(--surf2)}
+#feed.sel .mr.selected .mbub{background:var(--abg);border-color:var(--accent)}
+#feed.sel .mr.selected .cring{background:var(--accent);border-color:var(--accent)}
+#feed.sel .bacts{display:none!important}
+#feed:not(.sel) .mck{display:none}
+
+/* ── Check circle ─── */
+.mck{display:flex;align-self:center;margin-top:1px;grid-column:1}
+.cring{width:22px;height:22px;border-radius:50%;border:2px solid var(--bord);
+  display:grid;place-items:center;transition:background .12s,border-color .12s;color:#fff}
+
+/* ── Avatar ─── */
+.mav{
+  width:42px;height:42px;border-radius:12px;overflow:hidden;
+  display:grid;place-items:center;font-size:16px;font-weight:700;color:#fff;
+  position:relative;align-self:flex-start;margin-top:2px;grid-column:2;flex-shrink:0
 }
-.sidebar-label { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--fg-muted); flex: 1; }
-.sidebar-close { display: none; }
-.app-row { display: flex; align-items: center; gap: 9px; padding: 7px 14px; cursor: pointer; border-left: 2px solid transparent; transition: background .12s; user-select: none; }
-.app-row:hover { background: var(--surface-hi); }
-.app-row.active { background: var(--accent-bg); border-left-color: var(--accent); }
-.app-icon { width: 24px; height: 24px; border-radius: 6px; display: grid; place-items: center; font-size: 11px; font-weight: 600; color: #fff; flex-shrink: 0; }
-.app-name { flex: 1; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.app-badge { font-size: 11px; font-variant-numeric: tabular-nums; background: var(--unread); color: #fff; border-radius: 10px; padding: 1px 6px; font-weight: 600; min-width: 20px; text-align: center; }
-.app-badge:empty { display: none; }
+.mav img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:12px;display:block}
+.mav.iv .avl{visibility:hidden}
+.avl{position:relative;z-index:1;pointer-events:none;user-select:none}
 
-/* Main */
-main { grid-area: main; overflow-y: auto; }
-
-/* Feed header */
-.feed-header {
-  display: flex; align-items: center; gap: 8px;
-  padding: 10px max(16px, env(safe-area-inset-left,0px));
-  border-bottom: 1px solid var(--border);
-  position: sticky; top: 0; background: var(--bg); z-index: 5;
-  min-height: 45px;
+/* ── Bubble ─── */
+.mbub{
+  grid-column:3;min-width:0;
+  background:var(--surf);border:1px solid var(--bord);
+  border-radius:4px 14px 14px 14px;padding:9px 11px 9px 13px;
+  transition:background .1s,border-color .12s;
 }
-.feed-title { font-size: 14px; font-weight: 600; }
-.feed-count { font-size: 12px; color: var(--fg-muted); font-variant-numeric: tabular-nums; }
-.feed-spacer { flex: 1; }
-.text-btn { font-size: 12px; color: var(--accent); background: none; border: none; cursor: pointer; padding: 4px 8px; border-radius: 5px; font-family: inherit; transition: background .12s; white-space: nowrap; }
-.text-btn:hover { background: var(--accent-bg); }
+.btop{display:flex;align-items:center;gap:5px;margin-bottom:3px}
+.bapp{font-size:11px;font-weight:700;letter-spacing:.02em;text-transform:uppercase;
+  color:var(--muted);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bundot{width:7px;height:7px;border-radius:50%;background:var(--accent);flex-shrink:0}
+.bacts{display:flex;gap:1px;flex-shrink:0;opacity:0;transition:opacity .15s}
+.mr:hover .bacts{opacity:1}
+@media(hover:none){.bacts{opacity:1}}
+.ba{width:24px;height:24px;border-radius:5px;display:grid;place-items:center;
+  color:var(--muted);transition:background .1s,color .1s}
+.ba:hover{background:var(--surf2);color:var(--fg)}
+.ba.del:hover{color:var(--danger)}
+.btime{font-size:11px;color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums;flex-shrink:0}
+.btitle{font-size:13px;font-weight:500;line-height:1.45;word-break:break-word}
+.bbody{font-size:13px;color:var(--muted);line-height:1.45;word-break:break-word;margin-top:2px}
+.bimg{width:100%;max-height:200px;object-fit:cover;border-radius:8px;margin-top:8px;display:block}
 
-/* Select bar */
-.select-bar {
-  display: flex; align-items: center; gap: 8px;
-  padding: 8px max(16px, env(safe-area-inset-left,0px));
-  background: var(--accent-bg); border-bottom: 1px solid var(--border);
+/* ── Load more ─── */
+.lmwrap{padding:8px 14px 28px}
+.lmbtn{display:block;width:100%;padding:11px;background:none;border:1px solid var(--bord);
+  border-radius:10px;color:var(--muted);font-size:13px;font-family:inherit;transition:background .12s,color .12s}
+.lmbtn:hover{background:var(--surf);color:var(--fg)}
+.lmbtn:disabled{opacity:.4;cursor:default}
+
+/* ── Empty state ─── */
+.empty{display:flex;flex-direction:column;align-items:center;padding:72px 24px;
+  text-align:center;color:var(--muted);gap:10px}
+.empty svg{opacity:.25}
+
+/* ── Skeleton ─── */
+.skelwrap{padding:10px 14px;display:flex;flex-direction:column;gap:8px}
+.skelrow{display:grid;grid-template-columns:42px 1fr;gap:10px;padding:4px 0}
+.skelav{width:42px;height:42px;border-radius:12px;background:var(--surf);animation:blink 1.6s infinite}
+.skelb{height:64px;border-radius:4px 14px 14px 14px;background:var(--surf);animation:blink 1.6s infinite}
+@keyframes blink{0%,100%{opacity:.5}50%{opacity:.9}}
+
+/* ── Select bar (fixed bottom) ─── */
+.selbar{
+  position:fixed;bottom:0;
+  left:50%;transform:translateX(-50%) translateY(110%);
+  width:100%;max-width:760px;
+  background:var(--surf);border-top:1px solid var(--bord);
+  display:flex;align-items:center;gap:8px;
+  padding:10px max(14px,env(safe-area-inset-right,0px)) max(14px,env(safe-area-inset-bottom,10px)) max(14px,env(safe-area-inset-left,0px));
+  z-index:30;transition:transform .22s cubic-bezier(.4,0,.2,1);
 }
-.select-info { font-size: 12px; color: var(--fg-muted); flex: 1; min-width: 0; }
-.delete-sel-btn {
-  font-size: 12px; font-weight: 600; color: var(--unread);
-  background: none; border: 1px solid currentColor; border-radius: 5px;
-  padding: 4px 12px; cursor: pointer; font-family: inherit; transition: background .12s; white-space: nowrap;
+.selbar.show{transform:translateX(-50%) translateY(0)}
+.sbc{padding:8px 13px;border-radius:8px;border:1px solid var(--bord);color:var(--muted);font-size:13px;font-weight:500}
+.sbc:hover{background:var(--surf2);color:var(--fg)}
+.sbi{flex:1;font-size:12px;color:var(--muted);text-align:center}
+.sball{padding:8px 12px;border-radius:8px;color:var(--accent);font-size:13px;font-weight:600}
+.sbdel{padding:8px 18px;border-radius:8px;background:var(--danger);color:#fff;font-size:13px;font-weight:600;transition:opacity .15s}
+.sbdel:disabled{opacity:.38;cursor:default}
+
+/* ── Drawer overlay ─── */
+.drov{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:59;display:none;backdrop-filter:blur(2px)}
+.drov.open{display:block}
+
+/* ── Filter drawer ─── */
+.drawer{
+  position:fixed;top:0;right:0;bottom:0;width:min(300px,86vw);
+  background:var(--surf);border-left:1px solid var(--bord);
+  transform:translateX(102%);transition:transform .24s cubic-bezier(.4,0,.2,1);
+  z-index:60;display:flex;flex-direction:column;
+  padding-top:env(safe-area-inset-top,0px);
 }
-.delete-sel-btn:hover:not(:disabled) { background: rgba(248,81,73,.1); }
-.delete-sel-btn:disabled { opacity: .4; cursor: default; }
+.drawer.open{transform:translateX(0)}
+.drhead{display:flex;align-items:center;padding:14px 14px 14px 16px;border-bottom:1px solid var(--bord);flex-shrink:0}
+.drtitle{font-size:15px;font-weight:700;flex:1}
+.drbody{overflow-y:auto;flex:1;padding-bottom:max(24px,env(safe-area-inset-bottom,0px))}
+.drsec{padding:14px 16px;border-bottom:1px solid var(--bord)}
+.drstitle{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
+.drtgrid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.dtb{padding:9px 10px;border-radius:9px;border:1px solid var(--bord);color:var(--muted);
+  font-size:13px;font-weight:500;text-align:left;transition:all .15s}
+.dtb:hover{background:var(--surf2);color:var(--fg)}
+.dtb.on{background:var(--abg);border-color:var(--accent);color:var(--accent);font-weight:600}
 
-/* New banner */
-.new-banner {
-  background: var(--accent); color: #fff; font-size: 12px; font-weight: 600;
-  text-align: center; padding: 7px; cursor: pointer;
-  position: sticky; top: 45px; z-index: 4;
-}
+/* Drawer app rows */
+.dapp{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:9px;
+  cursor:pointer;transition:background .12s;border:1px solid transparent;margin-bottom:3px}
+.dapp:hover{background:var(--surf2)}
+.dapp.on{background:var(--abg);border-color:var(--accent)}
+.dav{width:28px;height:28px;border-radius:7px;display:grid;place-items:center;
+  font-size:12px;font-weight:700;color:#fff;flex-shrink:0;position:relative;overflow:hidden}
+.dav img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:7px;display:none}
+.dav.iv img{display:block}
+.dav.iv span{visibility:hidden}
+.davn{flex:1;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.davb{font-size:11px;font-weight:700;background:var(--danger);color:#fff;border-radius:10px;
+  padding:1px 6px;min-width:20px;text-align:center}
+.davb:empty{display:none}
 
-/* Feed container */
-.notif-feed { padding: 4px 0 24px; }
-
-/* Day groups */
-.day-header-btn {
-  width: 100%; display: flex; align-items: center; gap: 8px;
-  padding: 10px max(16px, env(safe-area-inset-left,0px)) 6px;
-  background: none; border: none; cursor: pointer; text-align: left; font-family: inherit;
-  color: var(--fg-muted); transition: color .12s;
-}
-.day-header-btn:hover { color: var(--fg); }
-.day-label { font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; }
-.day-sep { flex: 1; height: 1px; background: var(--border); }
-.day-cnt { font-size: 11px; }
-.day-chev { transition: transform .18s; flex-shrink: 0; }
-.day-header-btn.collapsed .day-chev { transform: rotate(-90deg); }
-.day-items {
-  display: flex; flex-direction: column; gap: 4px;
-  padding: 2px max(16px, env(safe-area-inset-right,0px)) 4px max(16px, env(safe-area-inset-left,0px));
-}
-.day-items[hidden] { display: none !important; }
-
-/* Cards — normal mode */
-.notif-card {
-  display: grid; grid-template-columns: 36px 1fr auto; gap: 10px;
-  align-items: start; padding: 10px 12px;
-  background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
-  transition: border-color .15s, opacity .2s;
-  animation: slideIn .15s ease-out;
-}
-.notif-card:hover { border-color: var(--fg-subtle); }
-.notif-card.read { opacity: .55; }
-
-/* Cards — select mode */
-.notif-card.sel-mode {
-  grid-template-columns: 30px 36px 1fr;
-  cursor: pointer; user-select: none;
-}
-.notif-card.sel-mode:hover { border-color: var(--accent); }
-.notif-card.sel-mode.selected { border-color: var(--accent); background: var(--accent-bg); }
-
-@keyframes slideIn { from { opacity:0; transform:translateY(-6px) } to { opacity:1; transform:translateY(0) } }
-@media (prefers-reduced-motion: reduce) { .notif-card, .skeleton-card::after { animation:none } }
-
-.card-check {
-  width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--border);
-  background: transparent; display: grid; place-items: center; flex-shrink: 0;
-  margin-top: 2px; transition: background .12s, border-color .12s; color: #fff;
-}
-.notif-card.selected .card-check { background: var(--accent); border-color: var(--accent); }
-.card-icon { width: 32px; height: 32px; border-radius: 8px; display: grid; place-items: center; font-size: 13px; font-weight: 600; color: #fff; flex-shrink: 0; margin-top: 1px; }
-.card-body { min-width: 0; }
-.card-app-row { display: flex; align-items: center; gap: 6px; margin-bottom: 2px; }
-.card-app-name { font-size: 11px; font-weight: 600; color: var(--fg-muted); letter-spacing: .02em; text-transform: uppercase; }
-.card-unread-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
-.card-title { font-size: 13px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 1.4; }
-.card-text { font-size: 13px; color: var(--fg-muted); line-height: 1.4; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; word-break: break-word; }
-.card-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex-shrink: 0; }
-.card-time { font-size: 11px; color: var(--fg-muted); font-variant-numeric: tabular-nums; white-space: nowrap; font-family: 'JetBrains Mono', monospace; }
-.card-actions { display: flex; gap: 2px; }
-.card-btn { width: 24px; height: 24px; border: none; background: none; cursor: pointer; color: var(--fg-subtle); border-radius: 4px; display: grid; place-items: center; transition: background .12s, color .12s; }
-.card-btn:hover { background: var(--surface-hi); color: var(--fg-muted); }
-.card-btn.archive:hover { color: var(--unread); }
-
-/* Load more */
-.load-more-wrap { padding: 4px max(16px, env(safe-area-inset-right,0px)) 20px max(16px, env(safe-area-inset-left,0px)); }
-.load-more { display: block; width: 100%; padding: 12px; background: none; border: 1px solid var(--border); border-radius: 8px; color: var(--fg-muted); font-size: 13px; cursor: pointer; font-family: inherit; transition: background .12s, color .12s; }
-.load-more:hover { background: var(--surface); color: var(--fg); }
-.load-more:disabled { opacity: .4; cursor: default; }
-
-/* Empty state */
-.empty-state { padding: 60px 16px; text-align: center; color: var(--fg-muted); }
-.empty-state svg { opacity: .3; display: block; margin: 0 auto 12px; }
-
-/* Skeleton */
-.skeleton-wrap { display: flex; flex-direction: column; gap: 4px; padding: 12px max(16px, env(safe-area-inset-left,0px)); }
-.skeleton-card { height: 72px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; position: relative; }
-.skeleton-card::after { content:""; position:absolute; inset:0; background:linear-gradient(90deg,transparent,var(--surface-hi),transparent); animation:shimmer 1.4s infinite; }
-@keyframes shimmer { 0%{transform:translateX(-100%)} 100%{transform:translateX(100%)} }
-
-/* ── Mobile ── */
-@media (max-width: 640px) {
-  .hamburger { display: grid; }
-  .status-label { display: none; }
-  .search-wrap { max-width: none; flex: 1; }
-
-  .shell {
-    grid-template-columns: 1fr;
-    grid-template-areas: "header" "main";
-  }
-  .sidebar {
-    grid-area: unset;
-    position: fixed; left: 0; top: 0; bottom: 0;
-    width: 80%; max-width: 280px;
-    transform: translateX(-100%);
-    transition: transform .22s cubic-bezier(.4,0,.2,1);
-    z-index: 60;
-    padding-top: max(12px, env(safe-area-inset-top,0px));
-  }
-  .sidebar.open { transform: translateX(0); }
-  .sidebar-close { display: grid; }
-
-  /* Compact cards on mobile */
-  .card-title { white-space: normal; }
-}
+/* ── Confirm modal ─── */
+.mlov{position:fixed;inset:0;background:rgba(0,0,0,.65);display:grid;place-items:center;
+  z-index:80;padding:24px;backdrop-filter:blur(4px)}
+.mlov[hidden]{display:none!important}
+.mlbox{background:var(--surf);border:1px solid var(--bord);border-radius:20px;
+  padding:28px 22px 22px;max-width:300px;width:100%;text-align:center;
+  animation:popIn .18s ease-out}
+@keyframes popIn{from{opacity:0;transform:scale(.88)}to{opacity:1;transform:scale(1)}}
+.mlico{font-size:34px;margin-bottom:12px;line-height:1}
+.mlh{font-size:17px;font-weight:700;margin-bottom:6px}
+.mls{font-size:13px;color:var(--muted);margin-bottom:22px;line-height:1.5}
+.mlbtns{display:flex;gap:9px}
+.mlcan,.mlcon{flex:1;padding:13px;border-radius:12px;font-size:15px;font-weight:600;font-family:inherit;border:none;transition:opacity .15s}
+.mlcan{background:var(--surf2);color:var(--fg);border:1px solid var(--bord)}
+.mlcan:hover{opacity:.8}
+.mlcon{background:var(--danger);color:#fff}
+.mlcon:hover{opacity:.9}
 </style>
 
+<!-- Drawer overlay -->
+<div class="drov" id="drov" onclick="closeDrawer()"></div>
+
+<!-- Filter drawer -->
+<div class="drawer" id="drawer">
+  <div class="drhead">
+    <span class="drtitle">Filters</span>
+    <button class="ib" onclick="closeDrawer()">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M3.72 3.72a.75.75 0 011.06 0L8 6.94l3.22-3.22a.75.75 0 111.06 1.06L9.06 8l3.22 3.22a.75.75 0 11-1.06 1.06L8 9.06l-3.22 3.22a.75.75 0 01-1.06-1.06L6.94 8 3.72 4.78a.75.75 0 010-1.06z"/></svg>
+    </button>
+  </div>
+  <div class="drbody">
+    <div class="drsec">
+      <div class="drstitle">Time Range</div>
+      <div class="drtgrid" id="drawerTime">
+        <button class="dtb on" data-t="all" onclick="setTime('all')">All time</button>
+        <button class="dtb" data-t="1h"    onclick="setTime('1h')">Last hour</button>
+        <button class="dtb" data-t="2h"    onclick="setTime('2h')">Last 2 hours</button>
+        <button class="dtb" data-t="6h"    onclick="setTime('6h')">Last 6 hours</button>
+        <button class="dtb" data-t="12h"   onclick="setTime('12h')">Last 12 hours</button>
+        <button class="dtb" data-t="today" onclick="setTime('today')">Today</button>
+        <button class="dtb" data-t="earlier" onclick="setTime('earlier')" style="grid-column:1/-1">Earlier days</button>
+      </div>
+    </div>
+    <div class="drsec">
+      <div class="drstitle">Apps</div>
+      <div id="drawerApps"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Confirm delete modal -->
+<div class="mlov" id="modal" hidden>
+  <div class="mlbox">
+    <div class="mlico">🗑️</div>
+    <div class="mlh">Delete <span id="mlcnt">0</span> notifications?</div>
+    <div class="mls">This cannot be undone.</div>
+    <div class="mlbtns">
+      <button class="mlcan" onclick="closeModal()">Cancel</button>
+      <button class="mlcon" id="mlconfirm" onclick="execDelete()">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- App shell -->
 <div class="shell" id="app" hidden>
 
   <header>
-    <button class="icon-btn hamburger" id="hamburgerBtn" title="Apps" onclick="openSidebar()">
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M1 2.75A.75.75 0 011.75 2h12.5a.75.75 0 010 1.5H1.75A.75.75 0 011 2.75zm0 5A.75.75 0 011.75 7h12.5a.75.75 0 010 1.5H1.75A.75.75 0 011 7.75zm0 5a.75.75 0 01.75-.75h12.5a.75.75 0 010 1.5H1.75a.75.75 0 01-.75-.75z"/></svg>
-    </button>
-    <div class="logo"><div class="logo-mark">N</div>NotifyHub</div>
-    <div class="status-dot" id="statusDot"></div>
-    <span class="status-label" id="statusLabel">Connecting…</span>
-    <div class="search-wrap">
-      <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="6.5" cy="6.5" r="4.5" stroke="currentColor" stroke-width="1.5"/><path d="M10 10l3.5 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-      <input type="search" id="search" placeholder="Search…" autocomplete="off">
+    <div class="logo">
+      <div class="lm"><svg viewBox="0 0 512 512" fill="white"><g transform="translate(64,64) scale(0.5)"><path d="M384,142C302,142 250,199 250,278L250,329C227,322 210,313 194,324C174,338 190,362 215,379C231,390 243,396 238,413C228,451 190,481 151,499C128,510 140,531 169,540C187,546 205,546 211,562C216,576 212,587 231,591C253,596 274,592 294,603C324,620 348,638 384,638C420,638 444,620 474,603C494,592 515,596 537,591C556,587 552,576 557,562C563,546 581,546 599,540C628,531 640,510 617,499C578,481 540,451 530,413C525,396 537,390 553,379C578,362 594,338 574,324C558,313 541,322 518,329L518,278C518,199 466,142 384,142Z"/></g></svg></div>
+      NotifyHub
     </div>
-    <div class="header-actions">
-      <button class="icon-btn" id="themeBtn" title="Toggle theme">
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-1 0v-1A.5.5 0 0 1 8 1zM3.05 3.05a.5.5 0 0 1 .707 0l.707.707a.5.5 0 0 1-.707.707l-.707-.707a.5.5 0 0 1 0-.707zm9.9 0a.5.5 0 0 1 0 .707l-.707.707a.5.5 0 0 1-.707-.707l.707-.707a.5.5 0 0 1 .707 0zm-9.95 9.9a.5.5 0 0 1 .707-.707l.707.707a.5.5 0 0 1-.707.707l-.707-.707zm9.9 0a.5.5 0 0 1 0 .707l-.707.707a.5.5 0 0 1-.707-.707l.707-.707a.5.5 0 0 1 .707 0zM1 7.5h1a.5.5 0 0 1 0 1H1a.5.5 0 0 1 0-1zm13 0h1a.5.5 0 0 1 0 1h-1a.5.5 0 0 1 0-1zM8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z"/></svg>
+    <div class="sdot" id="sdot"></div>
+    <div class="hdr-gap"></div>
+    <div class="hdr-btns">
+      <button class="ib" id="searchBtn" title="Search" onclick="toggleSearch()">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="6.5" cy="6.5" r="4.5" stroke="currentColor" stroke-width="1.5"/><path d="M10 10l3.5 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
       </button>
-      <button class="icon-btn" id="signOutBtn" title="Reload">
-        <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor"><path d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2v1z"/><path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z"/></svg>
+      <button class="ib" id="selectBtn" title="Select" onclick="toggleSel()">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M2.5 1.75a.25.25 0 01.25-.25h8.5a.25.25 0 01.25.25v7.736a.75.75 0 101.5 0V1.75A1.75 1.75 0 0011.25 0h-8.5A1.75 1.75 0 001 1.75v11.5c0 .966.784 1.75 1.75 1.75h3.17a.75.75 0 000-1.5H2.75a.25.25 0 01-.25-.25V1.75z"/><path d="M15.28 10.72a.75.75 0 010 1.06l-3.5 3.5a.75.75 0 01-1.06 0l-2-2a.75.75 0 111.06-1.06l1.47 1.47 2.97-2.97a.75.75 0 011.06 0z"/></svg>
+      </button>
+      <button class="ib" id="refreshBtn" title="Refresh" onclick="doRefresh()">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2v1z"/><path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z"/></svg>
+      </button>
+      <button class="ib" id="filterBtn" title="Filters" onclick="openDrawer()">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M.75 3a.75.75 0 000 1.5h14.5a.75.75 0 000-1.5H.75zM3 7.75A.75.75 0 013.75 7h8.5a.75.75 0 010 1.5h-8.5A.75.75 0 013 7.75zM6.75 11a.75.75 0 000 1.5h2.5a.75.75 0 000-1.5h-2.5z"/></svg>
+      </button>
+      <button class="ib" id="themeBtn" title="Toggle theme">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M6 .278a.768.768 0 01.08.858 7.208 7.208 0 00-.878 3.46c0 4.021 3.278 7.277 7.318 7.277.527 0 1.04-.055 1.533-.16a.787.787 0 01.81.316.733.733 0 01-.031.893A8.349 8.349 0 018.344 16C3.734 16 0 12.286 0 7.71 0 4.266 2.114 1.312 5.124.06A.752.752 0 016 .278z"/></svg>
       </button>
     </div>
   </header>
 
-  <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+  <!-- Search -->
+  <div class="sbar" id="sbar" hidden>
+    <div class="swrap">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="6.5" cy="6.5" r="4.5" stroke="currentColor" stroke-width="1.5"/><path d="M10 10l3.5 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+      <input type="search" id="si" placeholder="Search notifications…" autocomplete="off">
+    </div>
+    <button class="ib" onclick="closeSearch()">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M3.72 3.72a.75.75 0 011.06 0L8 6.94l3.22-3.22a.75.75 0 111.06 1.06L9.06 8l3.22 3.22a.75.75 0 11-1.06 1.06L8 9.06l-3.22 3.22a.75.75 0 01-1.06-1.06L6.94 8 3.72 4.78a.75.75 0 010-1.06z"/></svg>
+    </button>
+  </div>
 
-  <nav class="sidebar" id="sidebar">
-    <div class="sidebar-header">
-      <span class="sidebar-label">Apps</span>
-      <button class="icon-btn sidebar-close" onclick="closeSidebar()" title="Close">
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M3.72 3.72a.75.75 0 011.06 0L8 6.94l3.22-3.22a.75.75 0 111.06 1.06L9.06 8l3.22 3.22a.75.75 0 11-1.06 1.06L8 9.06l-3.22 3.22a.75.75 0 01-1.06-1.06L6.94 8 3.72 4.78a.75.75 0 010-1.06z"/></svg>
-      </button>
+  <!-- Time filter chips -->
+  <div class="chips">
+    <div class="chips-row">
+      <button class="chip on" data-t="all"     onclick="setTime('all')">All</button>
+      <button class="chip"    data-t="1h"      onclick="setTime('1h')">1h</button>
+      <button class="chip"    data-t="2h"      onclick="setTime('2h')">2h</button>
+      <button class="chip"    data-t="6h"      onclick="setTime('6h')">6h</button>
+      <button class="chip"    data-t="12h"     onclick="setTime('12h')">12h</button>
+      <button class="chip"    data-t="today"   onclick="setTime('today')">Today</button>
+      <button class="chip"    data-t="earlier" onclick="setTime('earlier')">Earlier</button>
     </div>
-    <div id="appList"></div>
-  </nav>
+  </div>
 
-  <main id="main">
-    <div class="feed-header">
-      <span class="feed-title" id="feedTitle">All Notifications</span>
-      <span class="feed-count" id="feedCount"></span>
-      <span class="feed-spacer"></span>
-      <button class="text-btn" id="selectBtn" onclick="toggleSelectMode()">Select</button>
-      <button class="text-btn" id="markAllBtn">Mark all read</button>
-    </div>
-    <div class="select-bar" id="selectBar" hidden>
-      <span class="select-info" id="selectInfo">Tap cards to select</span>
-      <button class="text-btn" id="selectAllBtn" onclick="toggleSelectAll()">Select all</button>
-      <button class="delete-sel-btn" id="deleteSelBtn" onclick="deleteSelected()" disabled>Delete</button>
-    </div>
-    <div class="new-banner" id="newBanner" hidden></div>
-    <div class="notif-feed" id="feed">
-      <div class="skeleton-wrap">
-        <div class="skeleton-card"></div>
-        <div class="skeleton-card"></div>
-        <div class="skeleton-card"></div>
-      </div>
-    </div>
-  </main>
+  <!-- New notification banner -->
+  <div class="nb" id="nb" hidden></div>
 
+  <!-- Feed -->
+  <div id="feed">
+    <div class="skelwrap">
+      <div class="skelrow"><div class="skelav"></div><div class="skelb"></div></div>
+      <div class="skelrow"><div class="skelav"></div><div class="skelb"></div></div>
+      <div class="skelrow"><div class="skelav"></div><div class="skelb"></div></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Select bottom bar -->
+<div class="selbar" id="selbar">
+  <button class="sbc" onclick="toggleSel()">Cancel</button>
+  <span class="sbi" id="selinfo">Select items</span>
+  <button class="sball" id="selall" onclick="toggleSelAll()">All</button>
+  <button class="sbdel" id="seldel" onclick="showModal()" disabled>Delete</button>
 </div>
 
 <script>
 const SERVER = 'https://notificationhub-10g2.onrender.com'
 const token  = 'solaimankabiranik'
-function hdrs() { return { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' } }
+const hdrs   = () => ({'Authorization':`Bearer ${token}`,'Content-Type':'application/json'})
 
-// Pre-warm server
-fetch(`${SERVER}/health`, { cache: 'no-store' }).catch(() => {})
+// Pre-warm Render
+fetch(`${SERVER}/health`,{cache:'no-store'}).catch(()=>{})
 
-// State
-let notifications = [], appFilter = null, searchQuery = ''
-let page = 1, totalCount = 0, hasMore = false, newPendingCount = 0, appCounts = {}
-let selectMode = false, selectedIds = new Set()
-let currentGroups = []
-const userToggledDays = new Set()
+// PWA service worker
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{})
 
-// Helpers
-const PALETTE = ['#1a7f37','#cf222e','#9a3412','#1d4ed8','#7e22ce','#0891b2','#d97706','#15803d','#b91c1c','#6d28d9']
-function appColor(pkg) { let h=0; for(let i=0;i<pkg.length;i++) h=((h<<5)-h+pkg.charCodeAt(i))|0; return PALETTE[Math.abs(h)%PALETTE.length] }
-function appInitial(l) { return (l||'?').trim()[0].toUpperCase() }
-function relTime(iso) {
-  const s = Math.floor((Date.now()-new Date(iso))/1000)
-  if (s < 60) return 'now'
-  if (s < 3600) return Math.floor(s/60)+'m'
-  if (s < 86400) return Math.floor(s/3600)+'h'
+// ── State ──────────────────────────────────────────
+let notifs=[], appFilter=null, searchQ='', timeFilter='all'
+let page=1, totalCount=0, hasMore=false, newPending=0
+let appCounts={}, selectMode=false, selectedIds=new Set()
+let currentGroups=[], userToggledDays=new Set()
+
+// ── Helpers ────────────────────────────────────────
+const PAL=['#1e6fe0','#c0392b','#9b59b6','#16a085','#d35400','#2980b9','#27ae60','#8e44ad','#c0392b','#2c3e50']
+function appColor(p){let h=0;for(let i=0;i<p.length;i++)h=((h<<5)-h+p.charCodeAt(i))|0;return PAL[Math.abs(h)%PAL.length]}
+function appInit(l){return(l||'?').trim()[0].toUpperCase()}
+
+const IMAP={'com.google.android.gm':'gmail.com','com.google.android.youtube':'youtube.com',
+  'com.facebook.orca':'messenger.com','com.facebook.katana':'facebook.com',
+  'com.instagram.android':'instagram.com','com.twitter.android':'x.com',
+  'org.telegram.messenger':'telegram.org','com.snapchat.android':'snapchat.com',
+  'com.linkedin.android':'linkedin.com','com.spotify.music':'spotify.com',
+  'com.netflix.mediaclient':'netflix.com','com.bkash.business':'bkash.com',
+  'com.nagad.app':'nagad.com.bd','com.whatsapp':'whatsapp.com',
+  'com.google.android.apps.messaging':'messages.google.com'}
+
+function iconUrl(pkg){
+  if(IMAP[pkg]) return `https://www.google.com/s2/favicons?domain=${IMAP[pkg]}&sz=64`
+  const p=pkg.split('.')
+  if(p.length>=2&&['com','org','net','io','app'].includes(p[0]))
+    return `https://www.google.com/s2/favicons?domain=${p[1]}.${p[0]}&sz=64`
+  return null
+}
+
+function relTime(iso){
+  const s=Math.floor((Date.now()-new Date(iso))/1000)
+  if(s<60) return 'now'
+  if(s<3600) return Math.floor(s/60)+'m'
+  if(s<86400) return Math.floor(s/3600)+'h'
   return Math.floor(s/86400)+'d'
 }
-function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;') }
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
 
-function groupByDay(notifs) {
-  const map = new Map()
-  const now = new Date()
-  const todayStart = new Date(now); todayStart.setHours(0,0,0,0)
-  const yestStart  = new Date(todayStart); yestStart.setDate(yestStart.getDate()-1)
-
-  for (const n of notifs) {
-    const d = new Date(n.received_at || n.posted_at)
-    const dStart = new Date(d); dStart.setHours(0,0,0,0)
-    const t = dStart.getTime()
-    let label
-    if (t === todayStart.getTime())     label = 'Today'
-    else if (t === yestStart.getTime()) label = 'Yesterday'
-    else label = d.toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' })
-    if (!map.has(label)) map.set(label, { label, t, items: [] })
-    map.get(label).items.push(n)
-  }
-  return [...map.values()].sort((a,b) => b.t - a.t)
+// ── Time filter ────────────────────────────────────
+function setTime(t){
+  timeFilter=t
+  document.querySelectorAll('.chip[data-t]').forEach(b=>b.classList.toggle('on',b.dataset.t===t))
+  document.querySelectorAll('.dtb[data-t]').forEach(b=>b.classList.toggle('on',b.dataset.t===t))
+  renderFeed()
 }
 
-function isDayCollapsed(label) {
-  const def = label !== 'Today' && label !== 'Yesterday'
-  return userToggledDays.has(label) ? !def : def
-}
-
-function toggleDayIdx(idx) {
-  const g = currentGroups[idx]; if (!g) return
-  userToggledDays.has(g.label) ? userToggledDays.delete(g.label) : userToggledDays.add(g.label)
-  const hdr   = document.querySelector(`.day-header-btn[data-idx="${idx}"]`)
-  const items = document.querySelector(`.day-items[data-idx="${idx}"]`)
-  if (!hdr || !items) return
-  const col = isDayCollapsed(g.label)
-  hdr.classList.toggle('collapsed', col)
-  items.hidden = col
-}
-
-const CHECK_SVG = `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z"/></svg>`
-
-function cardHTML(n) {
-  if (selectMode) {
-    const sel = selectedIds.has(n.id)
-    return `<div class="notif-card sel-mode${sel?' selected':''}" data-id="${n.id}" onclick="toggleSelect(${n.id})">
-      <div class="card-check">${sel?CHECK_SVG:''}</div>
-      <div class="card-icon" style="background:${appColor(n.package_name)}">${appInitial(n.app_label||n.package_name)}</div>
-      <div class="card-body">
-        <div class="card-app-row">
-          <span class="card-app-name">${esc(n.app_label||n.package_name.split('.').pop())}</span>
-          ${!n.is_read?'<span class="card-unread-dot"></span>':''}
-        </div>
-        ${n.title?`<div class="card-title">${esc(n.title)}</div>`:''}
-        ${n.text_body?`<div class="card-text">${esc(n.text_body)}</div>`:''}
-      </div>
-    </div>`
-  }
-  return `<div class="notif-card${n.is_read?' read':''}" data-id="${n.id}">
-    <div class="card-icon" style="background:${appColor(n.package_name)}">${appInitial(n.app_label||n.package_name)}</div>
-    <div class="card-body">
-      <div class="card-app-row">
-        <span class="card-app-name">${esc(n.app_label||n.package_name.split('.').pop())}</span>
-        ${!n.is_read?'<span class="card-unread-dot"></span>':''}
-      </div>
-      ${n.title?`<div class="card-title">${esc(n.title)}</div>`:''}
-      ${n.text_body?`<div class="card-text">${esc(n.text_body)}</div>`:''}
-    </div>
-    <div class="card-meta">
-      <span class="card-time">${relTime(n.received_at||n.posted_at)}</span>
-      <div class="card-actions">
-        ${!n.is_read?`<button class="card-btn" title="Mark read" onclick="event.stopPropagation();markRead(${n.id},this)"><svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z"/></svg></button>`:''}
-        <button class="card-btn archive" title="Archive" onclick="event.stopPropagation();archiveNotif(${n.id})"><svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M1.75 2.5a.25.25 0 000 .5h12.5a.25.25 0 000-.5H1.75zM1 4.75C1 4.336 1.336 4 1.75 4h12.5c.414 0 .75.336.75.75v8c0 .414-.336.75-.75.75H1.75A.75.75 0 011 12.75v-8zm1.5.75v7h11v-7h-11zm4.25 1.5a.75.75 0 011.5 0v3.44l1.22-1.22a.75.75 0 111.06 1.06l-2.5 2.5a.75.75 0 01-1.06 0l-2.5-2.5a.75.75 0 111.06-1.06l1.22 1.22V7z"/></svg></button>
-      </div>
-    </div>
-  </div>`
-}
-
-function renderSidebar() {
-  const apps = Object.entries(appCounts).sort((a,b)=>b[1].total-a[1].total)
-  const totalUnread = apps.reduce((s,[,v])=>s+v.unread,0)
-  let html = `<div class="app-row${appFilter===null?' active':''}" onclick="setFilter(null)">
-    <div class="app-icon" style="background:#3d444d"><svg width="13" height="13" viewBox="0 0 16 16" fill="#fff"><path d="M2 2h4v4H2zm0 6h4v4H2zm6-6h4v4H8zm0 6h4v4H8z"/></svg></div>
-    <span class="app-name">All apps</span>${totalUnread?`<span class="app-badge">${totalUnread}</span>`:''}
-  </div>`
-  for (const [pkg,c] of apps) {
-    const label = c.label||pkg.split('.').pop()
-    html += `<div class="app-row${appFilter===pkg?' active':''}" onclick="setFilterPkg(${JSON.stringify(pkg)})">
-      <div class="app-icon" style="background:${appColor(pkg)}">${appInitial(label)}</div>
-      <span class="app-name">${esc(label)}</span>${c.unread?`<span class="app-badge">${c.unread}</span>`:''}
-    </div>`
-  }
-  document.getElementById('appList').innerHTML = html
-}
-
-function renderFeed() {
-  const feed = document.getElementById('feed')
-  const vis  = filteredNotifs()
-  document.getElementById('feedCount').textContent = `${totalCount.toLocaleString()} total`
-
-  if (!vis.length && !notifications.length) {
-    feed.innerHTML = `<div class="empty-state"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/></svg><p>No notifications yet</p></div>`
-    return
-  }
-  if (!vis.length) {
-    feed.innerHTML = `<div class="empty-state"><p>No notifications match this filter</p></div>`
-    return
-  }
-
-  currentGroups = groupByDay(vis)
-  let html = ''
-  const CHEV = `<svg class="day-chev" width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M4.427 7.427l3.396 3.396a.25.25 0 00.354 0l3.396-3.396A.25.25 0 0011.396 7H4.604a.25.25 0 00-.177.427z"/></svg>`
-
-  for (let i = 0; i < currentGroups.length; i++) {
-    const g   = currentGroups[i]
-    const col = isDayCollapsed(g.label)
-    html += `<div class="day-group">
-      <button class="day-header-btn${col?' collapsed':''}" data-idx="${i}" onclick="toggleDayIdx(${i})">
-        <span class="day-label">${esc(g.label)}</span>
-        <span class="day-sep"></span>
-        <span class="day-cnt">${g.items.length}</span>
-        ${CHEV}
-      </button>
-      <div class="day-items" data-idx="${i}"${col?' hidden':''}>
-        ${g.items.map(n=>cardHTML(n)).join('')}
-      </div>
-    </div>`
-  }
-
-  if (hasMore) html += `<div class="load-more-wrap"><button class="load-more" id="loadMoreBtn" onclick="loadMore()">Load more</button></div>`
-  feed.innerHTML = html
-  updateSelectUI()
-}
-
-function filteredNotifs() {
-  return notifications.filter(n => {
-    if (appFilter && n.package_name !== appFilter) return false
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase()
-      return (n.title||'').toLowerCase().includes(q) ||
-             (n.text_body||'').toLowerCase().includes(q) ||
-             (n.app_label||'').toLowerCase().includes(q)
+function filteredNotifs(){
+  const now=Date.now(), tm={1:3600,2:7200,6:21600,12:43200}
+  const todayMs=new Date().setHours(0,0,0,0)
+  return notifs.filter(n=>{
+    if(appFilter&&n.package_name!==appFilter) return false
+    if(searchQ){
+      const q=searchQ.toLowerCase()
+      if(!(n.title||'').toLowerCase().includes(q)&&!(n.text_body||'').toLowerCase().includes(q)&&!(n.app_label||'').toLowerCase().includes(q)) return false
     }
+    const t=new Date(n.received_at||n.posted_at).getTime()
+    if(timeFilter==='today') return t>=todayMs
+    if(timeFilter==='earlier') return t<todayMs
+    const h=parseInt(timeFilter); if(!isNaN(h)) return now-t<=h*3600000
     return true
   })
 }
 
-async function loadNotifications(reset=false) {
-  if (reset) { page=1; notifications=[] }
-  const p = new URLSearchParams({ page, limit:50 })
-  if (appFilter)   p.set('package', appFilter)
-  if (searchQuery) p.set('search', searchQuery)
-  try {
-    const res = await fetch(`${SERVER}/api/notifications?${p}`, { headers: hdrs() })
-    if (res.status === 401) { location.reload(); return }
-    const json = await res.json()
-    const rows = json.data||[]
-    if (reset) {
-      notifications = rows; appCounts = {}
-      for (const n of rows) {
-        if (!appCounts[n.package_name]) appCounts[n.package_name] = { total:0, unread:0, label:n.app_label }
+// ── Day grouping ───────────────────────────────────
+function groupByDay(list){
+  const map=new Map(), now=new Date()
+  const tod=new Date(now); tod.setHours(0,0,0,0)
+  const yes=new Date(tod); yes.setDate(yes.getDate()-1)
+  for(const n of list){
+    const d=new Date(n.received_at||n.posted_at), ds=new Date(d); ds.setHours(0,0,0,0)
+    const tk=ds.getTime()
+    const lbl=tk===tod.getTime()?'Today':tk===yes.getTime()?'Yesterday':d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})
+    if(!map.has(lbl)) map.set(lbl,{lbl,tk,items:[]})
+    map.get(lbl).items.push(n)
+  }
+  return [...map.values()].sort((a,b)=>b.tk-a.tk)
+}
+function isDayCol(lbl){const def=lbl!=='Today'&&lbl!=='Yesterday';return userToggledDays.has(lbl)?!def:def}
+function toggleDay(idx){
+  const g=currentGroups[idx]; if(!g) return
+  userToggledDays.has(g.lbl)?userToggledDays.delete(g.lbl):userToggledDays.add(g.lbl)
+  const hdr=document.querySelector(`.dsep[data-i="${idx}"]`)
+  const items=document.querySelector(`.ditems[data-i="${idx}"]`)
+  if(!hdr||!items) return
+  const col=isDayCol(g.lbl)
+  hdr.classList.toggle('col',col); items.hidden=col
+}
+
+// ── Avatar HTML ────────────────────────────────────
+function avHTML(pkg,label,size=42,r=12){
+  const src=iconUrl(pkg), color=appColor(pkg), init=appInit(label||pkg)
+  const id=`av-${pkg.replace(/\./g,'-')}`
+  return `<div class="mav" style="background:${color}" id="${id}">
+    ${src?`<img src="${esc(src)}" loading="lazy" onload="document.getElementById('${id}')?.classList.add('iv')" onerror="this.remove()" alt="">`:''}
+    <span class="avl">${init}</span>
+  </div>`
+}
+
+function drawerAvHTML(pkg,label){
+  const src=iconUrl(pkg), color=appColor(pkg), init=appInit(label||pkg)
+  const id=`dav-${pkg.replace(/\./g,'-')}`
+  return `<div class="dav" style="background:${color}" id="${id}">
+    ${src?`<img src="${esc(src)}" loading="lazy" onload="document.getElementById('${id}')?.classList.add('iv')" onerror="this.remove()" alt="">`:''}<span>${init}</span>
+  </div>`
+}
+
+// ── Message row HTML ───────────────────────────────
+const CHK=`<svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z"/></svg>`
+
+function msgHTML(n){
+  const sel=selectedIds.has(n.id)
+  const app=esc(n.app_label||n.package_name.split('.').pop())
+  return `<div class="mr${!n.is_read?' unread':' read'}${sel?' selected':''}" data-id="${n.id}" onclick="onRowClick(${n.id})">
+    <div class="mck"><div class="cring">${sel?CHK:''}</div></div>
+    ${avHTML(n.package_name, n.app_label)}
+    <div class="mbub">
+      <div class="btop">
+        <span class="bapp">${app}</span>
+        ${!n.is_read?'<span class="bundot"></span>':''}
+        <div class="bacts">
+          ${!n.is_read?`<button class="ba" title="Mark read" onclick="event.stopPropagation();doRead(${n.id},this)"><svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z"/></svg></button>`:''}
+          <button class="ba del" title="Archive" onclick="event.stopPropagation();doArchive(${n.id})"><svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M3.72 3.72a.75.75 0 011.06 0L8 6.94l3.22-3.22a.75.75 0 111.06 1.06L9.06 8l3.22 3.22a.75.75 0 11-1.06 1.06L8 9.06l-3.22 3.22a.75.75 0 01-1.06-1.06L6.94 8 3.72 4.78a.75.75 0 010-1.06z"/></svg></button>
+        </div>
+        <span class="btime" data-ts="${esc(n.received_at||n.posted_at)}">${relTime(n.received_at||n.posted_at)}</span>
+      </div>
+      ${n.title?`<div class="btitle">${esc(n.title)}</div>`:''}
+      ${n.text_body?`<div class="bbody">${esc(n.text_body)}</div>`:''}
+      ${n.image_url?`<img class="bimg" src="${esc(n.image_url)}" alt="" loading="lazy">`:''}
+    </div>
+  </div>`
+}
+
+// ── Render feed ────────────────────────────────────
+function renderFeed(){
+  const feed=document.getElementById('feed')
+  const vis=filteredNotifs()
+  if(!vis.length&&!notifs.length){
+    feed.innerHTML=`<div class="empty"><svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/></svg><p>No notifications yet</p></div>`
+    return
+  }
+  if(!vis.length){
+    feed.innerHTML=`<div class="empty"><p>No results for this filter</p></div>`
+    return
+  }
+  currentGroups=groupByDay(vis)
+  const CHEV=`<svg class="dsep-chev" width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M4.427 7.427l3.396 3.396a.25.25 0 00.354 0l3.396-3.396A.25.25 0 0011.396 7H4.604a.25.25 0 00-.177.427z"/></svg>`
+  let html=''
+  for(let i=0;i<currentGroups.length;i++){
+    const g=currentGroups[i], col=isDayCol(g.lbl)
+    html+=`<div class="dgroup">
+      <div class="dsep${col?' col':''}" data-i="${i}" onclick="toggleDay(${i})">
+        <span class="dsep-lbl">${esc(g.lbl)}</span>
+        <span class="dsep-cnt">${g.items.length}</span>
+        ${CHEV}
+      </div>
+      <div class="ditems" data-i="${i}"${col?' hidden':''}>
+        ${g.items.map(n=>msgHTML(n)).join('')}
+      </div>
+    </div>`
+  }
+  if(hasMore) html+=`<div class="lmwrap"><button class="lmbtn" id="lmbtn" onclick="loadMore()">Load more</button></div>`
+  feed.innerHTML=html
+  updateSelUI()
+}
+
+// ── Drawer apps ────────────────────────────────────
+function renderDrawerApps(){
+  const apps=Object.entries(appCounts).sort((a,b)=>b[1].total-a[1].total)
+  const totalUnread=apps.reduce((s,[,v])=>s+v.unread,0)
+  let html=`<div class="dapp${appFilter===null?' on':''}" onclick="setApp(null)">
+    ${drawerAvHTML('all.apps','All')}
+    <span class="davn">All apps</span>${totalUnread?`<span class="davb">${totalUnread}</span>`:''}
+  </div>`
+  for(const[pkg,c]of apps){
+    const lbl=c.label||pkg.split('.').pop()
+    html+=`<div class="dapp${appFilter===pkg?' on':''}" onclick="setApp(${JSON.stringify(pkg)})">
+      ${drawerAvHTML(pkg,lbl)}
+      <span class="davn">${esc(lbl)}</span>${c.unread?`<span class="davb">${c.unread}</span>`:''}
+    </div>`
+  }
+  document.getElementById('drawerApps').innerHTML=html
+}
+
+// ── Load notifications ─────────────────────────────
+async function load(reset=false){
+  if(reset){page=1;notifs=[]}
+  const p=new URLSearchParams({page,limit:50})
+  if(appFilter) p.set('package',appFilter)
+  if(searchQ)   p.set('search',searchQ)
+  try{
+    const res=await fetch(`${SERVER}/api/notifications?${p}`,{headers:hdrs()})
+    if(res.status===401){location.reload();return}
+    const json=await res.json()
+    const rows=json.data||[]
+    if(reset){
+      notifs=rows; appCounts={}
+      for(const n of rows){
+        if(!appCounts[n.package_name]) appCounts[n.package_name]={total:0,unread:0,label:n.app_label}
         appCounts[n.package_name].total++
-        if (!n.is_read) appCounts[n.package_name].unread++
+        if(!n.is_read) appCounts[n.package_name].unread++
       }
     } else {
-      notifications = [...notifications, ...rows]
+      notifs=[...notifs,...rows]
     }
-    totalCount = json.pagination?.total ?? notifications.length
-    hasMore    = json.pagination?.hasMore ?? false
-    renderSidebar(); renderFeed()
-  } catch {
-    document.getElementById('feed').innerHTML = `<div class="empty-state"><p style="color:var(--unread)">Could not load — check connection.</p></div>`
+    totalCount=json.pagination?.total??notifs.length
+    hasMore=json.pagination?.hasMore??false
+    renderDrawerApps(); renderFeed()
+  }catch{
+    document.getElementById('feed').innerHTML=`<div class="empty"><p style="color:var(--danger)">Could not load — check connection</p></div>`
   }
 }
 
-async function loadMore() {
-  const btn = document.getElementById('loadMoreBtn'); if (btn) btn.disabled = true
-  page++; await loadNotifications(false)
+async function loadMore(){
+  const btn=document.getElementById('lmbtn'); if(btn) btn.disabled=true
+  page++; await load(false)
 }
 
-function setFilter(pkg) {
-  appFilter = pkg
-  document.getElementById('feedTitle').textContent = pkg ? (appCounts[pkg]?.label || pkg.split('.').pop()) : 'All Notifications'
-  if (window.innerWidth <= 640) closeSidebar()
-  page = 1; loadNotifications(true)
+function doRefresh(){
+  const btn=document.getElementById('refreshBtn')
+  btn.style.animation='spin .6s ease-in-out'
+  btn.addEventListener('animationend',()=>btn.style.animation='',{once:true})
+  load(true)
 }
-function setFilterPkg(pkg) { setFilter(pkg) }
 
+// ── App / time filter ──────────────────────────────
+function setApp(pkg){
+  appFilter=pkg; closeDrawer()
+  load(true)
+}
+
+// ── Search ─────────────────────────────────────────
 let searchTimer
-document.getElementById('search').addEventListener('input', e => {
-  clearTimeout(searchTimer); searchQuery = e.target.value.trim()
-  searchTimer = setTimeout(() => loadNotifications(true), 350)
+document.getElementById('si').addEventListener('input',e=>{
+  clearTimeout(searchTimer); searchQ=e.target.value.trim()
+  searchTimer=setTimeout(()=>load(true),350)
+})
+function toggleSearch(){
+  const bar=document.getElementById('sbar'), btn=document.getElementById('searchBtn')
+  bar.hidden=!bar.hidden; btn.classList.toggle('on',!bar.hidden)
+  if(!bar.hidden) document.getElementById('si').focus()
+}
+function closeSearch(){
+  document.getElementById('sbar').hidden=true
+  document.getElementById('searchBtn').classList.remove('on')
+  searchQ=''; document.getElementById('si').value=''
+  load(true)
+}
+
+// ── Drawer ─────────────────────────────────────────
+function openDrawer() { document.getElementById('drawer').classList.add('open'); document.getElementById('drov').classList.add('open') }
+function closeDrawer(){ document.getElementById('drawer').classList.remove('open'); document.getElementById('drov').classList.remove('open') }
+
+// ── Mark read / archive ────────────────────────────
+async function doRead(id,btn){
+  try{
+    await fetch(`${SERVER}/api/notifications/${id}/read`,{method:'PATCH',headers:hdrs()})
+    const n=notifs.find(x=>x.id==id)
+    if(n){n.is_read=true;if(appCounts[n.package_name]) appCounts[n.package_name].unread=Math.max(0,appCounts[n.package_name].unread-1)}
+    const row=document.querySelector(`[data-id="${id}"]`)
+    if(row){
+      row.classList.remove('unread'); row.classList.add('read')
+      row.querySelector('.bundot')?.remove()
+      btn?.closest('.ba')?.remove()
+    }
+    renderDrawerApps()
+  }catch{}
+}
+
+async function doArchive(id){
+  const row=document.querySelector(`[data-id="${id}"]`)
+  if(row){row.classList.add('out'); setTimeout(()=>row.remove(),190)}
+  try{
+    await fetch(`${SERVER}/api/notifications/${id}/archive`,{method:'PATCH',headers:hdrs()})
+    const idx=notifs.findIndex(x=>x.id==id)
+    if(idx!==-1){
+      const n=notifs[idx]
+      if(!n.is_read&&appCounts[n.package_name]) appCounts[n.package_name].unread=Math.max(0,appCounts[n.package_name].unread-1)
+      if(appCounts[n.package_name]) appCounts[n.package_name].total=Math.max(0,appCounts[n.package_name].total-1)
+      notifs.splice(idx,1); totalCount=Math.max(0,totalCount-1)
+    }
+    renderDrawerApps()
+  }catch{}
+}
+
+document.getElementById('feed').addEventListener('click',()=>{
+  document.getElementById('nb').hidden=true; newPending=0
 })
 
-async function markRead(id, btn) {
-  try {
-    await fetch(`${SERVER}/api/notifications/${id}/read`, { method:'PATCH', headers:hdrs() })
-    const n = notifications.find(x=>x.id==id)
-    if (n) { n.is_read=true; if (appCounts[n.package_name]) appCounts[n.package_name].unread=Math.max(0,appCounts[n.package_name].unread-1) }
-    const card = document.querySelector(`[data-id="${id}"]`)
-    if (card) {
-      card.classList.add('read')
-      card.querySelector('.card-actions .card-btn:not(.archive)')?.remove()
-      card.querySelector('.card-unread-dot')?.remove()
-    }
-    renderSidebar()
-  } catch {}
-}
-
-async function archiveNotif(id) {
-  try {
-    await fetch(`${SERVER}/api/notifications/${id}/archive`, { method:'PATCH', headers:hdrs() })
-    const idx = notifications.findIndex(x=>x.id==id)
-    if (idx !== -1) {
-      const n = notifications[idx]
-      if (!n.is_read && appCounts[n.package_name]) appCounts[n.package_name].unread=Math.max(0,appCounts[n.package_name].unread-1)
-      if (appCounts[n.package_name]) appCounts[n.package_name].total=Math.max(0,appCounts[n.package_name].total-1)
-      notifications.splice(idx,1); totalCount=Math.max(0,totalCount-1)
-    }
-    const card = document.querySelector(`[data-id="${id}"]`)
-    if (card) { card.style.transition='opacity .2s,transform .2s'; card.style.opacity='0'; card.style.transform='translateX(20px)'; setTimeout(()=>{ card.remove(); renderSidebar() },200) }
-  } catch {}
-}
-
-document.getElementById('markAllBtn').addEventListener('click', async () => {
-  try {
+// Mark all read (accessible via filter btn context — keep as a hidden action)
+async function markAllRead(){
+  try{
     await fetch(`${SERVER}/api/notifications/mark-all-read`,{method:'PATCH',headers:hdrs()})
-    notifications.forEach(n=>n.is_read=true); Object.values(appCounts).forEach(c=>c.unread=0)
-    renderSidebar(); renderFeed()
-  } catch {}
-})
+    notifs.forEach(n=>n.is_read=true); Object.values(appCounts).forEach(c=>c.unread=0)
+    renderDrawerApps(); renderFeed()
+  }catch{}
+}
 
-// Select mode
-function toggleSelectMode() {
-  selectMode = !selectMode
-  if (!selectMode) selectedIds.clear()
-  document.getElementById('selectBtn').textContent = selectMode ? 'Cancel' : 'Select'
-  document.getElementById('markAllBtn').hidden = selectMode
-  document.getElementById('selectBar').hidden  = !selectMode
+// ── Select mode ────────────────────────────────────
+function toggleSel(){
+  selectMode=!selectMode
+  if(!selectMode) selectedIds.clear()
+  document.getElementById('feed').classList.toggle('sel',selectMode)
+  document.getElementById('selbar').classList.toggle('show',selectMode)
+  document.getElementById('selectBtn').classList.toggle('on',selectMode)
+  document.body.style.paddingBottom=selectMode?'70px':''
+  updateSelUI()
+  if(!selectMode) renderFeed()
+}
+
+function onRowClick(id){
+  if(!selectMode) return
+  selectedIds.has(id)?selectedIds.delete(id):selectedIds.add(id)
+  const row=document.querySelector(`[data-id="${id}"]`)
+  if(row){
+    const sel=selectedIds.has(id)
+    row.classList.toggle('selected',sel)
+    const ring=row.querySelector('.cring')
+    if(ring) ring.innerHTML=sel?CHK:''
+  }
+  updateSelUI()
+}
+
+function toggleSelAll(){
+  const vis=filteredNotifs(), allSel=vis.every(n=>selectedIds.has(n.id))
+  if(allSel) vis.forEach(n=>selectedIds.delete(n.id))
+  else       vis.forEach(n=>selectedIds.add(n.id))
   renderFeed()
 }
 
-function toggleSelect(id) {
-  selectedIds.has(id) ? selectedIds.delete(id) : selectedIds.add(id)
-  const card = document.querySelector(`[data-id="${id}"]`)
-  if (card) {
-    const sel = selectedIds.has(id)
-    card.classList.toggle('selected', sel)
-    const check = card.querySelector('.card-check')
-    if (check) check.innerHTML = sel ? CHECK_SVG : ''
-  }
-  updateSelectUI()
+function updateSelUI(){
+  const n=selectedIds.size
+  const info=document.getElementById('selinfo'), del=document.getElementById('seldel'), all=document.getElementById('selall')
+  if(info) info.textContent=n>0?`${n} selected`:'Select items'
+  if(del){del.disabled=n===0; del.textContent=n>0?`Delete ${n}`:'Delete'}
+  if(all){const vis=filteredNotifs(); all.textContent=(vis.length>0&&vis.every(x=>selectedIds.has(x.id)))?'None':'All'}
 }
 
-function toggleSelectAll() {
-  const vis = filteredNotifs()
-  const allSel = vis.every(n => selectedIds.has(n.id))
-  if (allSel) vis.forEach(n => selectedIds.delete(n.id))
-  else        vis.forEach(n => selectedIds.add(n.id))
-  renderFeed()
+// ── Delete with modal ──────────────────────────────
+function showModal(){
+  if(selectedIds.size===0) return
+  document.getElementById('mlcnt').textContent=selectedIds.size
+  document.getElementById('modal').hidden=false
 }
+function closeModal(){ document.getElementById('modal').hidden=true }
 
-function updateSelectUI() {
-  const n       = selectedIds.size
-  const info    = document.getElementById('selectInfo')
-  const delBtn  = document.getElementById('deleteSelBtn')
-  const allBtn  = document.getElementById('selectAllBtn')
-  if (info)   info.textContent   = n > 0 ? `${n} selected` : 'Tap cards to select'
-  if (delBtn) { delBtn.disabled  = n === 0; delBtn.textContent = n > 0 ? `Delete ${n}` : 'Delete' }
-  if (allBtn) {
-    const vis = filteredNotifs()
-    allBtn.textContent = (vis.length > 0 && vis.every(x => selectedIds.has(x.id))) ? 'Deselect all' : 'Select all'
-  }
-}
-
-async function deleteSelected() {
-  if (selectedIds.size === 0) return
-  const ids = [...selectedIds]
-  const btn = document.getElementById('deleteSelBtn')
-  if (btn) { btn.disabled=true; btn.textContent='Deleting…' }
-  try {
-    await fetch(`${SERVER}/api/notifications`, { method:'DELETE', headers:hdrs(), body:JSON.stringify({ids}) })
-    for (const id of ids) {
-      const idx = notifications.findIndex(n=>n.id===id)
-      if (idx !== -1) {
-        const n = notifications[idx]
-        if (!n.is_read && appCounts[n.package_name]) appCounts[n.package_name].unread=Math.max(0,appCounts[n.package_name].unread-1)
-        if (appCounts[n.package_name]) appCounts[n.package_name].total=Math.max(0,appCounts[n.package_name].total-1)
-        notifications.splice(idx,1); totalCount=Math.max(0,totalCount-1)
+async function execDelete(){
+  const ids=[...selectedIds]; closeModal()
+  const del=document.getElementById('seldel'); if(del){del.disabled=true;del.textContent='Deleting…'}
+  // Animate out each selected row
+  ids.forEach(id=>{const r=document.querySelector(`[data-id="${id}"]`); if(r){r.classList.add('out'); setTimeout(()=>r.remove(),190)}})
+  try{
+    await fetch(`${SERVER}/api/notifications`,{method:'DELETE',headers:hdrs(),body:JSON.stringify({ids})})
+    for(const id of ids){
+      const idx=notifs.findIndex(n=>n.id===id)
+      if(idx!==-1){
+        const n=notifs[idx]
+        if(!n.is_read&&appCounts[n.package_name]) appCounts[n.package_name].unread=Math.max(0,appCounts[n.package_name].unread-1)
+        if(appCounts[n.package_name]) appCounts[n.package_name].total=Math.max(0,appCounts[n.package_name].total-1)
+        notifs.splice(idx,1); totalCount=Math.max(0,totalCount-1)
       }
     }
     selectedIds.clear(); selectMode=false
-    document.getElementById('selectBtn').textContent='Select'
-    document.getElementById('markAllBtn').hidden=false
-    document.getElementById('selectBar').hidden=true
-    renderSidebar(); renderFeed()
-  } catch {
-    if (btn) { btn.disabled=false; btn.textContent=`Delete ${ids.length}` }
-  }
+    document.getElementById('feed').classList.remove('sel')
+    document.getElementById('selbar').classList.remove('show')
+    document.getElementById('selectBtn').classList.remove('on')
+    document.body.style.paddingBottom=''
+    renderDrawerApps(); renderFeed()
+  }catch{if(del){del.disabled=false;del.textContent=`Delete ${ids.length}`}}
 }
 
-// Sidebar mobile
-function openSidebar()  { document.getElementById('sidebar').classList.add('open'); document.getElementById('sidebarOverlay').classList.add('open') }
-function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('sidebarOverlay').classList.remove('open') }
-
-document.getElementById('signOutBtn').addEventListener('click', () => location.reload())
-
-// SSE
-let evtSource = null, reconnectTimer = null
-function connectSSE() {
-  const dot=document.getElementById('statusDot'), lbl=document.getElementById('statusLabel')
-  if (evtSource) evtSource.close()
-  evtSource = new EventSource(`${SERVER}/api/notifications/stream?token=${token}`)
-  evtSource.addEventListener('connected', ()=>{ dot.className='status-dot live'; lbl.textContent='Live'; clearTimeout(reconnectTimer) })
-  evtSource.addEventListener('notification', e => {
-    try {
-      const n = JSON.parse(e.data)
-      notifications.unshift(n); totalCount++
-      if (!appCounts[n.package_name]) appCounts[n.package_name]={total:0,unread:0,label:n.app_label}
-      appCounts[n.package_name].total++; if (!n.is_read) appCounts[n.package_name].unread++
-      renderSidebar()
-      if (appFilter && n.package_name !== appFilter) return
-      const mainEl = document.getElementById('main')
-      const banner = document.getElementById('newBanner')
-      if (mainEl.scrollTop > 150 || selectMode) {
-        newPendingCount++
-        banner.hidden = false
-        banner.textContent = `↑ ${newPendingCount} new — tap to show`
-        banner.onclick = () => { newPendingCount=0; banner.hidden=true; loadNotifications(true); mainEl.scrollTop=0 }
+// ── SSE ────────────────────────────────────────────
+let evs=null, reconn=null
+function connectSSE(){
+  const dot=document.getElementById('sdot')
+  if(evs) evs.close()
+  evs=new EventSource(`${SERVER}/api/notifications/stream?token=${token}`)
+  evs.addEventListener('connected',()=>{dot.className='sdot live';clearTimeout(reconn)})
+  evs.addEventListener('notification',e=>{
+    try{
+      const n=JSON.parse(e.data)
+      notifs.unshift(n); totalCount++
+      if(!appCounts[n.package_name]) appCounts[n.package_name]={total:0,unread:0,label:n.app_label}
+      appCounts[n.package_name].total++; if(!n.is_read) appCounts[n.package_name].unread++
+      renderDrawerApps()
+      if(appFilter&&n.package_name!==appFilter) return
+      const feed=document.getElementById('feed'), nb=document.getElementById('nb')
+      const shouldBanner=feed.scrollTop>120||selectMode||(timeFilter!=='all'&&timeFilter!=='1h'&&timeFilter!=='today')
+      if(shouldBanner){
+        newPending++; nb.hidden=false
+        nb.textContent=`↑ ${newPending} new — tap to show`
+        nb.onclick=()=>{newPending=0;nb.hidden=true;setTime('all');load(true);feed.scrollTop=0}
       } else {
-        renderFeed()
+        // Prepend into today group if visible
+        const todayItems=document.querySelector('.ditems[data-i="0"]')
+        if(todayItems){
+          const div=document.createElement('div')
+          div.innerHTML=msgHTML(n)
+          const row=div.firstChild
+          row.classList.add('incoming')
+          todayItems.prepend(row)
+        } else {
+          renderFeed()
+        }
       }
-    } catch {}
+    }catch{}
   })
-  evtSource.onerror = () => { dot.className='status-dot'; lbl.textContent='Reconnecting…'; evtSource.close(); reconnectTimer=setTimeout(connectSSE,5000) }
+  evs.onerror=()=>{dot.className='sdot';evs.close();reconn=setTimeout(connectSSE,5000)}
 }
 
-// Theme
-let theme = 'dark'
-try { theme = localStorage.getItem('nh-theme') || 'dark' } catch {}
-function applyTheme(t) { document.documentElement.setAttribute('data-theme',t); try{ localStorage.setItem('nh-theme',t) }catch{} }
+// ── Theme ──────────────────────────────────────────
+let theme='dark'
+try{theme=localStorage.getItem('nh-theme')||'dark'}catch{}
+function applyTheme(t){
+  document.documentElement.setAttribute('data-theme',t)
+  document.getElementById('themeColorMeta')?.setAttribute('content',t==='dark'?'#161d2a':'#f0f4f9')
+  try{localStorage.setItem('nh-theme',t)}catch{}
+}
 applyTheme(theme)
-document.getElementById('themeBtn').addEventListener('click', ()=>{ theme=theme==='dark'?'light':'dark'; applyTheme(theme) })
+document.getElementById('themeBtn').addEventListener('click',()=>{theme=theme==='dark'?'light':'dark';applyTheme(theme)})
 
-// Refresh relative timestamps every 30s
-setInterval(() => {
-  document.querySelectorAll('[data-id]').forEach(card => {
-    const id = parseInt(card.dataset.id)
-    const n  = notifications.find(x=>x.id===id)
-    if (n) { const el=card.querySelector('.card-time'); if(el) el.textContent=relTime(n.received_at||n.posted_at) }
+// Add spin keyframe for refresh
+const style=document.createElement('style')
+style.textContent='@keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}'
+document.head.appendChild(style)
+
+// Refresh relative times every 60s
+setInterval(()=>{
+  document.querySelectorAll('.btime[data-ts]').forEach(el=>{
+    const id=parseInt(el.closest('[data-id]')?.dataset.id)
+    const n=notifs.find(x=>x.id===id)
+    if(n) el.textContent=relTime(n.received_at||n.posted_at)
   })
-}, 30000)
+},60000)
 
-// Init
-document.getElementById('app').hidden = false
-loadNotifications(true)
+// ── Init ───────────────────────────────────────────
+document.getElementById('app').hidden=false
+load(true)
 connectSSE()
 </script>

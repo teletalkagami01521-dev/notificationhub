@@ -2,23 +2,30 @@ import { Router } from 'express'
 import { db } from '../db/client.js'
 import { addClient, broadcast } from '../sse.js'
 import { sendFcm } from '../fcm.js'
+import { uploadImage, deleteImage } from '../cloudinary.js'
 
 const router = Router()
 
 // POST /api/notifications — called by Android client
 router.post('/', async (req, res) => {
-    const { deviceId, packageName, appLabel, title, textBody, bigText, subText, postedAt, dedupHash } = req.body
+    const { deviceId, packageName, appLabel, title, textBody, bigText, subText, postedAt, dedupHash, imageData } = req.body
 
     if (!deviceId || !packageName || !postedAt || !dedupHash) {
         return res.status(400).json({ error: 'Missing required fields: deviceId, packageName, postedAt, dedupHash' })
     }
 
     try {
+        // Upload image to Cloudinary before INSERT so the URL is included in the SSE broadcast
+        let imageUrl = null
+        if (imageData) {
+            imageUrl = await uploadImage(imageData)
+        }
+
         const result = await db.query(
-            `INSERT INTO notifications (device_id, package_name, app_label, title, text_body, big_text, sub_text, posted_at, dedup_hash)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-             RETURNING id, device_id, package_name, app_label, title, text_body, big_text, sub_text, posted_at, received_at`,
-            [deviceId, packageName, appLabel ?? '', title, textBody, bigText, subText, postedAt, dedupHash]
+            `INSERT INTO notifications (device_id, package_name, app_label, title, text_body, big_text, sub_text, posted_at, dedup_hash, image_url)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+             RETURNING id, device_id, package_name, app_label, title, text_body, big_text, sub_text, posted_at, received_at, image_url`,
+            [deviceId, packageName, appLabel ?? '', title, textBody, bigText, subText, postedAt, dedupHash, imageUrl]
         )
         const row = result.rows[0]
         broadcast('notification', row)
@@ -68,7 +75,7 @@ router.get('/', async (req, res) => {
     try {
         const [dataResult, countResult] = await Promise.all([
             db.query(
-                `SELECT id, device_id, package_name, app_label, title, text_body, sub_text, posted_at, received_at, is_read
+                `SELECT id, device_id, package_name, app_label, title, text_body, sub_text, posted_at, received_at, is_read, image_url
                  FROM notifications
                  WHERE ${where}
                  ORDER BY received_at DESC
@@ -136,7 +143,14 @@ router.delete('/', async (req, res) => {
     const { ids } = req.body ?? {}
     if (!Array.isArray(ids) || ids.length === 0) return res.status(400).json({ error: 'ids array required' })
     try {
+        // Fetch image URLs before deleting so we can clean up Cloudinary
+        const imgResult = await db.query(
+            'SELECT image_url FROM notifications WHERE id = ANY($1::bigint[]) AND image_url IS NOT NULL',
+            [ids]
+        )
         const result = await db.query('DELETE FROM notifications WHERE id = ANY($1::bigint[])', [ids])
+        // Fire-and-forget Cloudinary cleanup
+        imgResult.rows.forEach(row => deleteImage(row.image_url))
         return res.json({ deleted: result.rowCount })
     } catch (err) {
         console.error('DELETE /api/notifications error:', err.message)

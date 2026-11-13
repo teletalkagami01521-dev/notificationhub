@@ -9,7 +9,7 @@ import { startCleanupJob } from './cron.js'
 
 const app = express()
 
-app.use(express.json({ limit: '64kb' }))
+app.use(express.json({ limit: '2mb' }))  // allow base64 image data in notification POST
 
 // CORS — personal dashboard access from any origin
 app.use((req, res, next) => {

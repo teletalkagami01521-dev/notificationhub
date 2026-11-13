@@ -18,9 +18,9 @@ object NotificationSender {
         .readTimeout(15, TimeUnit.SECONDS)
         .build()
 
-    fun sendOrQueue(payload: PendingNotification) {
+    fun sendOrQueue(payload: PendingNotification, imageData: String? = null) {
         CoroutineScope(Dispatchers.IO).launch {
-            val sent = post(payload)
+            val sent = post(payload, imageData)
             if (!sent) {
                 val dao = App.database.dao()
                 if (dao.count() >= 1000) dao.dropOldest(100)
@@ -40,7 +40,7 @@ object NotificationSender {
         }
     }
 
-    private fun post(payload: PendingNotification): Boolean {
+    private fun post(payload: PendingNotification, imageData: String? = null): Boolean {
         return try {
             val json = JSONObject().apply {
                 put("deviceId",    payload.deviceId)
@@ -52,6 +52,7 @@ object NotificationSender {
                 put("subText",     payload.subText)
                 put("postedAt",    payload.postedAt)
                 put("dedupHash",   payload.dedupHash)
+                if (imageData != null) put("imageData", imageData)
             }
             val body = json.toString().toRequestBody("application/json".toMediaType())
             val request = Request.Builder()

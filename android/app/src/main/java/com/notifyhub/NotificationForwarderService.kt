@@ -1,11 +1,14 @@
 package com.notifyhub
 
 import android.app.Notification
+import android.graphics.Bitmap
 import android.provider.Settings
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
+import android.util.Base64
 import com.notifyhub.data.PendingNotification
 import com.notifyhub.utils.DedupCache
+import java.io.ByteArrayOutputStream
 import java.security.MessageDigest
 import java.time.Instant
 
@@ -58,7 +61,22 @@ class NotificationForwarderService : NotificationListenerService() {
             dedupHash   = hash
         )
 
-        NotificationSender.sendOrQueue(payload)
+        val imageData = extractImageData(extras)
+        NotificationSender.sendOrQueue(payload, imageData)
+    }
+
+    private fun extractImageData(extras: android.os.Bundle): String? {
+        return try {
+            val bitmap = extras.getParcelable<Bitmap>(Notification.EXTRA_PICTURE) ?: return null
+            val out = ByteArrayOutputStream()
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 60, out)
+            val bytes = out.toByteArray()
+            // Skip large images (>500 KB compressed) to avoid POST timeouts
+            if (bytes.size > 512_000) return null
+            "data:image/jpeg;base64,${Base64.encodeToString(bytes, Base64.NO_WRAP)}"
+        } catch (_: Exception) {
+            null
+        }
     }
 
     private fun sha256(input: String): String {

@@ -32,6 +32,7 @@ Android Device(s)
 | **Vercel** | Static dashboard hosting | Free |
 | **Firebase** | FCM push notifications | Free |
 | **GitHub** | Source control + Render auto-deploy trigger | Free |
+| **Cloudinary** | Image storage for notification picture previews | Free (25 GB) |
 
 ---
 
@@ -78,8 +79,11 @@ CREATE TABLE notifications (
   received_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
   dedup_hash   VARCHAR(64)  UNIQUE NOT NULL,
   is_read      BOOLEAN      NOT NULL DEFAULT FALSE,
-  is_archived  BOOLEAN      NOT NULL DEFAULT FALSE
+  is_archived  BOOLEAN      NOT NULL DEFAULT FALSE,
+  image_url    TEXT                              -- Cloudinary URL, nullable
 );
+-- Migration (run once if table already exists):
+-- ALTER TABLE notifications ADD COLUMN image_url TEXT;
 ```
 
 ---
@@ -188,15 +192,16 @@ com.miui.daemon, com.miui.securitycenter
 
 ---
 
-## Planned Features
+## Image Preview
 
-### Image Preview (not yet built)
-Capture `Notification.EXTRA_PICTURE` Bitmaps (Instagram DM images, messenger previews):
-1. **Android**: Extract Bitmap from notification extras → compress to JPEG → upload to Cloudinary free API
-2. **Server**: Accept `imageUrl` in POST body → store in new `image_url TEXT` column
-3. **Dashboard**: Render `<img>` in notification card when `image_url` is present
-4. **Cleanup**: Delete from Cloudinary when notification is hard-deleted
-- **Storage**: Cloudinary free tier — 25 GB storage + 25 GB bandwidth/month
+Notifications containing a picture (Instagram DMs, messaging app previews, etc.) are captured and stored as images:
+
+1. **Android**: Extracts `Notification.EXTRA_PICTURE` Bitmap → compresses to JPEG 60% → skips if >500 KB → base64 encodes → sends in POST body as `imageData`
+2. **Server** (`server/src/cloudinary.js`): Uploads base64 data to Cloudinary (signed REST API, no SDK) → stores `secure_url` in `image_url` column
+3. **Dashboard**: Renders `<img class="card-img">` in notification card when `image_url` is present
+4. **Cleanup**: On bulk delete, server fetches `image_url` values and fires Cloudinary `image/destroy` before deleting rows
+- **Storage**: Cloudinary free tier (cloud: `m3z1qda9`) — 25 GB storage + 25 GB bandwidth/month
+- **Note**: Images are best-effort real-time only — offline-queued notifications lose image data (not stored in Room DB)
 
 ---
 

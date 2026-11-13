@@ -21,7 +21,7 @@ class SyncForegroundService : Service() {
         super.onCreate()
         createSilentChannel()
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_transparent)
+            .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle("")
             .setOngoing(true)
             .setSilent(true)
