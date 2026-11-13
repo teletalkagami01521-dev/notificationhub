@@ -38,9 +38,8 @@
             <intent-filter>
                 <action android:name="android.service.notification.NotificationListenerService" />
             </intent-filter>
-            <meta-data
-                android:name="android.service.notification.default_filter_types"
-                android:value="conversations|alerting|silent" />
+            <!-- No default_filter_types: receive ALL notification categories
+                 including OTPs from banking apps that use custom channels -->
         </service>
 
         <!-- SyncForegroundService: keep-alive, started by MainActivity + BootReceiver -->

@@ -25,7 +25,8 @@ class NotificationForwarderService : NotificationListenerService() {
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
         if (sbn.packageName in blocklist) return
-        if (sbn.isOngoing) return  // skip persistent notifications (music, navigation)
+        // isOngoing check removed — banking/OTP apps (bKash, Nagad) mark their
+        // OTP notifications as ongoing; skipping them would miss critical codes
 
         val extras = sbn.notification.extras
         val title = extras.getString(Notification.EXTRA_TITLE)
