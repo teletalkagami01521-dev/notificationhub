@@ -154,70 +154,99 @@ header{
 .dsep.col .dsep-chev{transform:rotate(-90deg)}
 .ditems[hidden]{display:none!important}
 
-/* ── Notification row ─────────────────────── */
+/* ── Message rows (chat bubble layout) ───────── */
 .cr{
-  display:flex;align-items:center;gap:12px;
-  padding:11px max(14px,env(safe-area-inset-right,0px)) 11px max(14px,env(safe-area-inset-left,0px));
-  min-height:68px;transition:background .08s;
-  user-select:none;-webkit-user-select:none;position:relative;
+  display:flex;align-items:flex-end;gap:8px;
+  padding:3px max(14px,env(safe-area-inset-right,0px)) 3px max(14px,env(safe-area-inset-left,0px));
+  position:relative;user-select:none;-webkit-user-select:none;
 }
-.cr:active{background:var(--surf2)}
-@media(hover:hover){.cr:hover{background:var(--surf)}}
+/* Notification: pad right so bubble doesn't reach the edge */
+.cr:not(.typed){padding-right:calc(max(14px,env(safe-area-inset-right,0px)) + 22%)}
+/* Typed: flip direction + pad left */
+.cr.typed{flex-direction:row-reverse;padding-left:calc(max(14px,env(safe-area-inset-left,0px)) + 22%)}
 #feed.sel .cr{cursor:pointer}
-#feed.sel .cr.selected{background:var(--abg)}
-#feed:not(.sel) .cck{display:none!important}
 .cr.incoming{animation:slideIn .22s ease-out}
 .cr.out{animation:slideOut .18s ease-in forwards;overflow:hidden;pointer-events:none}
-@keyframes slideIn{from{opacity:0;transform:translateX(-14px)}to{opacity:1;transform:none}}
-@keyframes slideOut{to{opacity:0;transform:translateX(28px);max-height:0;padding:0}}
+@keyframes slideIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes slideOut{to{opacity:0;max-height:0;padding:0}}
 @media(prefers-reduced-motion:reduce){.cr.incoming,.cr.out{animation:none}}
 
-/* ── Avatar ──────────────────────────────── */
-.cav{width:52px;height:52px;border-radius:50%;position:relative;flex-shrink:0}
+/* ── Notification avatar (left, 38px) ─────────── */
+.cav{width:38px;height:38px;border-radius:50%;position:relative;flex-shrink:0}
 .cav-in{
-  width:52px;height:52px;border-radius:50%;overflow:hidden;
+  width:38px;height:38px;border-radius:50%;overflow:hidden;
   position:relative;display:grid;place-items:center;
 }
 .cai{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .22s;border-radius:50%}
 .cav-in.iv .cai{opacity:1}.cav-in.iv .cal{opacity:0}
-.cal{font-size:19px;font-weight:700;color:#fff;position:relative;z-index:1;pointer-events:none;transition:opacity .2s}
-/* Notification image preview */
-.cimg{display:block;margin-top:7px;max-width:220px;border-radius:10px;overflow:hidden;
-  border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03)}
-.cimg img{display:block;width:100%;height:auto;max-height:220px;object-fit:cover}
-.udot{position:absolute;bottom:1px;right:1px;width:14px;height:14px;border-radius:50%;
-  background:var(--accent);border:2.5px solid var(--bg);display:none;z-index:3}
+.cal{font-size:15px;font-weight:700;color:#fff;position:relative;z-index:1;pointer-events:none;transition:opacity .2s}
+.udot{position:absolute;bottom:0;right:0;width:12px;height:12px;border-radius:50%;
+  background:var(--accent);border:2px solid var(--bg);display:none;z-index:3}
 .cr.unread .udot{display:block}
-.cck{position:absolute;inset:0;border-radius:50%;background:var(--accent);display:grid;
-  place-items:center;z-index:4;opacity:0;transition:opacity .12s}
+.cck{position:absolute;inset:0;width:38px;height:38px;border-radius:50%;background:var(--accent);
+  display:grid;place-items:center;z-index:4;opacity:0;transition:opacity .12s}
+#feed:not(.sel) .cck{display:none!important}
 .cr.selected .cck{opacity:1}
 
-/* ── Row content ─────────────────────────── */
-.cmeta{flex:1;min-width:0}
-.ctop{display:flex;align-items:center;gap:5px;margin-bottom:3px}
-.cname{font-size:14px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
-.cr.unread .cname{font-weight:700}
-.ctime{font-size:12px;color:var(--muted);white-space:nowrap;flex-shrink:0;font-variant-numeric:tabular-nums}
-.cr.unread .ctime{color:var(--accent);font-weight:600}
-.cbot{display:flex;align-items:center;gap:5px}
-.cmsg{font-size:13px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;line-height:1.4}
-.cr.unread .cmsg{color:var(--fg);font-weight:500}
-.cudot{width:8px;height:8px;border-radius:50%;background:var(--accent);flex-shrink:0;display:none}
-.cr.unread .cudot{display:block}
-/* Typed-text rows */
-.ttag{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;
-  color:var(--accent);background:var(--abg);padding:1px 5px;border-radius:5px;margin-left:6px;vertical-align:middle}
-.cr.typed .cmsg{font-style:italic}
-.cr.typed .cav-in{box-shadow:inset 0 0 0 2px var(--abg)}
-/* Quick actions */
-.cacts{display:flex;gap:2px;flex-shrink:0;opacity:0;transition:opacity .12s}
+/* ── Typed mini-icon (right, 28px) ───────────── */
+.tav{
+  width:28px;height:28px;border-radius:50%;flex-shrink:0;
+  position:relative;overflow:hidden;display:grid;place-items:center;
+}
+.tav .cai{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;border-radius:50%;transition:opacity .22s}
+.tav.iv .cai{opacity:1}.tav.iv .tcal{opacity:0}
+.tcal{font-size:11px;font-weight:700;color:#fff;position:relative;z-index:1;transition:opacity .2s}
+
+/* ── Bubble ──────────────────────────────────── */
+.bubble{
+  flex:1;min-width:0;padding:9px 12px;
+  border-radius:14px;position:relative;overflow:hidden;
+}
+/* Notification bubble: surface card, left-corner square */
+.cr:not(.typed) .bubble{
+  background:var(--surf);border:1px solid var(--bord);
+  border-radius:2px 14px 14px 14px;
+}
+.cr:not(.typed):active .bubble{background:var(--surf2)}
+@media(hover:hover){.cr:not(.typed):hover .bubble{background:var(--surf2)}}
+/* Unread: accent left border */
+.cr.unread .bubble{border-left:2.5px solid var(--accent)}
+/* Selected notification */
+#feed.sel .cr.selected:not(.typed) .bubble{background:var(--abg);border-color:var(--accent)}
+/* Typed bubble: accent filled, right-corner square */
+.cr.typed .bubble{
+  background:var(--accent);color:#fff;
+  border-radius:14px 2px 14px 14px;
+}
+.cr.typed:active .bubble{filter:brightness(.88)}
+@media(hover:hover){.cr.typed:hover .bubble{filter:brightness(.88)}}
+#feed.sel .cr.typed.selected .bubble{filter:brightness(.8)}
+
+/* Bubble header row */
+.bh{display:flex;align-items:center;gap:5px;margin-bottom:4px}
+.bname{font-size:11px;font-weight:700;color:var(--accent);letter-spacing:.01em}
+.cr.typed .bname{color:rgba(255,255,255,.75)}
+.btime{font-size:11px;color:var(--muted);margin-left:auto;font-variant-numeric:tabular-nums;white-space:nowrap;flex-shrink:0}
+.cr.typed .btime{color:rgba(255,255,255,.65)}
+.cr.unread .btime{color:var(--accent);font-weight:600}
+/* Bubble body text */
+.bmsg{font-size:14px;line-height:1.5;word-break:break-word;color:var(--muted)}
+.cr.unread .bmsg{color:var(--fg);font-weight:500}
+.cr.typed .bmsg{color:#fff;font-style:italic}
+/* Notification image */
+.cimg{margin-top:8px;border-radius:8px;overflow:hidden;border:1px solid var(--bord)}
+.cimg img{display:block;width:100%;height:auto;max-height:200px;object-fit:cover}
+
+/* ── Quick actions (column, beside bubble) ─────── */
+.cacts{display:flex;flex-direction:column;gap:1px;flex-shrink:0;opacity:0;
+  transition:opacity .12s;padding-bottom:1px}
 @media(hover:hover){.cr:hover .cacts{opacity:1}}
 @media(hover:none){.cacts{opacity:1}}
 #feed.sel .cacts{display:none!important}
-.ca{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;
-  color:var(--muted);transition:background .1s,color .1s;touch-action:manipulation}
+.ca{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;
+  color:var(--muted);transition:background .1s,color .1s;touch-action:manipulation;flex-shrink:0}
 .ca:active{background:var(--surf2)}
-@media(hover:hover){.ca:hover{background:var(--surf2);color:var(--fg)} .ca.del:hover{color:var(--danger)}}
+@media(hover:hover){.ca:hover{background:var(--surf2);color:var(--fg)}.ca.del:hover{color:var(--danger)}}
 
 /* ── Skeleton ──────────────────────────────── */
 .skelwrap{padding:6px 0}
@@ -696,36 +725,51 @@ function toggleDay(idx){
 }
 
 // ── Build row ─────────────────────────────────
-const CHK=`<svg width="15" height="15" viewBox="0 0 16 16" fill="white"><path d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z"/></svg>`
+const CHK=`<svg width="14" height="14" viewBox="0 0 16 16" fill="white"><path d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z"/></svg>`
+const ICO_DEL=`<svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M3.72 3.72a.75.75 0 011.06 0L8 6.94l3.22-3.22a.75.75 0 111.06 1.06L9.06 8l3.22 3.22a.75.75 0 11-1.06 1.06L8 9.06l-3.22 3.22a.75.75 0 01-1.06-1.06L6.94 8 3.72 4.78a.75.75 0 010-1.06z"/></svg>`
+const ICO_TRASH=`<svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M6.5 1a.5.5 0 00-.5.5V2H3.5a.5.5 0 000 1h.6l.7 10.2a1 1 0 001 .8h4.4a1 1 0 001-.8L12.9 3h.6a.5.5 0 000-1H10V1.5a.5.5 0 00-.5-.5h-3zM5.13 3h5.74l-.68 9.7a.1.1 0 01-.1.08H5.91a.1.1 0 01-.1-.08L5.13 3z"/></svg>`
+const ICO_READ=`<svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z"/></svg>`
 
 function buildRow(n){
   const sel=selectedIds.has(n._uid)
   const isText=n._kind==='t'
   const unread=!isText&&!n.is_read
   const app=esc(n.app_label||n.package_name.split('.').pop())
-  const preview=isText
-    ? esc(n.text_body||'')
-    : esc(n.title&&n.text_body?`${n.title}: ${n.text_body}`:(n.title||n.text_body||'No preview'))
   const srcs=iconSrcs(n.package_name),color=appColor(n.package_name),letter=appInit(n.app_label||n.package_name)
   const enc=srcs.length?` data-srcs="${esc(JSON.stringify(srcs))}" data-si="0"`:''
   const img=srcs.length?`<img class="cai" src="${esc(srcs[0])}" loading="lazy" onload="this.parentElement.classList.add('iv')" onerror="tryNextIcon(this.parentElement)" alt="">`:''
-  const tag=isText?'<span class="ttag">typed</span>':''
-  const body=isText?`"${preview}"`:preview
-  const thumb=!isText&&n.image_url?`<a class="cimg" href="${esc(imgUrl(n.image_url))}" target="_blank" rel="noopener" onclick="event.stopPropagation()"><img src="${esc(imgUrl(n.image_url))}" loading="lazy" alt=""></a>`:''
-  const delFn=isText?`doDeleteText('${n._uid}')`:`doArchive('${n._uid}')`
-  return`<div class="cr${unread?' unread':''}${sel?' selected':''}${isText?' typed':''}" data-id="${n._uid}" onclick="onRowClick('${n._uid}')">
-    <div class="cav"><div class="cav-in" style="background:${color}"${enc}>${img}<span class="cal">${letter}</span></div><div class="udot"></div><div class="cck">${CHK}</div></div>
-    <div class="cmeta">
-      <div class="ctop"><span class="cname">${app}${tag}</span><span class="ctime" data-ts="${esc(n.received_at||n.posted_at)}">${relTime(n.received_at||n.posted_at)}</span></div>
-      <div class="cbot"><span class="cmsg">${body}</span><span class="cudot"></span></div>
-      ${thumb}
-    </div>
-    <div class="cacts">
-      ${unread?`<button class="ca nosel" onclick="event.stopPropagation();doRead('${n._uid}',this)" title="Read"><svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z"/></svg></button>`:''}
-      <button class="ca del nosel" onclick="event.stopPropagation();${delFn}" title="${isText?'Delete':'Archive'}"><svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M3.72 3.72a.75.75 0 011.06 0L8 6.94l3.22-3.22a.75.75 0 111.06 1.06L9.06 8l3.22 3.22a.75.75 0 11-1.06 1.06L8 9.06l-3.22 3.22a.75.75 0 01-1.06-1.06L6.94 8 3.72 4.78a.75.75 0 010-1.06z"/></svg></button>
-      ${!isText?`<button class="ca del nosel" onclick="event.stopPropagation();doDeletePerm('${n._uid}')" title="Delete permanently"><svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M6.5 1a.5.5 0 00-.5.5V2H3.5a.5.5 0 000 1h.6l.7 10.2a1 1 0 001 .8h4.4a1 1 0 001-.8L12.9 3h.6a.5.5 0 000-1H10V1.5a.5.5 0 00-.5-.5h-3zM5.13 3h5.74l-.68 9.7a.1.1 0 01-.1.08H5.91a.1.1 0 01-.1-.08L5.13 3z"/></svg></button>`:''}
-    </div>
-  </div>`
+  const ts=esc(n.received_at||n.captured_at||n.posted_at)
+
+  if(isText){
+    // ── Typed text: right-side bubble ──────────────
+    return`<div class="cr typed${sel?' selected':''}" data-id="${n._uid}" onclick="onRowClick('${n._uid}')">
+      <div class="cacts">
+        <button class="ca del nosel" onclick="event.stopPropagation();doDeleteText('${n._uid}')" title="Delete">${ICO_TRASH}</button>
+      </div>
+      <div class="bubble">
+        <div class="bh"><span class="bname">${app}</span><span class="btime" data-ts="${ts}">${relTime(n.received_at||n.captured_at||n.posted_at)}</span></div>
+        <div class="bmsg">${esc(n.text_body||'')}</div>
+      </div>
+      <div class="tav" style="background:${color}"${enc}>${img}<span class="tcal">${letter}</span></div>
+    </div>`
+  } else {
+    // ── Notification: left-side bubble ─────────────
+    const preview=esc(n.title&&n.text_body?`${n.title}: ${n.text_body}`:(n.title||n.text_body||'No preview'))
+    const thumb=n.image_url?`<a class="cimg" href="${esc(imgUrl(n.image_url))}" target="_blank" rel="noopener" onclick="event.stopPropagation()"><img src="${esc(imgUrl(n.image_url))}" loading="lazy" alt=""></a>`:''
+    return`<div class="cr${unread?' unread':''}${sel?' selected':''}" data-id="${n._uid}" onclick="onRowClick('${n._uid}')">
+      <div class="cav"><div class="cav-in" style="background:${color}"${enc}>${img}<span class="cal">${letter}</span></div><div class="udot"></div><div class="cck">${CHK}</div></div>
+      <div class="bubble">
+        <div class="bh"><span class="bname">${app}</span><span class="btime" data-ts="${ts}">${relTime(n.received_at||n.posted_at)}</span></div>
+        <div class="bmsg">${preview}</div>
+        ${thumb}
+      </div>
+      <div class="cacts">
+        ${unread?`<button class="ca nosel" onclick="event.stopPropagation();doRead('${n._uid}',this)" title="Mark read">${ICO_READ}</button>`:''}
+        <button class="ca del nosel" onclick="event.stopPropagation();doArchive('${n._uid}')" title="Archive">${ICO_DEL}</button>
+        <button class="ca del nosel" onclick="event.stopPropagation();doDeletePerm('${n._uid}')" title="Delete">${ICO_TRASH}</button>
+      </div>
+    </div>`
+  }
 }
 
 // ── Render feed ───────────────────────────────
@@ -910,7 +954,7 @@ document.getElementById('themeBtn').addEventListener('click',()=>{theme=theme===
 
 const st=document.createElement('style');st.textContent='@keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}';document.head.appendChild(st)
 
-setInterval(()=>{document.querySelectorAll('.ctime[data-ts]').forEach(el=>{const uid=el.closest('[data-id]')?.dataset.id;const n=notifs.find(x=>x._uid===uid);if(n)el.textContent=relTime(n.received_at||n.posted_at)})},60000)
+setInterval(()=>{document.querySelectorAll('.btime[data-ts]').forEach(el=>{const uid=el.closest('[data-id]')?.dataset.id;const n=notifs.find(x=>x._uid===uid);if(n)el.textContent=relTime(n.received_at||n.captured_at||n.posted_at)})},60000)
 
 document.getElementById('app').hidden=false
 load(true);connectSSE()
