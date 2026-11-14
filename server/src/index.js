@@ -5,6 +5,7 @@ import { fileURLToPath } from 'url'
 import { auth } from './middleware/auth.js'
 import authRouter from './routes/auth.js'
 import notificationsRouter from './routes/notifications.js'
+import typedTextRouter from './routes/typedText.js'
 import { startCleanupJob } from './cron.js'
 
 const app = express()
@@ -34,6 +35,7 @@ app.use('/api/auth', authRouter)
 // All other /api/* routes require authentication
 app.use('/api', auth)
 app.use('/api/notifications', notificationsRouter)
+app.use('/api/typed-text', typedTextRouter)
 
 // Auto-delete disabled — use manual delete from dashboard
 // startCleanupJob()

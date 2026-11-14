@@ -23,7 +23,7 @@ class SyncForegroundService : Service() {
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle("NotifyHub")
-            .setContentText("Forwarding notifications in background")
+            .setContentText("Slide to close this.")
             .setSilent(true)
             .setPriority(NotificationCompat.PRIORITY_MIN)
             .build()

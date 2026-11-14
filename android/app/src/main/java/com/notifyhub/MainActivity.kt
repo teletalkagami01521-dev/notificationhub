@@ -42,6 +42,10 @@ class MainActivity : AppCompatActivity() {
         startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
     }
 
+    fun openAccessibilitySettings(@Suppress("UNUSED_PARAMETER") view: View?) {
+        startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+    }
+
     fun requestBatteryExemption(@Suppress("UNUSED_PARAMETER") view: View?) {
         val pm = getSystemService(PowerManager::class.java)
         if (!pm.isIgnoringBatteryOptimizations(packageName)) {
