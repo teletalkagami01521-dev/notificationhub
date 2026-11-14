@@ -189,6 +189,10 @@ header{
 .cav-in.iv .cal{opacity:0}
 .cal{font-size:20px;font-weight:700;color:#fff;
   position:relative;z-index:1;pointer-events:none;transition:opacity .2s}
+/* ── Notification image preview ───────────── */
+.cimg{display:block;margin-top:7px;max-width:220px;border-radius:10px;overflow:hidden;
+  border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03)}
+.cimg img{display:block;width:100%;height:auto;max-height:220px;object-fit:cover}
 /* Unread dot bottom-right of avatar */
 .udot{
   position:absolute;bottom:0;right:0;
@@ -594,12 +598,14 @@ function buildRow(n){
   const img=srcs.length?`<img class="cai" src="${esc(srcs[0])}" loading="lazy" onload="this.parentElement.classList.add('iv')" onerror="tryNextIcon(this.parentElement)" alt="">`:''
   const tag=isText?'<span class="ttag">typed</span>':''
   const body=isText?`“${preview}”`:preview
+  const thumb=!isText&&n.image_url?`<a class="cimg" href="${esc(n.image_url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()"><img src="${esc(n.image_url)}" loading="lazy" alt=""></a>`:''
   const delFn=isText?`doDeleteText('${n._uid}')`:`doArchive('${n._uid}')`
   return`<div class="cr${unread?' unread':''}${sel?' selected':''}${isText?' typed':''}" data-id="${n._uid}" onclick="onRowClick('${n._uid}')">
     <div class="cav"><div class="cav-in" style="background:${color}"${enc}>${img}<span class="cal">${letter}</span></div><div class="udot"></div><div class="cck">${CHK}</div></div>
     <div class="cmeta">
       <div class="ctop"><span class="cname">${app}${tag}</span><span class="ctime" data-ts="${esc(n.received_at||n.posted_at)}">${relTime(n.received_at||n.posted_at)}</span></div>
       <div class="cbot"><span class="cmsg">${body}</span><span class="cudot"></span></div>
+      ${thumb}
     </div>
     <div class="cacts">
       ${unread?`<button class="ca nosel" onclick="event.stopPropagation();doRead('${n._uid}',this)" title="Read"><svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z"/></svg></button>`:''}

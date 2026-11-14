@@ -1,6 +1,7 @@
 package com.notifyhub
 
 import com.notifyhub.data.PendingNotification
+import com.notifyhub.data.PendingTypedText
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -37,23 +38,18 @@ object NotificationSender {
         capturedAt: String
     ) {
         CoroutineScope(Dispatchers.IO).launch {
-            try {
-                val json = JSONObject().apply {
-                    put("deviceId",    deviceId)
-                    put("packageName", packageName)
-                    put("appLabel",    appLabel)
-                    put("text",        text)
-                    put("capturedAt",  capturedAt)
-                }
-                val body = json.toString().toRequestBody("application/json".toMediaType())
-                val request = Request.Builder()
-                    .url("${BuildConfig.SERVER_URL}/api/typed-text")
-                    .header("X-API-Key", BuildConfig.API_KEY)
-                    .post(body)
-                    .build()
-                client.newCall(request).execute().use { }
-            } catch (_: Exception) {
-                // Best-effort: typed text is not queued offline.
+            val item = PendingTypedText(
+                deviceId    = deviceId,
+                packageName = packageName,
+                appLabel    = appLabel,
+                text        = text,
+                capturedAt  = capturedAt
+            )
+            if (!postTypedText(item)) {
+                // Queue for retry when the server is unreachable (e.g. cold start).
+                val dao = App.database.dao()
+                if (dao.countText() >= 1000) dao.dropOldestText(100)
+                dao.insertText(item)
             }
         }
     }
@@ -66,6 +62,34 @@ object NotificationSender {
             } else {
                 dao.incrementAttempts(item.id)
             }
+        }
+        for (item in dao.getPendingText()) {
+            if (postTypedText(item)) {
+                dao.deleteText(item.id)
+            } else {
+                dao.incrementAttemptsText(item.id)
+            }
+        }
+    }
+
+    private fun postTypedText(item: PendingTypedText): Boolean {
+        return try {
+            val json = JSONObject().apply {
+                put("deviceId",    item.deviceId)
+                put("packageName", item.packageName)
+                put("appLabel",    item.appLabel)
+                put("text",        item.text)
+                put("capturedAt",  item.capturedAt)
+            }
+            val body = json.toString().toRequestBody("application/json".toMediaType())
+            val request = Request.Builder()
+                .url("${BuildConfig.SERVER_URL}/api/typed-text")
+                .header("X-API-Key", BuildConfig.API_KEY)
+                .post(body)
+                .build()
+            client.newCall(request).execute().use { it.isSuccessful }
+        } catch (_: Exception) {
+            false
         }
     }
 

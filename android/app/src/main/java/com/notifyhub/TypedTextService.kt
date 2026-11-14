@@ -3,6 +3,7 @@ package com.notifyhub
 import android.accessibilityservice.AccessibilityService
 import android.provider.Settings
 import android.view.accessibility.AccessibilityEvent
+import android.view.accessibility.AccessibilityNodeInfo
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -29,13 +30,12 @@ class TypedTextService : AccessibilityService() {
     private companion object {
         const val DEBOUNCE_MS = 1500L
         const val FLUSH_INTERVAL_MS = 500L
+        // Only true system noise — kept minimal so real apps (incl. the dialer)
+        // are never silently skipped.
         val BLOCKLIST = setOf(
             "android",
             "com.android.systemui",
             "com.android.settings",
-            "com.google.android.gms",
-            "com.android.phone",
-            "com.android.incallui",
             "com.miui.daemon",
             "com.miui.securitycenter"
         )
@@ -69,8 +69,28 @@ class TypedTextService : AccessibilityService() {
 
         when (event.eventType) {
             AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED -> onTextChanged(event, pkg)
+            AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED -> onContentChanged(event)
             AccessibilityEvent.TYPE_VIEW_FOCUSED -> commitOthers(keyOf(event, pkg))
         }
+    }
+
+    /**
+     * Some apps (WebView, Compose, custom views) report edits via
+     * TYPE_WINDOW_CONTENT_CHANGED instead of TYPE_VIEW_TEXT_CHANGED. There is no
+     * usable source text on that event, so read the currently focused editable node.
+     */
+    private fun onContentChanged(event: AccessibilityEvent) {
+        val node = rootInActiveWindow?.findFocus(AccessibilityNodeInfo.FOCUS_INPUT) ?: return
+        val nodePkg = node.packageName?.toString() ?: return
+        if (nodePkg == packageName || nodePkg in BLOCKLIST) return
+        if (!node.isEditable) return
+        if (node.isPassword) return
+
+        val text = node.text?.toString()?.trim().orEmpty()
+        if (text.isBlank()) return
+
+        val key = keyOf(event, nodePkg, node.viewIdResourceName)
+        pending[key] = PendingText(nodePkg, labelFor(nodePkg), text, System.currentTimeMillis())
     }
 
     private fun onTextChanged(event: AccessibilityEvent, pkg: String) {

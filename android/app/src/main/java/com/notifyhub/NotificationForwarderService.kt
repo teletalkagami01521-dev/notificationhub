@@ -14,14 +14,18 @@ import java.time.Instant
 
 class NotificationForwarderService : NotificationListenerService() {
 
-    // System packages that generate high-frequency noise — skip them
+    private companion object {
+        // Window for server-side dedup: identical content repeats are allowed once
+        // this bucket changes (1 minute), so recurring notifications aren't blocked.
+        const val DEDUP_BUCKET_MS = 60_000L
+    }
+
+    // Only true system noise. Call/Play-Services packages are intentionally NOT
+    // blocked so missed-call and other real notifications still arrive.
     private val blocklist = setOf(
         "android",
         "com.android.systemui",
         "com.android.settings",
-        "com.google.android.gms",
-        "com.android.phone",
-        "com.android.incallui",
         "com.miui.daemon",
         "com.miui.securitycenter"
     )
@@ -34,10 +38,16 @@ class NotificationForwarderService : NotificationListenerService() {
         val extras = sbn.notification.extras
         val title = extras.getString(Notification.EXTRA_TITLE)
         val text  = extras.getCharSequence(Notification.EXTRA_TEXT)?.toString()
+        val imageData = extractImageData(extras)
 
-        if (title.isNullOrBlank() && text.isNullOrBlank()) return
+        // Keep image-only notifications (no title/text but a picture).
+        if (title.isNullOrBlank() && text.isNullOrBlank() && imageData == null) return
 
-        val hash = sha256("${sbn.packageName}:${title.orEmpty()}:${text.orEmpty()}")
+        // Time-bucketed dedup hash: identical content within the same minute is
+        // suppressed, but the same content at a later time is allowed through
+        // (the DB unique constraint would otherwise block it forever).
+        val bucket = sbn.postTime / DEDUP_BUCKET_MS
+        val hash = sha256("${sbn.packageName}:${title.orEmpty()}:${text.orEmpty()}:${imageData?.hashCode() ?: 0}:$bucket")
         if (DedupCache.isDuplicate(hash)) return
 
         val appLabel = try {
@@ -61,7 +71,6 @@ class NotificationForwarderService : NotificationListenerService() {
             dedupHash   = hash
         )
 
-        val imageData = extractImageData(extras)
         NotificationSender.sendOrQueue(payload, imageData)
     }
 

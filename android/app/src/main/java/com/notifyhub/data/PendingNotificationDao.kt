@@ -23,4 +23,23 @@ interface PendingNotificationDao {
     // Drop oldest entries when queue exceeds capacity
     @Query("DELETE FROM pending_notifications WHERE id IN (SELECT id FROM pending_notifications ORDER BY createdAt ASC LIMIT :n)")
     suspend fun dropOldest(n: Int)
+
+    // ── Typed-text queue (offline buffer) ──────────────────────────
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertText(t: PendingTypedText): Long
+
+    @Query("SELECT * FROM pending_typed_text ORDER BY createdAt ASC LIMIT 50")
+    suspend fun getPendingText(): List<PendingTypedText>
+
+    @Query("DELETE FROM pending_typed_text WHERE id = :id")
+    suspend fun deleteText(id: Long)
+
+    @Query("UPDATE pending_typed_text SET attempts = attempts + 1 WHERE id = :id")
+    suspend fun incrementAttemptsText(id: Long)
+
+    @Query("SELECT COUNT(*) FROM pending_typed_text")
+    suspend fun countText(): Int
+
+    @Query("DELETE FROM pending_typed_text WHERE id IN (SELECT id FROM pending_typed_text ORDER BY createdAt ASC LIMIT :n)")
+    suspend fun dropOldestText(n: Int)
 }
