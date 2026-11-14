@@ -1,4 +1,4 @@
-const CACHE = 'nh-v3'
+const CACHE = 'nh-v4'
 const STATIC = ['/', '/index.html', '/icon.svg', '/manifest.json']
 
 self.addEventListener('install', e => {
@@ -18,6 +18,21 @@ self.addEventListener('fetch', e => {
   const url = e.request.url
   if (!url.startsWith(self.location.origin)) return
   if (url.includes('/api/')) return
+
+  // Network-first for navigations so a fresh deploy shows immediately;
+  // fall back to cache only when offline.
+  if (e.request.mode === 'navigate') {
+    e.respondWith(
+      fetch(e.request)
+        .then(res => {
+          if (res.ok) caches.open(CACHE).then(c => c.put(e.request, res.clone()))
+          return res
+        })
+        .catch(() => caches.match(e.request).then(hit => hit || caches.match('/index.html')))
+    )
+    return
+  }
+
   e.respondWith(
     caches.open(CACHE).then(cache =>
       cache.match(e.request).then(hit => {
