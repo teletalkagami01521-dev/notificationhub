@@ -1,7 +1,7 @@
 <title>NotifyHub</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="claude:viewport-fit-sides" content="cover">
-<meta name="theme-color" id="themeColorMeta" content="#242526">
+<meta name="theme-color" id="themeColorMeta" content="#111111">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="NotifyHub">
@@ -10,61 +10,66 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
 
 <style>
-/* ── Tokens ─────────────────────────────── */
+/* ── Tokens ──────────────────────────────── */
 :root{
-  --bg:#fff;--surf:#f0f2f5;--surf2:#e4e6eb;--bord:#e4e6eb;
-  --fg:#050505;--muted:#65676b;--accent:#0084ff;--abg:rgba(0,132,255,.1);
-  --danger:#fa3e3e;--live:#31a24c;--warn:#f59e0b;
+  --bg:#111;--surf:#1c1c1c;--surf2:#272727;--bord:#2c2c2c;
+  --fg:#f0f0f0;--muted:#888;--accent:#3b82f6;--abg:rgba(59,130,246,.12);
+  --danger:#ef4444;--live:#22c55e;--warn:#f59e0b;
+  color-scheme:dark;
+}
+@media(prefers-color-scheme:light){:root:not([data-theme="dark"]){
+  --bg:#f5f5f7;--surf:#fff;--surf2:#ebebeb;--bord:#e0e0e0;
+  --fg:#111;--muted:#666;--accent:#2563eb;--abg:rgba(37,99,235,.1);
+  color-scheme:light;
+}}
+:root[data-theme="light"]{
+  --bg:#f5f5f7;--surf:#fff;--surf2:#ebebeb;--bord:#e0e0e0;
+  --fg:#111;--muted:#666;--accent:#2563eb;--abg:rgba(37,99,235,.1);
   color-scheme:light;
 }
-@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){
-  --bg:#1c1e21;--surf:#242526;--surf2:#3a3b3c;--bord:#3a3b3c;
-  --fg:#e4e6eb;--muted:#b0b3b8;--accent:#0084ff;--abg:rgba(0,132,255,.15);
-  --danger:#fa3e3e;--live:#31a24c;--warn:#f59e0b;color-scheme:dark;
-}}
-:root[data-theme="dark"]{
-  --bg:#1c1e21;--surf:#242526;--surf2:#3a3b3c;--bord:#3a3b3c;
-  --fg:#e4e6eb;--muted:#b0b3b8;--accent:#0084ff;--abg:rgba(0,132,255,.15);
-  --danger:#fa3e3e;--live:#31a24c;color-scheme:dark;
-}
-:root[data-theme="light"]{color-scheme:light}
+:root[data-theme="dark"]{color-scheme:dark}
 
-/* ── Reset / Native feel ─────────────────── */
+/* ── Reset ───────────────────────────────── */
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html{height:100%;height:100dvh;-webkit-text-size-adjust:100%;text-size-adjust:100%}
 body{
-  height:100%;font-family:'Inter',system-ui,sans-serif;font-size:14px;
+  height:100%;font-family:'Inter',system-ui,sans-serif;font-size:15px;
   background:var(--bg);color:var(--fg);-webkit-font-smoothing:antialiased;
   overflow:hidden;overscroll-behavior:none;
   -webkit-tap-highlight-color:transparent;-webkit-touch-callout:none;
 }
-button{
-  font-family:inherit;cursor:pointer;border:none;background:none;
-  touch-action:manipulation;-webkit-tap-highlight-color:transparent;
-}
+button{font-family:inherit;cursor:pointer;border:none;background:none;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 img{display:block}
 *:focus{outline:none}
-*:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+*:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
 .nosel{user-select:none;-webkit-user-select:none}
 
 /* ── App shell ───────────────────────────── */
 .shell{display:flex;flex-direction:column;height:100%;position:relative}
+@media(min-width:1200px){
+  .shell{max-width:1200px;margin:0 auto;border-left:1px solid var(--bord);border-right:1px solid var(--bord)}
+}
 
 /* ── Header ──────────────────────────────── */
+/* Band that paints behind the status bar */
+body::before{
+  content:'';position:fixed;inset:0 0 auto;
+  height:env(safe-area-inset-top,0px);background:var(--bg);z-index:50;
+}
 header{
   padding-left:max(14px,env(safe-area-inset-left,0px));
   padding-right:max(14px,env(safe-area-inset-right,0px));
   padding-top:env(safe-area-inset-top,0px);
-  min-height:calc(52px + env(safe-area-inset-top,0px));
+  min-height:calc(56px + env(safe-area-inset-top,0px));
   display:flex;align-items:center;gap:6px;
   background:var(--bg);border-bottom:1px solid var(--bord);
-  flex-shrink:0;position:sticky;top:0;z-index:20;
+  flex-shrink:0;position:sticky;top:0;z-index:40;
 }
-.htitle{font-size:20px;font-weight:800;flex:1;letter-spacing:-.4px}
-.sdot{width:7px;height:7px;border-radius:50%;background:var(--warn);flex-shrink:0;transition:background .4s}
+.htitle{font-size:21px;font-weight:800;flex:1;letter-spacing:-.5px}
+.sdot{width:8px;height:8px;border-radius:50%;background:var(--warn);flex-shrink:0;transition:background .4s}
 .sdot.live{background:var(--live)}
 .hbtns{display:flex;gap:1px}
-.ib{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;
+.ib{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;
   color:var(--muted);transition:background .1s,color .1s;flex-shrink:0}
 .ib:active{background:var(--surf2)}
 @media(hover:hover){.ib:hover{background:var(--surf2)}}
@@ -75,43 +80,31 @@ header{
   padding:8px max(14px,env(safe-area-inset-right,0px)) 8px max(14px,env(safe-area-inset-left,0px));
   background:var(--bg);border-bottom:1px solid var(--bord);flex-shrink:0;
 }
-.sbar[hidden]{display:none}
+.sbar[hidden]{display:none!important}
 .swrap{position:relative}
 .swrap svg{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none}
-#si{width:100%;padding:9px 12px 9px 34px;background:var(--surf);border:none;
-  border-radius:50px;color:var(--fg);font-size:14px;font-family:inherit;outline:none}
+#si{width:100%;padding:10px 12px 10px 34px;background:var(--surf);border:none;
+  border-radius:50px;color:var(--fg);font-size:15px;font-family:inherit;outline:none}
 #si::placeholder{color:var(--muted)}
-
-/* ── Mobile chips (hidden on tablet) ────── */
-.chips{overflow-x:auto;scrollbar-width:none;background:var(--bg);flex-shrink:0;
-  border-bottom:1px solid var(--bord)}
-.chips::-webkit-scrollbar{display:none}
-.chips-row{display:flex;gap:6px;
-  padding:8px max(14px,env(safe-area-inset-right,0px)) 8px max(14px,env(safe-area-inset-left,0px));
-  width:max-content;min-width:100%}
-.chip{padding:6px 13px;border-radius:50px;font-size:13px;font-weight:500;
-  background:var(--surf);color:var(--muted);white-space:nowrap;
-  user-select:none;-webkit-user-select:none;transition:background .1s,color .1s}
-.chip.on{background:var(--accent);color:#fff;font-weight:600}
 
 /* ── New banner ──────────────────────────── */
 .nb{background:var(--accent);color:#fff;font-size:13px;font-weight:600;
   text-align:center;padding:9px;cursor:pointer;flex-shrink:0}
-.nb[hidden]{display:none}
+.nb[hidden]{display:none!important}
 
-/* ── Body (feed + tablet sidebar) ───────── */
+/* ── Body ────────────────────────────────── */
 .body{flex:1;display:flex;min-height:0;overflow:hidden}
 
-/* ── Sidebar (tablet only) ───────────────── */
+/* ── Sidebar (tablet ≥ 768px) ────────────── */
 #sidebar{
   display:none;width:260px;flex-shrink:0;
   border-right:1px solid var(--bord);flex-direction:column;
   overflow-y:auto;-webkit-overflow-scrolling:touch;
   padding-bottom:max(24px,env(safe-area-inset-bottom,0px));
 }
+@media(min-width:768px){#sidebar{display:flex}}
 .sb-sec{padding:12px 12px 8px;border-bottom:1px solid var(--bord)}
-.sb-lbl{font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;
-  color:var(--muted);margin-bottom:8px}
+.sb-lbl{font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
 .sb-tbtn{
   display:flex;align-items:center;gap:8px;width:100%;
   padding:9px 10px;border-radius:10px;color:var(--muted);
@@ -132,120 +125,107 @@ header{
 @media(hover:hover){.sb-app:hover{background:var(--surf)}}
 .sb-app.on{background:var(--abg)}
 .sb-av{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;
-  font-size:12px;font-weight:700;color:#fff;flex-shrink:0;position:relative;overflow:hidden}
+  font-size:11px;font-weight:700;color:#fff;flex-shrink:0;position:relative;overflow:hidden}
 .sb-av img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .2s}
-.sb-av.iv img{opacity:1}
-.sb-av.iv span{opacity:0}
+.sb-av.iv img{opacity:1}.sb-av.iv span{opacity:0}
 .sb-av span{transition:opacity .2s;position:relative;z-index:1}
 .sb-aname{flex:1;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--fg)}
 .sb-app.on .sb-aname{color:var(--accent);font-weight:600}
-.sb-badge{font-size:11px;font-weight:700;background:var(--accent);color:#fff;border-radius:50px;
-  padding:1px 6px;min-width:18px;text-align:center}
+.sb-badge{font-size:11px;font-weight:700;background:var(--accent);color:#fff;border-radius:50px;padding:1px 6px;min-width:18px;text-align:center}
 .sb-badge:empty{display:none}
 
 /* ── Feed ─────────────────────────────────── */
 #feed{flex:1;overflow-y:auto;overflow-x:hidden;
   -webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;min-width:0;
   padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(max-width:767px){
+  #feed{padding-bottom:calc(60px + env(safe-area-inset-bottom,16px))}
+}
 
 /* ── Day separator ───────────────────────── */
 .dsep{
   display:flex;align-items:center;gap:8px;
-  padding:12px max(14px,env(safe-area-inset-right,0px)) 4px max(14px,env(safe-area-inset-left,0px));
+  padding:14px max(14px,env(safe-area-inset-right,0px)) 4px max(14px,env(safe-area-inset-left,0px));
   font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
-  color:var(--muted);cursor:pointer;
-  user-select:none;-webkit-user-select:none;
+  color:var(--muted);cursor:pointer;user-select:none;-webkit-user-select:none;
 }
 .dsep::before,.dsep::after{content:'';flex:1;height:1px;background:var(--bord)}
 .dsep-chev{transition:transform .18s;flex-shrink:0}
 .dsep.col .dsep-chev{transform:rotate(-90deg)}
 .ditems[hidden]{display:none!important}
 
-/* ── Conversation row ─────────────────────── */
+/* ── Notification row ─────────────────────── */
 .cr{
-  display:flex;align-items:center;gap:11px;
-  padding:7px max(14px,env(safe-area-inset-right,0px)) 7px max(14px,env(safe-area-inset-left,0px));
-  transition:background .08s;
-  user-select:none;-webkit-user-select:none;
+  display:flex;align-items:center;gap:12px;
+  padding:11px max(14px,env(safe-area-inset-right,0px)) 11px max(14px,env(safe-area-inset-left,0px));
+  min-height:68px;transition:background .08s;
+  user-select:none;-webkit-user-select:none;position:relative;
 }
 .cr:active{background:var(--surf2)}
 @media(hover:hover){.cr:hover{background:var(--surf)}}
 #feed.sel .cr{cursor:pointer}
 #feed.sel .cr.selected{background:var(--abg)}
 #feed:not(.sel) .cck{display:none!important}
-.cr.incoming{animation:slideIn .2s ease-out}
-.cr.out{animation:slideOut .16s ease-in forwards;overflow:hidden;pointer-events:none}
-@keyframes slideIn{from{opacity:0;transform:translateX(-12px)}to{opacity:1;transform:none}}
+.cr.incoming{animation:slideIn .22s ease-out}
+.cr.out{animation:slideOut .18s ease-in forwards;overflow:hidden;pointer-events:none}
+@keyframes slideIn{from{opacity:0;transform:translateX(-14px)}to{opacity:1;transform:none}}
 @keyframes slideOut{to{opacity:0;transform:translateX(28px);max-height:0;padding:0}}
 @media(prefers-reduced-motion:reduce){.cr.incoming,.cr.out{animation:none}}
 
-/* ── Avatar (56px circle) ─────────────────── */
-.cav{width:56px;height:56px;border-radius:50%;position:relative;flex-shrink:0}
+/* ── Avatar ──────────────────────────────── */
+.cav{width:52px;height:52px;border-radius:50%;position:relative;flex-shrink:0}
 .cav-in{
-  width:56px;height:56px;border-radius:50%;overflow:hidden;
+  width:52px;height:52px;border-radius:50%;overflow:hidden;
   position:relative;display:grid;place-items:center;
 }
-.cai{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
-  opacity:0;transition:opacity .22s;border-radius:50%}
-.cav-in.iv .cai{opacity:1}
-.cav-in.iv .cal{opacity:0}
-.cal{font-size:20px;font-weight:700;color:#fff;
-  position:relative;z-index:1;pointer-events:none;transition:opacity .2s}
-/* ── Notification image preview ───────────── */
+.cai{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .22s;border-radius:50%}
+.cav-in.iv .cai{opacity:1}.cav-in.iv .cal{opacity:0}
+.cal{font-size:19px;font-weight:700;color:#fff;position:relative;z-index:1;pointer-events:none;transition:opacity .2s}
+/* Notification image preview */
 .cimg{display:block;margin-top:7px;max-width:220px;border-radius:10px;overflow:hidden;
   border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03)}
 .cimg img{display:block;width:100%;height:auto;max-height:220px;object-fit:cover}
-/* Unread dot bottom-right of avatar */
-.udot{
-  position:absolute;bottom:0;right:0;
-  width:16px;height:16px;border-radius:50%;
-  background:var(--accent);border:2.5px solid var(--bg);
-  display:none;z-index:3;
-}
+.udot{position:absolute;bottom:1px;right:1px;width:14px;height:14px;border-radius:50%;
+  background:var(--accent);border:2.5px solid var(--bg);display:none;z-index:3}
 .cr.unread .udot{display:block}
-/* Select check overlay */
-.cck{
-  position:absolute;inset:0;border-radius:50%;
-  background:var(--accent);display:grid;place-items:center;z-index:4;
-  opacity:0;transition:opacity .12s;
-}
+.cck{position:absolute;inset:0;border-radius:50%;background:var(--accent);display:grid;
+  place-items:center;z-index:4;opacity:0;transition:opacity .12s}
 .cr.selected .cck{opacity:1}
 
 /* ── Row content ─────────────────────────── */
 .cmeta{flex:1;min-width:0}
-.ctop{display:flex;align-items:center;gap:5px;margin-bottom:2px}
-.cname{font-size:15px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+.ctop{display:flex;align-items:center;gap:5px;margin-bottom:3px}
+.cname{font-size:14px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
 .cr.unread .cname{font-weight:700}
 .ctime{font-size:12px;color:var(--muted);white-space:nowrap;flex-shrink:0;font-variant-numeric:tabular-nums}
 .cr.unread .ctime{color:var(--accent);font-weight:600}
 .cbot{display:flex;align-items:center;gap:5px}
 .cmsg{font-size:13px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;line-height:1.4}
 .cr.unread .cmsg{color:var(--fg);font-weight:500}
-.cudot{width:9px;height:9px;border-radius:50%;background:var(--accent);flex-shrink:0;display:none}
+.cudot{width:8px;height:8px;border-radius:50%;background:var(--accent);flex-shrink:0;display:none}
 .cr.unread .cudot{display:block}
 /* Typed-text rows */
 .ttag{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;
   color:var(--accent);background:var(--abg);padding:1px 5px;border-radius:5px;margin-left:6px;vertical-align:middle}
 .cr.typed .cmsg{font-style:italic}
 .cr.typed .cav-in{box-shadow:inset 0 0 0 2px var(--abg)}
-
-/* Quick actions (hover/touch) */
+/* Quick actions */
 .cacts{display:flex;gap:2px;flex-shrink:0;opacity:0;transition:opacity .12s}
 @media(hover:hover){.cr:hover .cacts{opacity:1}}
 @media(hover:none){.cacts{opacity:1}}
 #feed.sel .cacts{display:none!important}
-.ca{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;
+.ca{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;
   color:var(--muted);transition:background .1s,color .1s;touch-action:manipulation}
 .ca:active{background:var(--surf2)}
 @media(hover:hover){.ca:hover{background:var(--surf2);color:var(--fg)} .ca.del:hover{color:var(--danger)}}
 
 /* ── Skeleton ──────────────────────────────── */
 .skelwrap{padding:6px 0}
-.skelrow{display:flex;align-items:center;gap:11px;
-  padding:7px max(14px,env(safe-area-inset-right,0px))}
-.skelav{width:56px;height:56px;border-radius:50%;background:var(--surf);animation:blink 1.6s infinite;flex-shrink:0}
+.skelrow{display:flex;align-items:center;gap:12px;
+  padding:11px max(14px,env(safe-area-inset-right,0px)) 11px max(14px,env(safe-area-inset-left,0px));min-height:68px}
+.skelav{width:52px;height:52px;border-radius:50%;background:var(--surf);animation:blink 1.6s infinite;flex-shrink:0}
 .skelbody{flex:1;display:flex;flex-direction:column;gap:7px}
-.skelln{height:13px;border-radius:7px;background:var(--surf);animation:blink 1.6s infinite}
+.skelln{height:12px;border-radius:6px;background:var(--surf);animation:blink 1.6s infinite}
 .skelln.w80{width:80%}.skelln.w55{width:55%}
 @keyframes blink{0%,100%{opacity:.4}50%{opacity:.8}}
 
@@ -253,22 +233,62 @@ header{
 .empty{display:flex;flex-direction:column;align-items:center;padding:72px 24px;
   text-align:center;color:var(--muted);gap:10px}
 .empty svg{opacity:.2}
+.empty p{font-size:15px}
 
 /* ── Load more ─────────────────────────────── */
 .lmwrap{padding:8px 14px 32px}
-.lmbtn{width:100%;padding:11px;background:none;border:1px solid var(--bord);
-  border-radius:10px;color:var(--muted);font-size:13px;font-family:inherit;
+.lmbtn{width:100%;padding:12px;background:none;border:1.5px solid var(--bord);
+  border-radius:12px;color:var(--muted);font-size:13px;font-family:inherit;
   touch-action:manipulation;transition:background .1s}
-.lmbtn:active{background:var(--surf)}
-.lmbtn:disabled{opacity:.4;cursor:default}
+.lmbtn:active{background:var(--surf)}.lmbtn:disabled{opacity:.4;cursor:default}
+
+/* ── Bottom navigation (mobile only) ─────────── */
+.bnav{
+  position:fixed;bottom:0;left:0;right:0;
+  height:calc(56px + env(safe-area-inset-bottom,0px));
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  background:var(--bg);border-top:1px solid var(--bord);
+  display:flex;align-items:center;z-index:30;
+}
+@media(min-width:768px){.bnav{display:none}}
+@media(min-width:1200px){
+  .bnav{max-width:1200px;left:50%;transform:translateX(-50%)}
+}
+.bntab{
+  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:3px;padding:5px 4px;color:var(--muted);position:relative;
+  font-size:11px;font-weight:500;min-height:56px;transition:color .15s;
+}
+.bntab:active{background:var(--surf2)}
+.bntab.on{color:var(--accent)}
+.bntab.on::before{
+  content:'';position:absolute;top:4px;left:50%;transform:translateX(-50%);
+  width:52px;height:26px;background:var(--abg);border-radius:13px;z-index:-1;
+}
+.bntab-pill{
+  position:absolute;top:4px;right:calc(50% - 22px);
+  min-width:16px;height:16px;border-radius:8px;padding:0 4px;
+  background:var(--danger);color:#fff;font-size:10px;font-weight:700;
+  display:flex;align-items:center;justify-content:center;line-height:1;
+}
+.bntab-pill:empty{display:none}
 
 /* ── Select bar ─────────────────────────────── */
 .selbar{
   position:fixed;bottom:0;left:0;right:0;
   background:var(--bg);border-top:1px solid var(--bord);
   display:flex;align-items:center;gap:8px;
-  padding:10px max(14px,env(safe-area-inset-right,0px)) max(12px,env(safe-area-inset-bottom,10px)) max(14px,env(safe-area-inset-left,0px));
-  z-index:30;transform:translateY(110%);transition:transform .22s cubic-bezier(.4,0,.2,1);
+  padding:10px max(14px,env(safe-area-inset-right,0px))
+           max(calc(60px + env(safe-area-inset-bottom,10px)),18px)
+           max(14px,env(safe-area-inset-left,0px));
+  z-index:35;transform:translateY(110%);transition:transform .22s cubic-bezier(.4,0,.2,1);
+}
+@media(min-width:768px){
+  .selbar{left:260px;padding-bottom:max(13px,env(safe-area-inset-bottom,0px))}
+}
+@media(min-width:1200px){
+  .selbar{max-width:calc(1200px - 260px);left:50%;right:auto;transform:translateX(-50%) translateY(110%)}
+  .selbar.show{transform:translateX(-50%)}
 }
 .selbar.show{transform:none}
 .sbc{padding:9px 15px;border-radius:50px;background:var(--surf);color:var(--muted);font-size:14px;font-weight:500;touch-action:manipulation}
@@ -277,8 +297,44 @@ header{
 .sbdel{padding:9px 18px;border-radius:50px;background:var(--accent);color:#fff;font-size:14px;font-weight:600;touch-action:manipulation}
 .sbdel:disabled{opacity:.38}
 
-/* ── Drawer (mobile filter) ─────────────────── */
-.drov{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:59;display:none;backdrop-filter:blur(2px)}
+/* ── Bottom sheet (mobile filter) ────────────── */
+.sheet-ov{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:59;display:none;backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px)}
+.sheet-ov.open{display:block}
+@media(min-width:768px){.sheet-ov,.sheet{display:none!important}}
+.sheet{
+  position:fixed;bottom:0;left:0;right:0;
+  background:var(--bg);border-top:1.5px solid var(--bord);border-radius:20px 20px 0 0;
+  transform:translateY(102%);transition:transform .3s cubic-bezier(.4,0,.2,1);
+  z-index:60;display:flex;flex-direction:column;
+  max-height:85dvh;padding-bottom:env(safe-area-inset-bottom,0px);
+}
+.sheet.open{transform:none}
+.sheet-handle{width:36px;height:4px;border-radius:2px;background:var(--bord);margin:12px auto 0;flex-shrink:0}
+.sheet-head{display:flex;align-items:center;padding:12px 16px 8px;flex-shrink:0}
+.sheet-title{font-size:16px;font-weight:700;flex:1}
+.sheet-body{overflow-y:auto;flex:1;padding-bottom:12px}
+.sheet-sec{padding:12px 16px;border-bottom:1px solid var(--bord)}
+.sheet-sec:last-child{border-bottom:none}
+.sheet-stitle{font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
+.sheet-tgrid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.stb{padding:10px 12px;border-radius:12px;border:1.5px solid var(--bord);color:var(--muted);
+  font-size:13px;font-weight:500;text-align:left;touch-action:manipulation;
+  transition:background .1s,color .1s,border-color .1s}
+.stb.on{background:var(--abg);border-color:var(--accent);color:var(--accent);font-weight:600}
+.sapp{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:10px;
+  cursor:pointer;margin-bottom:2px;touch-action:manipulation;transition:background .1s}
+.sapp:active{background:var(--surf2)}.sapp.on{background:var(--abg)}
+.sav{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;
+  font-size:11px;font-weight:700;color:#fff;flex-shrink:0;position:relative;overflow:hidden}
+.sav img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .2s}
+.sav.iv img{opacity:1}.sav.iv span{opacity:0}
+.sav span{transition:opacity .2s;position:relative;z-index:1}
+.savn{flex:1;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.savb{font-size:11px;font-weight:700;background:var(--accent);color:#fff;border-radius:50px;padding:1px 6px}
+.savb:empty{display:none}
+
+/* ── Tablet drawer ────────────────────────────── */
+.drov{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:59;display:none;backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px)}
 .drov.open{display:block}
 .drawer{
   position:fixed;top:0;right:0;bottom:0;width:min(280px,88vw);
@@ -304,7 +360,7 @@ header{
 @media(hover:hover){.dapp:hover{background:var(--surf)}}
 .dapp.on{background:var(--abg)}
 .dav{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;
-  font-size:12px;font-weight:700;color:#fff;flex-shrink:0;position:relative;overflow:hidden}
+  font-size:11px;font-weight:700;color:#fff;flex-shrink:0;position:relative;overflow:hidden}
 .dav img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .2s}
 .dav.iv img{opacity:1}.dav.iv span{opacity:0}
 .dav span{transition:opacity .2s;position:relative;z-index:1}
@@ -314,7 +370,7 @@ header{
 
 /* ── Modal ─────────────────────────────────── */
 .mlov{position:fixed;inset:0;background:rgba(0,0,0,.6);display:grid;place-items:center;
-  z-index:80;padding:24px;backdrop-filter:blur(4px)}
+  z-index:80;padding:24px;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
 .mlov[hidden]{display:none!important}
 .mlbox{background:var(--bg);border:1px solid var(--bord);border-radius:20px;
   padding:28px 20px 20px;max-width:270px;width:100%;text-align:center;animation:popIn .16s ease-out}
@@ -328,36 +384,45 @@ header{
 .mlcon{flex:1;padding:13px;border-radius:12px;font-size:15px;font-weight:600;font-family:inherit;
   background:var(--accent);color:#fff;border:none;touch-action:manipulation}
 
-/* ── Phone layout (< 768px) ───────────────── */
-@media(max-width:767px){
-  /* Larger, thumb-friendly tap targets */
-  .ib{width:40px;height:40px}
-  .htitle{font-size:22px}
-  .cacts{gap:0}
-  .ca{width:32px;height:32px}
-  /* Comfortable row rhythm */
-  .cr{padding-top:9px;padding-bottom:9px}
-  /* Keep content clear of the gesture bar */
-  #feed{padding-bottom:calc(env(safe-area-inset-bottom,0px) + 10px)}
-  /* Roomier delete sheet */
-  .mlbox{max-width:300px}
-}
-/* ── Tablet layout (>= 768px) ─────────────── */
+/* ── Tablet layout ───────────────────────────── */
 @media(min-width:768px){
   #sidebar{display:flex}
-  .chips{display:none}
-  #filterBtn{display:none}
-  .selbar{left:260px} /* offset by sidebar width */
-}
-/* ── Large screen centering ───────────────── */
-@media(min-width:1200px){
-  .shell{max-width:1200px;margin:0 auto;border-left:1px solid var(--bord);border-right:1px solid var(--bord)}
-  .selbar{max-width:1200px;left:50%;right:auto;transform:translateX(-50%) translateY(110%)}
-  .selbar.show{transform:translateX(-50%)}
+  #filterBtn{display:grid!important}
+  .selbar{left:260px}
 }
 </style>
 
-<!-- Drawer overlay + drawer -->
+<!-- Mobile sheet overlay + sheet -->
+<div class="sheet-ov" id="sheetOv" onclick="closeSheet()"></div>
+<div class="sheet" id="sheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-head">
+    <span class="sheet-title nosel">Filter</span>
+    <button class="ib" onclick="closeSheet()">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M3.72 3.72a.75.75 0 011.06 0L8 6.94l3.22-3.22a.75.75 0 111.06 1.06L9.06 8l3.22 3.22a.75.75 0 11-1.06 1.06L8 9.06l-3.22 3.22a.75.75 0 01-1.06-1.06L6.94 8 3.72 4.78a.75.75 0 010-1.06z"/></svg>
+    </button>
+  </div>
+  <div class="sheet-body">
+    <div class="sheet-sec">
+      <div class="sheet-stitle">Time Range</div>
+      <div class="sheet-tgrid">
+        <button class="stb on" data-t="all"     onclick="setTime('all')">All time</button>
+        <button class="stb"    data-t="1h"      onclick="setTime('1h')">Last hour</button>
+        <button class="stb"    data-t="2h"      onclick="setTime('2h')">Last 2 h</button>
+        <button class="stb"    data-t="6h"      onclick="setTime('6h')">Last 6 h</button>
+        <button class="stb"    data-t="12h"     onclick="setTime('12h')">Last 12 h</button>
+        <button class="stb"    data-t="today"   onclick="setTime('today')">Today</button>
+        <button class="stb"    data-t="earlier" onclick="setTime('earlier')" style="grid-column:1/-1">Earlier days</button>
+      </div>
+    </div>
+    <div class="sheet-sec">
+      <div class="sheet-stitle">Apps</div>
+      <div id="sheetApps"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Tablet drawer overlay + drawer -->
 <div class="drov" id="drov" onclick="closeDrawer()"></div>
 <div class="drawer" id="drawer">
   <div class="drhead">
@@ -417,7 +482,7 @@ header{
       <button class="ib" id="purgeBtn" onclick="purgeImages()" title="Purge saved images">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
       </button>
-      <button class="ib" id="filterBtn" onclick="openDrawer()" title="Filters">
+      <button class="ib" id="filterBtn" onclick="openDrawer()" title="Filters" style="display:none">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg>
       </button>
       <button class="ib" id="themeBtn" title="Theme">
@@ -434,19 +499,6 @@ header{
     </div>
   </div>
 
-  <!-- Mobile time chips -->
-  <div class="chips" id="chipsBar">
-    <div class="chips-row">
-      <button class="chip nosel on" data-t="all"     onclick="setTime('all')">All</button>
-      <button class="chip nosel"    data-t="1h"      onclick="setTime('1h')">1h</button>
-      <button class="chip nosel"    data-t="2h"      onclick="setTime('2h')">2h</button>
-      <button class="chip nosel"    data-t="6h"      onclick="setTime('6h')">6h</button>
-      <button class="chip nosel"    data-t="12h"     onclick="setTime('12h')">12h</button>
-      <button class="chip nosel"    data-t="today"   onclick="setTime('today')">Today</button>
-      <button class="chip nosel"    data-t="earlier" onclick="setTime('earlier')">Earlier</button>
-    </div>
-  </div>
-
   <!-- New banner -->
   <div class="nb" id="nb" hidden></div>
 
@@ -457,22 +509,22 @@ header{
     <aside id="sidebar">
       <div class="sb-sec">
         <div class="sb-lbl">Time</div>
-        <button class="sb-tbtn on nosel" data-t="all"     onclick="setTime('all')">
+        <button class="sb-tbtn on nosel" data-t="all" onclick="setTime('all')">
           <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M8 3.5a4.5 4.5 0 100 9 4.5 4.5 0 000-9zM2 8a6 6 0 1112 0A6 6 0 012 8z"/><path d="M8 4.75a.75.75 0 01.75.75V8h1.5a.75.75 0 010 1.5h-2.25A.75.75 0 018 8.75v-3.25A.75.75 0 018 4.75z"/></svg>All time
         </button>
-        <button class="sb-tbtn nosel" data-t="1h"      onclick="setTime('1h')">
+        <button class="sb-tbtn nosel" data-t="1h" onclick="setTime('1h')">
           <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M8 3.5a4.5 4.5 0 100 9 4.5 4.5 0 000-9zM2 8a6 6 0 1112 0A6 6 0 012 8z"/><path d="M8 4.75a.75.75 0 01.75.75V8h1.5a.75.75 0 010 1.5h-2.25A.75.75 0 018 8.75v-3.25A.75.75 0 018 4.75z"/></svg>Last hour
         </button>
-        <button class="sb-tbtn nosel" data-t="2h"      onclick="setTime('2h')">
+        <button class="sb-tbtn nosel" data-t="2h" onclick="setTime('2h')">
           <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M8 3.5a4.5 4.5 0 100 9 4.5 4.5 0 000-9zM2 8a6 6 0 1112 0A6 6 0 012 8z"/><path d="M8 4.75a.75.75 0 01.75.75V8h1.5a.75.75 0 010 1.5h-2.25A.75.75 0 018 8.75v-3.25A.75.75 0 018 4.75z"/></svg>Last 2 hours
         </button>
-        <button class="sb-tbtn nosel" data-t="6h"      onclick="setTime('6h')">
+        <button class="sb-tbtn nosel" data-t="6h" onclick="setTime('6h')">
           <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M8 3.5a4.5 4.5 0 100 9 4.5 4.5 0 000-9zM2 8a6 6 0 1112 0A6 6 0 012 8z"/><path d="M8 4.75a.75.75 0 01.75.75V8h1.5a.75.75 0 010 1.5h-2.25A.75.75 0 018 8.75v-3.25A.75.75 0 018 4.75z"/></svg>Last 6 hours
         </button>
-        <button class="sb-tbtn nosel" data-t="12h"     onclick="setTime('12h')">
+        <button class="sb-tbtn nosel" data-t="12h" onclick="setTime('12h')">
           <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M8 3.5a4.5 4.5 0 100 9 4.5 4.5 0 000-9zM2 8a6 6 0 1112 0A6 6 0 012 8z"/><path d="M8 4.75a.75.75 0 01.75.75V8h1.5a.75.75 0 010 1.5h-2.25A.75.75 0 018 8.75v-3.25A.75.75 0 018 4.75z"/></svg>Last 12 hours
         </button>
-        <button class="sb-tbtn nosel" data-t="today"   onclick="setTime('today')">
+        <button class="sb-tbtn nosel" data-t="today" onclick="setTime('today')">
           <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M4.75 0a.75.75 0 01.75.75V2h5V.75a.75.75 0 011.5 0V2h1.25c.966 0 1.75.784 1.75 1.75v10.5A1.75 1.75 0 0113.25 16H2.75A1.75 1.75 0 011 14.25V3.75C1 2.784 1.784 2 2.75 2H4V.75A.75.75 0 014.75 0zm0 3.5h-2a.25.25 0 00-.25.25V6h11V3.75a.25.25 0 00-.25-.25H11V5a.75.75 0 01-1.5 0v-1.5h-5V5a.75.75 0 01-1.5 0v-1.5z"/></svg>Today
         </button>
         <button class="sb-tbtn nosel" data-t="earlier" onclick="setTime('earlier')">
@@ -495,6 +547,28 @@ header{
       </div>
     </div>
   </div>
+
+  <!-- Bottom navigation (mobile only) -->
+  <nav class="bnav nosel" id="bnav">
+    <button class="bntab on" data-tab="all" onclick="switchTab('all')">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+      <span>All</span>
+    </button>
+    <button class="bntab" data-tab="unread" onclick="switchTab('unread')">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      <span>Unread</span>
+      <span class="bntab-pill" id="unreadBadge"></span>
+    </button>
+    <button class="bntab" data-tab="apps" onclick="switchTab('apps')">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      <span>Apps</span>
+    </button>
+    <button class="bntab" data-tab="filter" onclick="switchTab('filter')">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg>
+      <span>Filter</span>
+    </button>
+  </nav>
+
 </div>
 
 <!-- Select bar -->
@@ -558,16 +632,34 @@ function relTime(iso){const s=Math.floor((Date.now()-new Date(iso))/1000);if(s<6
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
 function imgUrl(u){return !u?'' : (u.startsWith('http')?u:`${SERVER}${u}?token=${encodeURIComponent(token)}`)}
 
-// ── Item normalisation (notifications + typed text share one feed) ──
+// ── Item normalisation ─────────────────────────
 function normNotif(n){return{_kind:'n',_uid:'n'+n.id,...n}}
 function normText(t){return{_kind:'t',_uid:'t'+t.id,id:t.id,package_name:t.package_name,app_label:t.app_label,title:null,text_body:t.text,received_at:t.received_at,captured_at:t.captured_at,is_read:true}}
 function sortItems(){notifs.sort((a,b)=>new Date(b.received_at||b.posted_at)-new Date(a.received_at||a.posted_at))}
 
 // ── State ─────────────────────────────────────
-let notifs=[],appFilter=null,searchQ='',timeFilter='all'
+let notifs=[],appFilter=null,searchQ='',timeFilter='all',unreadOnly=false
 let page=1,totalCount=0,hasMore=false,newPending=0
 let appCounts={},selectMode=false,selectedIds=new Set()
 let currentGroups=[],userToggledDays=new Set()
+let activeTab='all'
+
+// ── Bottom nav tab switch ──────────────────────
+function switchTab(tab){
+  if(tab==='apps'||tab==='filter'){openSheet();return}
+  activeTab=tab
+  document.querySelectorAll('.bntab').forEach(b=>b.classList.toggle('on',b.dataset.tab===tab))
+  if(tab==='all'){unreadOnly=false;renderFeed()}
+  if(tab==='unread'){unreadOnly=true;renderFeed()}
+}
+
+// ── Sheet (mobile filter) ──────────────────────
+function openSheet(){document.getElementById('sheet').classList.add('open');document.getElementById('sheetOv').classList.add('open')}
+function closeSheet(){document.getElementById('sheet').classList.remove('open');document.getElementById('sheetOv').classList.remove('open')}
+
+// ── Drawer ────────────────────────────────────
+function openDrawer(){document.getElementById('drawer').classList.add('open');document.getElementById('drov').classList.add('open')}
+function closeDrawer(){document.getElementById('drawer').classList.remove('open');document.getElementById('drov').classList.remove('open')}
 
 // ── Filters ───────────────────────────────────
 function setTime(t){
@@ -578,6 +670,7 @@ function setTime(t){
 function filteredNotifs(){
   const now=Date.now(),todayMs=new Date().setHours(0,0,0,0)
   return notifs.filter(n=>{
+    if(unreadOnly&&(n._kind!=='n'||n.is_read))return false
     if(appFilter&&n.package_name!==appFilter) return false
     if(searchQ){const q=searchQ.toLowerCase();if(!(n.title||'').toLowerCase().includes(q)&&!(n.text_body||'').toLowerCase().includes(q)&&!(n.app_label||'').toLowerCase().includes(q)) return false}
     const t=new Date(n.received_at||n.posted_at).getTime()
@@ -617,7 +710,7 @@ function buildRow(n){
   const enc=srcs.length?` data-srcs="${esc(JSON.stringify(srcs))}" data-si="0"`:''
   const img=srcs.length?`<img class="cai" src="${esc(srcs[0])}" loading="lazy" onload="this.parentElement.classList.add('iv')" onerror="tryNextIcon(this.parentElement)" alt="">`:''
   const tag=isText?'<span class="ttag">typed</span>':''
-  const body=isText?`“${preview}”`:preview
+  const body=isText?`"${preview}"`:preview
   const thumb=!isText&&n.image_url?`<a class="cimg" href="${esc(imgUrl(n.image_url))}" target="_blank" rel="noopener" onclick="event.stopPropagation()"><img src="${esc(imgUrl(n.image_url))}" loading="lazy" alt=""></a>`:''
   const delFn=isText?`doDeleteText('${n._uid}')`:`doArchive('${n._uid}')`
   return`<div class="cr${unread?' unread':''}${sel?' selected':''}${isText?' typed':''}" data-id="${n._uid}" onclick="onRowClick('${n._uid}')">
@@ -638,17 +731,20 @@ function buildRow(n){
 // ── Render feed ───────────────────────────────
 function renderFeed(){
   const feed=document.getElementById('feed'),vis=filteredNotifs()
-  if(!vis.length){feed.innerHTML=`<div class="empty"><svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/></svg><p>${notifs.length?'No results':'No notifications yet'}</p></div>`;return}
+  if(!vis.length){
+    const msg=unreadOnly?'No unread notifications':notifs.length?'No results':'No notifications yet'
+    feed.innerHTML=`<div class="empty"><svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/></svg><p>${msg}</p></div>`;return
+  }
   currentGroups=groupByDay(vis)
   const CHEV=`<svg class="dsep-chev" width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path d="M4.427 7.427l3.396 3.396a.25.25 0 00.354 0l3.396-3.396A.25.25 0 0011.396 7H4.604a.25.25 0 00-.177.427z"/></svg>`
   let html=''
-  for(let i=0;i<currentGroups.length;i++){const g=currentGroups[i],col=isDayCol(g.lbl);html+=`<div><div class="dsep nosel${col?' col':''}" data-i="${i}" onclick="toggleDay(${i})">${esc(g.lbl)}<span style="font-weight:400;font-size:10px;margin-left:4px">${g.items.length}</span>${CHEV}</div><div class="ditems" data-i="${i}"${col?' hidden':''}>${g.items.map(buildRow).join('')}</div></div>`}
+  for(let i=0;i<currentGroups.length;i++){const g=currentGroups[i],col=isDayCol(g.lbl);html+=`<div><div class="dsep nosel${col?' col':''}" data-i="${i}" onclick="toggleDay(${i})">${esc(g.lbl)}<span style="font-weight:400;font-size:10px;margin-left:4px;opacity:.7">${g.items.length}</span>${CHEV}</div><div class="ditems" data-i="${i}"${col?' hidden':''}>${g.items.map(buildRow).join('')}</div></div>`}
   if(hasMore) html+=`<div class="lmwrap"><button class="lmbtn" id="lmbtn" onclick="loadMore()">Load older</button></div>`
   feed.innerHTML=html;updateSelUI()
 }
 
-// ── Sidebar + drawer apps ─────────────────────
-function iconImg(pkg,lbl,cls,imgCls){
+// ── App lists (sidebar + drawer + sheet) ──────
+function iconImg(pkg,lbl,cls){
   const srcs=iconSrcs(pkg),color=appColor(pkg),letter=appInit(lbl||pkg)
   const enc=srcs.length?` data-srcs="${esc(JSON.stringify(srcs))}" data-si="0"`:''
   const img=srcs.length?`<img src="${esc(srcs[0])}" loading="lazy" onload="this.parentElement.classList.add('iv')" onerror="tryNextIcon(this.parentElement)" alt="">`:''
@@ -658,21 +754,26 @@ function iconImg(pkg,lbl,cls,imgCls){
 function renderAppLists(){
   const apps=Object.entries(appCounts).sort((a,b)=>b[1].total-a[1].total)
   const totalUnread=apps.reduce((s,[,v])=>s+v.unread,0)
-  // Drawer
-  let dr=`<div class="dapp${appFilter===null?' on':''}" onclick="setApp(null)"><div class="dav" style="background:var(--accent)"><span>✦</span></div><span class="davn">All apps</span>${totalUnread?`<span class="davb">${totalUnread}</span>`:''}</div>`
-  // Sidebar
-  let sb=`<div class="sb-app${appFilter===null?' on':''} nosel" onclick="setApp(null)"><div class="sb-av" style="background:var(--accent)"><span>✦</span></div><span class="sb-aname">All apps</span>${totalUnread?`<span class="sb-badge">${totalUnread}</span>`:''}</div>`
+  // Update unread badge on bottom nav
+  const badge=document.getElementById('unreadBadge')
+  if(badge) badge.textContent=totalUnread>0?(totalUnread>99?'99+':totalUnread):''
+
+  const on=appFilter===null
+  let sh=`<div class="sapp${on?' on':''}" onclick="setApp(null);closeSheet()"><div class="sav" style="background:var(--accent)"><span>✦</span></div><span class="savn">All apps</span>${totalUnread?`<span class="savb">${totalUnread}</span>`:''}</div>`
+  let dr=`<div class="dapp${on?' on':''}" onclick="setApp(null)"><div class="dav" style="background:var(--accent)"><span>✦</span></div><span class="davn">All apps</span>${totalUnread?`<span class="davb">${totalUnread}</span>`:''}</div>`
+  let sb=`<div class="sb-app${on?' on':''} nosel" onclick="setApp(null)"><div class="sb-av" style="background:var(--accent)"><span>✦</span></div><span class="sb-aname">All apps</span>${totalUnread?`<span class="sb-badge">${totalUnread}</span>`:''}</div>`
+
   for(const[pkg,c]of apps){
-    const lbl=c.label||pkg.split('.').pop()
-    const on=appFilter===pkg
-    dr+=`<div class="dapp${on?' on':''}" onclick="setApp(${JSON.stringify(pkg)})">${iconImg(pkg,lbl,'dav','')}<span class="davn">${esc(lbl)}</span>${c.unread?`<span class="davb">${c.unread}</span>`:''}</div>`
-    sb+=`<div class="sb-app${on?' on':''} nosel" onclick="setApp(${JSON.stringify(pkg)})">${iconImg(pkg,lbl,'sb-av','')}<span class="sb-aname">${esc(lbl)}</span>${c.unread?`<span class="sb-badge">${c.unread}</span>`:''}</div>`
+    const lbl=c.label||pkg.split('.').pop(),isOn=appFilter===pkg,pj=JSON.stringify(pkg)
+    sh+=`<div class="sapp${isOn?' on':''}" onclick="setApp(${pj});closeSheet()">${iconImg(pkg,lbl,'sav')}<span class="savn">${esc(lbl)}</span>${c.unread?`<span class="savb">${c.unread}</span>`:''}</div>`
+    dr+=`<div class="dapp${isOn?' on':''}" onclick="setApp(${pj})">${iconImg(pkg,lbl,'dav')}<span class="davn">${esc(lbl)}</span>${c.unread?`<span class="davb">${c.unread}</span>`:''}</div>`
+    sb+=`<div class="sb-app${isOn?' on':''} nosel" onclick="setApp(${pj})">${iconImg(pkg,lbl,'sb-av')}<span class="sb-aname">${esc(lbl)}</span>${c.unread?`<span class="sb-badge">${c.unread}</span>`:''}</div>`
   }
-  const da=document.getElementById('drawerApps'),sa=document.getElementById('sidebarApps')
-  if(da) da.innerHTML=dr;if(sa) sa.innerHTML=sb
+  const sa=document.getElementById('sheetApps'),da=document.getElementById('drawerApps'),sba=document.getElementById('sidebarApps')
+  if(sa) sa.innerHTML=sh;if(da) da.innerHTML=dr;if(sba) sba.innerHTML=sb
 }
 
-// ── App counts (notifications + typed text) ───
+// ── App counts ────────────────────────────────
 function rebuildAppCounts(){
   appCounts={}
   for(const it of notifs){
@@ -694,7 +795,6 @@ async function load(reset=false){
     const json=await res.json(),rows=(json.data||[]).map(normNotif)
     if(reset){
       notifs=rows
-      // Typed-text captures share the same feed
       try{
         const tp=new URLSearchParams({limit:200})
         if(appFilter) tp.set('package',appFilter)
@@ -722,10 +822,6 @@ function setApp(pkg){appFilter=pkg;closeDrawer();load(true)}
 // ── Search ────────────────────────────────────
 let st2;document.getElementById('si').addEventListener('input',e=>{clearTimeout(st2);searchQ=e.target.value.trim();st2=setTimeout(()=>load(true),350)})
 function toggleSearch(){const bar=document.getElementById('sbar'),btn=document.getElementById('searchBtn');bar.hidden=!bar.hidden;btn.classList.toggle('on',!bar.hidden);if(!bar.hidden)document.getElementById('si').focus()}
-
-// ── Drawer ────────────────────────────────────
-function openDrawer(){document.getElementById('drawer').classList.add('open');document.getElementById('drov').classList.add('open')}
-function closeDrawer(){document.getElementById('drawer').classList.remove('open');document.getElementById('drov').classList.remove('open')}
 
 // ── Actions ───────────────────────────────────
 async function doRead(uid,btn){
@@ -792,6 +888,7 @@ function insertIncoming(n){
   appCounts[n.package_name].total++;if(n._kind==='n'&&!n.is_read)appCounts[n.package_name].unread++
   renderAppLists()
   if(appFilter&&n.package_name!==appFilter)return
+  if(unreadOnly&&(n._kind!=='n'||n.is_read))return
   const feed=document.getElementById('feed'),nb=document.getElementById('nb')
   if(feed.scrollTop>100||selectMode||(timeFilter!=='all'&&timeFilter!=='1h'&&timeFilter!=='today')){newPending++;nb.hidden=false;nb.textContent=`↑ ${newPending} new item${newPending>1?'s':''} — tap to show`;nb.onclick=()=>{newPending=0;nb.hidden=true;setTime('all');load(true);feed.scrollTop=0}}
   else{const fg=document.querySelector('.ditems[data-i="0"]');if(fg){const div=document.createElement('div');div.innerHTML=buildRow(n);const r=div.firstChild;r.classList.add('incoming');fg.prepend(r)}else renderFeed()}
@@ -807,7 +904,7 @@ function connectSSE(){
 
 // ── Theme ─────────────────────────────────────
 let theme='dark';try{theme=localStorage.getItem('nh-theme')||'dark'}catch{}
-function applyTheme(t){document.documentElement.setAttribute('data-theme',t);document.getElementById('themeColorMeta')?.setAttribute('content',t==='dark'?'#242526':'#ffffff');try{localStorage.setItem('nh-theme',t)}catch{}}
+function applyTheme(t){document.documentElement.setAttribute('data-theme',t);document.getElementById('themeColorMeta')?.setAttribute('content',t==='dark'?'#111111':'#f5f5f7');try{localStorage.setItem('nh-theme',t)}catch{}}
 applyTheme(theme)
 document.getElementById('themeBtn').addEventListener('click',()=>{theme=theme==='dark'?'light':'dark';applyTheme(theme)})
 
