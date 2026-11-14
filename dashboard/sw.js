@@ -1,4 +1,4 @@
-const CACHE = 'nh-v2'
+const CACHE = 'nh-v3'
 const STATIC = ['/', '/index.html', '/icon.svg', '/manifest.json']
 
 self.addEventListener('install', e => {

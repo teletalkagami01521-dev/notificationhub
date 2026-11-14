@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import { db } from '../db/client.js'
+import { broadcast } from '../sse.js'
 
 const router = Router()
 
@@ -15,10 +16,12 @@ router.post('/', async (req, res) => {
         const result = await db.query(
             `INSERT INTO typed_text (device_id, package_name, app_label, text, captured_at)
              VALUES ($1, $2, $3, $4, $5)
-             RETURNING id`,
+             RETURNING id, device_id, package_name, app_label, text, captured_at, received_at`,
             [deviceId, packageName, appLabel ?? '', text, capturedAt]
         )
-        return res.status(201).json({ id: result.rows[0].id, status: 'created' })
+        const row = result.rows[0]
+        broadcast('typedtext', row)
+        return res.status(201).json({ id: row.id, status: 'created' })
     } catch (err) {
         console.error('POST /api/typed-text error:', err.message)
         return res.status(500).json({ error: 'Internal server error' })

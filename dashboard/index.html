@@ -217,6 +217,11 @@ header{
 .cr.unread .cmsg{color:var(--fg);font-weight:500}
 .cudot{width:9px;height:9px;border-radius:50%;background:var(--accent);flex-shrink:0;display:none}
 .cr.unread .cudot{display:block}
+/* Typed-text rows */
+.ttag{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;
+  color:var(--accent);background:var(--abg);padding:1px 5px;border-radius:5px;margin-left:6px;vertical-align:middle}
+.cr.typed .cmsg{font-style:italic}
+.cr.typed .cav-in{box-shadow:inset 0 0 0 2px var(--abg)}
 
 /* Quick actions (hover/touch) */
 .cacts{display:flex;gap:2px;flex-shrink:0;opacity:0;transition:opacity .12s}
@@ -529,6 +534,11 @@ function appInit(l){return(l||'?').trim()[0].toUpperCase()}
 function relTime(iso){const s=Math.floor((Date.now()-new Date(iso))/1000);if(s<60)return'now';if(s<3600)return Math.floor(s/60)+'m';if(s<86400)return Math.floor(s/3600)+'h';return Math.floor(s/86400)+'d'}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
 
+// ── Item normalisation (notifications + typed text share one feed) ──
+function normNotif(n){return{_kind:'n',_uid:'n'+n.id,...n}}
+function normText(t){return{_kind:'t',_uid:'t'+t.id,id:t.id,package_name:t.package_name,app_label:t.app_label,title:null,text_body:t.text,received_at:t.received_at,captured_at:t.captured_at,is_read:true}}
+function sortItems(){notifs.sort((a,b)=>new Date(b.received_at||b.posted_at)-new Date(a.received_at||a.posted_at))}
+
 // ── State ─────────────────────────────────────
 let notifs=[],appFilter=null,searchQ='',timeFilter='all'
 let page=1,totalCount=0,hasMore=false,newPending=0
@@ -572,21 +582,28 @@ function toggleDay(idx){
 const CHK=`<svg width="15" height="15" viewBox="0 0 16 16" fill="white"><path d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z"/></svg>`
 
 function buildRow(n){
-  const sel=selectedIds.has(n.id)
+  const sel=selectedIds.has(n._uid)
+  const isText=n._kind==='t'
+  const unread=!isText&&!n.is_read
   const app=esc(n.app_label||n.package_name.split('.').pop())
-  const preview=esc(n.title&&n.text_body?`${n.title}: ${n.text_body}`:(n.title||n.text_body||'No preview'))
+  const preview=isText
+    ? esc(n.text_body||'')
+    : esc(n.title&&n.text_body?`${n.title}: ${n.text_body}`:(n.title||n.text_body||'No preview'))
   const srcs=iconSrcs(n.package_name),color=appColor(n.package_name),letter=appInit(n.app_label||n.package_name)
   const enc=srcs.length?` data-srcs="${esc(JSON.stringify(srcs))}" data-si="0"`:''
   const img=srcs.length?`<img class="cai" src="${esc(srcs[0])}" loading="lazy" onload="this.parentElement.classList.add('iv')" onerror="tryNextIcon(this.parentElement)" alt="">`:''
-  return`<div class="cr${!n.is_read?' unread':''}${sel?' selected':''}" data-id="${n.id}" onclick="onRowClick(${n.id})">
+  const tag=isText?'<span class="ttag">typed</span>':''
+  const body=isText?`“${preview}”`:preview
+  const delFn=isText?`doDeleteText('${n._uid}')`:`doArchive('${n._uid}')`
+  return`<div class="cr${unread?' unread':''}${sel?' selected':''}${isText?' typed':''}" data-id="${n._uid}" onclick="onRowClick('${n._uid}')">
     <div class="cav"><div class="cav-in" style="background:${color}"${enc}>${img}<span class="cal">${letter}</span></div><div class="udot"></div><div class="cck">${CHK}</div></div>
     <div class="cmeta">
-      <div class="ctop"><span class="cname">${app}</span><span class="ctime" data-ts="${esc(n.received_at||n.posted_at)}">${relTime(n.received_at||n.posted_at)}</span></div>
-      <div class="cbot"><span class="cmsg">${preview}</span><span class="cudot"></span></div>
+      <div class="ctop"><span class="cname">${app}${tag}</span><span class="ctime" data-ts="${esc(n.received_at||n.posted_at)}">${relTime(n.received_at||n.posted_at)}</span></div>
+      <div class="cbot"><span class="cmsg">${body}</span><span class="cudot"></span></div>
     </div>
     <div class="cacts">
-      ${!n.is_read?`<button class="ca nosel" onclick="event.stopPropagation();doRead(${n.id},this)" title="Read"><svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z"/></svg></button>`:''}
-      <button class="ca del nosel" onclick="event.stopPropagation();doArchive(${n.id})" title="Remove"><svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M3.72 3.72a.75.75 0 011.06 0L8 6.94l3.22-3.22a.75.75 0 111.06 1.06L9.06 8l3.22 3.22a.75.75 0 11-1.06 1.06L8 9.06l-3.22 3.22a.75.75 0 01-1.06-1.06L6.94 8 3.72 4.78a.75.75 0 010-1.06z"/></svg></button>
+      ${unread?`<button class="ca nosel" onclick="event.stopPropagation();doRead('${n._uid}',this)" title="Read"><svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z"/></svg></button>`:''}
+      <button class="ca del nosel" onclick="event.stopPropagation();${delFn}" title="Remove"><svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M3.72 3.72a.75.75 0 011.06 0L8 6.94l3.22-3.22a.75.75 0 111.06 1.06L9.06 8l3.22 3.22a.75.75 0 11-1.06 1.06L8 9.06l-3.22 3.22a.75.75 0 01-1.06-1.06L6.94 8 3.72 4.78a.75.75 0 010-1.06z"/></svg></button>
     </div>
   </div>`
 }
@@ -628,6 +645,16 @@ function renderAppLists(){
   if(da) da.innerHTML=dr;if(sa) sa.innerHTML=sb
 }
 
+// ── App counts (notifications + typed text) ───
+function rebuildAppCounts(){
+  appCounts={}
+  for(const it of notifs){
+    if(!appCounts[it.package_name])appCounts[it.package_name]={total:0,unread:0,label:it.app_label}
+    appCounts[it.package_name].total++
+    if(it._kind==='n'&&!it.is_read)appCounts[it.package_name].unread++
+  }
+}
+
 // ── Load ──────────────────────────────────────
 async function load(reset=false){
   if(reset){page=1;notifs=[]}
@@ -637,9 +664,19 @@ async function load(reset=false){
   try{
     const res=await fetch(`${SERVER}/api/notifications?${p}`,{headers:hdrs()})
     if(res.status===401){location.reload();return}
-    const json=await res.json(),rows=json.data||[]
-    if(reset){notifs=rows;appCounts={};for(const n of rows){if(!appCounts[n.package_name])appCounts[n.package_name]={total:0,unread:0,label:n.app_label};appCounts[n.package_name].total++;if(!n.is_read)appCounts[n.package_name].unread++}}
-    else notifs=[...notifs,...rows]
+    const json=await res.json(),rows=(json.data||[]).map(normNotif)
+    if(reset){
+      notifs=rows
+      // Typed-text captures share the same feed
+      try{
+        const tp=new URLSearchParams({limit:200})
+        if(appFilter) tp.set('package',appFilter)
+        if(searchQ)   tp.set('search',searchQ)
+        const tr=await fetch(`${SERVER}/api/typed-text?${tp}`,{headers:hdrs()})
+        if(tr.ok){const tj=await tr.json();notifs=notifs.concat((tj.data||[]).map(normText))}
+      }catch{}
+      sortItems();rebuildAppCounts()
+    } else notifs=[...notifs,...rows]
     totalCount=json.pagination?.total??notifs.length;hasMore=json.pagination?.hasMore??false
     renderAppLists();renderFeed()
   }catch{document.getElementById('feed').innerHTML=`<div class="empty"><p style="color:var(--danger)">Could not load</p></div>`}
@@ -664,12 +701,19 @@ function openDrawer(){document.getElementById('drawer').classList.add('open');do
 function closeDrawer(){document.getElementById('drawer').classList.remove('open');document.getElementById('drov').classList.remove('open')}
 
 // ── Actions ───────────────────────────────────
-async function doRead(id,btn){
-  try{await fetch(`${SERVER}/api/notifications/${id}/read`,{method:'PATCH',headers:hdrs()});const n=notifs.find(x=>x.id==id);if(n){n.is_read=true;if(appCounts[n.package_name])appCounts[n.package_name].unread=Math.max(0,appCounts[n.package_name].unread-1)};const row=document.querySelector(`[data-id="${id}"]`);if(row){row.classList.remove('unread');btn?.closest('.ca')?.remove()};renderAppLists()}catch{}
+async function doRead(uid,btn){
+  const n=notifs.find(x=>x._uid===uid);if(!n||n._kind!=='n')return
+  try{await fetch(`${SERVER}/api/notifications/${n.id}/read`,{method:'PATCH',headers:hdrs()});n.is_read=true;if(appCounts[n.package_name])appCounts[n.package_name].unread=Math.max(0,appCounts[n.package_name].unread-1);const row=document.querySelector(`[data-id="${uid}"]`);if(row){row.classList.remove('unread');btn?.closest('.ca')?.remove()};renderAppLists()}catch{}
 }
-async function doArchive(id){
-  const row=document.querySelector(`[data-id="${id}"]`);if(row){row.classList.add('out');setTimeout(()=>row.remove(),190)}
-  try{await fetch(`${SERVER}/api/notifications/${id}/archive`,{method:'PATCH',headers:hdrs()});const idx=notifs.findIndex(x=>x.id==id);if(idx!==-1){const n=notifs[idx];if(!n.is_read&&appCounts[n.package_name])appCounts[n.package_name].unread=Math.max(0,appCounts[n.package_name].unread-1);if(appCounts[n.package_name])appCounts[n.package_name].total=Math.max(0,appCounts[n.package_name].total-1);notifs.splice(idx,1);totalCount=Math.max(0,totalCount-1)};renderAppLists()}catch{}
+async function doArchive(uid){
+  const n=notifs.find(x=>x._uid===uid);if(!n||n._kind!=='n')return
+  const row=document.querySelector(`[data-id="${uid}"]`);if(row){row.classList.add('out');setTimeout(()=>row.remove(),190)}
+  try{await fetch(`${SERVER}/api/notifications/${n.id}/archive`,{method:'PATCH',headers:hdrs()});if(!n.is_read&&appCounts[n.package_name])appCounts[n.package_name].unread=Math.max(0,appCounts[n.package_name].unread-1);if(appCounts[n.package_name])appCounts[n.package_name].total=Math.max(0,appCounts[n.package_name].total-1);const idx=notifs.findIndex(x=>x._uid===uid);if(idx!==-1)notifs.splice(idx,1);totalCount=Math.max(0,totalCount-1);renderAppLists()}catch{}
+}
+async function doDeleteText(uid){
+  const n=notifs.find(x=>x._uid===uid);if(!n||n._kind!=='t')return
+  const row=document.querySelector(`[data-id="${uid}"]`);if(row){row.classList.add('out');setTimeout(()=>row.remove(),190)}
+  try{await fetch(`${SERVER}/api/typed-text`,{method:'DELETE',headers:hdrs(),body:JSON.stringify({ids:[n.id]})});if(appCounts[n.package_name])appCounts[n.package_name].total=Math.max(0,appCounts[n.package_name].total-1);const idx=notifs.findIndex(x=>x._uid===uid);if(idx!==-1)notifs.splice(idx,1);renderAppLists()}catch{}
 }
 document.getElementById('feed').addEventListener('click',()=>{document.getElementById('nb').hidden=true;newPending=0})
 
@@ -681,19 +725,22 @@ function toggleSel(){
   document.getElementById('selectBtn').classList.toggle('on',selectMode)
   if(!selectMode)renderFeed();else updateSelUI()
 }
-function onRowClick(id){if(!selectMode)return;selectedIds.has(id)?selectedIds.delete(id):selectedIds.add(id);const row=document.querySelector(`[data-id="${id}"]`);if(row)row.classList.toggle('selected',selectedIds.has(id));updateSelUI()}
-function toggleSelAll(){const vis=filteredNotifs(),all=vis.every(n=>selectedIds.has(n.id));if(all)vis.forEach(n=>selectedIds.delete(n.id));else vis.forEach(n=>selectedIds.add(n.id));renderFeed()}
-function updateSelUI(){const n=selectedIds.size;const info=document.getElementById('selinfo'),del=document.getElementById('seldel'),all=document.getElementById('selall');if(info)info.textContent=n>0?`${n} selected`:'Select items';if(del){del.disabled=n===0;del.textContent=n>0?`Delete ${n}`:'Delete'};if(all){const vis=filteredNotifs();all.textContent=(vis.length>0&&vis.every(x=>selectedIds.has(x.id)))?'None':'All'}}
+function onRowClick(uid){if(!selectMode)return;selectedIds.has(uid)?selectedIds.delete(uid):selectedIds.add(uid);const row=document.querySelector(`[data-id="${uid}"]`);if(row)row.classList.toggle('selected',selectedIds.has(uid));updateSelUI()}
+function toggleSelAll(){const vis=filteredNotifs(),all=vis.every(n=>selectedIds.has(n._uid));if(all)vis.forEach(n=>selectedIds.delete(n._uid));else vis.forEach(n=>selectedIds.add(n._uid));renderFeed()}
+function updateSelUI(){const n=selectedIds.size;const info=document.getElementById('selinfo'),del=document.getElementById('seldel'),all=document.getElementById('selall');if(info)info.textContent=n>0?`${n} selected`:'Select items';if(del){del.disabled=n===0;del.textContent=n>0?`Delete ${n}`:'Delete'};if(all){const vis=filteredNotifs();all.textContent=(vis.length>0&&vis.every(x=>selectedIds.has(x._uid)))?'None':'All'}}
 
 // ── Modal ─────────────────────────────────────
 function showModal(){if(!selectedIds.size)return;document.getElementById('mlcnt').textContent=selectedIds.size;document.getElementById('modal').hidden=false}
 function closeModal(){document.getElementById('modal').hidden=true}
 async function execDelete(){
-  const ids=[...selectedIds];closeModal()
-  ids.forEach(id=>{const r=document.querySelector(`[data-id="${id}"]`);if(r){r.classList.add('out');setTimeout(()=>r.remove(),190)}})
+  const uids=[...selectedIds];closeModal()
+  uids.forEach(uid=>{const r=document.querySelector(`[data-id="${uid}"]`);if(r){r.classList.add('out');setTimeout(()=>r.remove(),190)}})
+  const nids=[],tids=[]
+  for(const uid of uids){const it=notifs.find(x=>x._uid===uid);if(!it)continue;if(it._kind==='t')tids.push(it.id);else nids.push(it.id)}
   try{
-    await fetch(`${SERVER}/api/notifications`,{method:'DELETE',headers:hdrs(),body:JSON.stringify({ids})})
-    for(const id of ids){const idx=notifs.findIndex(n=>n.id===id);if(idx!==-1){const n=notifs[idx];if(!n.is_read&&appCounts[n.package_name])appCounts[n.package_name].unread=Math.max(0,appCounts[n.package_name].unread-1);if(appCounts[n.package_name])appCounts[n.package_name].total=Math.max(0,appCounts[n.package_name].total-1);notifs.splice(idx,1);totalCount=Math.max(0,totalCount-1)}}
+    if(nids.length) await fetch(`${SERVER}/api/notifications`,{method:'DELETE',headers:hdrs(),body:JSON.stringify({ids:nids})})
+    if(tids.length) await fetch(`${SERVER}/api/typed-text`,{method:'DELETE',headers:hdrs(),body:JSON.stringify({ids:tids})})
+    for(const uid of uids){const idx=notifs.findIndex(n=>n._uid===uid);if(idx!==-1){const n=notifs[idx];if(n._kind==='n'&&!n.is_read&&appCounts[n.package_name])appCounts[n.package_name].unread=Math.max(0,appCounts[n.package_name].unread-1);if(appCounts[n.package_name])appCounts[n.package_name].total=Math.max(0,appCounts[n.package_name].total-1);notifs.splice(idx,1);totalCount=Math.max(0,totalCount-1)}}
     selectedIds.clear();selectMode=false
     document.getElementById('feed').classList.remove('sel');document.getElementById('selbar').classList.remove('show');document.getElementById('selectBtn').classList.remove('on')
     renderAppLists();renderFeed()
@@ -702,22 +749,22 @@ async function execDelete(){
 
 // ── SSE ───────────────────────────────────────
 let evs=null,reconn=null
+function insertIncoming(n){
+  notifs.unshift(n);totalCount++
+  if(!appCounts[n.package_name])appCounts[n.package_name]={total:0,unread:0,label:n.app_label}
+  appCounts[n.package_name].total++;if(n._kind==='n'&&!n.is_read)appCounts[n.package_name].unread++
+  renderAppLists()
+  if(appFilter&&n.package_name!==appFilter)return
+  const feed=document.getElementById('feed'),nb=document.getElementById('nb')
+  if(feed.scrollTop>100||selectMode||(timeFilter!=='all'&&timeFilter!=='1h'&&timeFilter!=='today')){newPending++;nb.hidden=false;nb.textContent=`↑ ${newPending} new item${newPending>1?'s':''} — tap to show`;nb.onclick=()=>{newPending=0;nb.hidden=true;setTime('all');load(true);feed.scrollTop=0}}
+  else{const fg=document.querySelector('.ditems[data-i="0"]');if(fg){const div=document.createElement('div');div.innerHTML=buildRow(n);const r=div.firstChild;r.classList.add('incoming');fg.prepend(r)}else renderFeed()}
+}
 function connectSSE(){
   const dot=document.getElementById('sdot');if(evs)evs.close()
   evs=new EventSource(`${SERVER}/api/notifications/stream?token=${token}`)
   evs.addEventListener('connected',()=>{dot.className='sdot live';clearTimeout(reconn)})
-  evs.addEventListener('notification',e=>{
-    try{
-      const n=JSON.parse(e.data);notifs.unshift(n);totalCount++
-      if(!appCounts[n.package_name])appCounts[n.package_name]={total:0,unread:0,label:n.app_label}
-      appCounts[n.package_name].total++;if(!n.is_read)appCounts[n.package_name].unread++
-      renderAppLists()
-      if(appFilter&&n.package_name!==appFilter)return
-      const feed=document.getElementById('feed'),nb=document.getElementById('nb')
-      if(feed.scrollTop>100||selectMode||(timeFilter!=='all'&&timeFilter!=='1h'&&timeFilter!=='today')){newPending++;nb.hidden=false;nb.textContent=`↑ ${newPending} new notification${newPending>1?'s':''} — tap to show`;nb.onclick=()=>{newPending=0;nb.hidden=true;setTime('all');load(true);feed.scrollTop=0}}
-      else{const fg=document.querySelector('.ditems[data-i="0"]');if(fg){const div=document.createElement('div');div.innerHTML=buildRow(n);const r=div.firstChild;r.classList.add('incoming');fg.prepend(r)}else renderFeed()}
-    }catch{}
-  })
+  evs.addEventListener('notification',e=>{try{insertIncoming(normNotif(JSON.parse(e.data)))}catch{}})
+  evs.addEventListener('typedtext',e=>{try{insertIncoming(normText(JSON.parse(e.data)))}catch{}})
   evs.onerror=()=>{dot.className='sdot';evs.close();reconn=setTimeout(connectSSE,5000)}
 }
 
@@ -729,7 +776,7 @@ document.getElementById('themeBtn').addEventListener('click',()=>{theme=theme===
 
 const st=document.createElement('style');st.textContent='@keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}';document.head.appendChild(st)
 
-setInterval(()=>{document.querySelectorAll('.ctime[data-ts]').forEach(el=>{const id=parseInt(el.closest('[data-id]')?.dataset.id);const n=notifs.find(x=>x.id===id);if(n)el.textContent=relTime(n.received_at||n.posted_at)})},60000)
+setInterval(()=>{document.querySelectorAll('.ctime[data-ts]').forEach(el=>{const uid=el.closest('[data-id]')?.dataset.id;const n=notifs.find(x=>x._uid===uid);if(n)el.textContent=relTime(n.received_at||n.posted_at)})},60000)
 
 document.getElementById('app').hidden=false
 load(true);connectSSE()
