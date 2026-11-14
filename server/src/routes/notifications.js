@@ -6,6 +6,12 @@ import { uploadImage, deleteImage } from '../cloudinary.js'
 
 const router = Router()
 
+// Never expose the raw Cloudinary URL to clients. Images are served through the
+// authenticated proxy at /api/notifications/:id/image instead.
+function publicRow(r) {
+    return { ...r, image_url: r.image_url ? `/api/notifications/${r.id}/image` : null }
+}
+
 // POST /api/notifications — called by Android client
 router.post('/', async (req, res) => {
     const { deviceId, packageName, appLabel, title, textBody, bigText, subText, postedAt, dedupHash, imageData } = req.body
@@ -28,7 +34,7 @@ router.post('/', async (req, res) => {
             [deviceId, packageName, appLabel ?? '', title, textBody, bigText, subText, postedAt, dedupHash, imageUrl]
         )
         const row = result.rows[0]
-        broadcast('notification', row)
+        broadcast('notification', publicRow(row))
         await sendFcm(row)
         return res.status(201).json({ id: row.id, status: 'created' })
     } catch (err) {
@@ -87,7 +93,7 @@ router.get('/', async (req, res) => {
 
         const total = parseInt(countResult.rows[0].count)
         return res.json({
-            data: dataResult.rows,
+            data: dataResult.rows.map(publicRow),
             pagination: { page, limit, total, hasMore: offset + limit < total }
         })
     } catch (err) {
@@ -154,6 +160,66 @@ router.delete('/', async (req, res) => {
         return res.json({ deleted: result.rowCount })
     } catch (err) {
         console.error('DELETE /api/notifications error:', err.message)
+        return res.status(500).json({ error: 'Internal server error' })
+    }
+})
+
+// GET /api/notifications/:id/image — authenticated image proxy.
+// The browser never sees the raw Cloudinary URL; only callers with a valid
+// dashboard token (or API key) can fetch the bytes.
+router.get('/:id/image', async (req, res) => {
+    try {
+        const result = await db.query('SELECT image_url FROM notifications WHERE id = $1', [req.params.id])
+        const url = result.rows[0]?.image_url
+        if (!url) return res.status(404).json({ error: 'No image' })
+
+        const upstream = await fetch(url)
+        if (!upstream.ok) return res.status(502).json({ error: 'Upstream image error' })
+
+        res.setHeader('Content-Type', upstream.headers.get('content-type') || 'image/jpeg')
+        res.setHeader('Cache-Control', 'private, max-age=86400')
+        const buf = Buffer.from(await upstream.arrayBuffer())
+        return res.end(buf)
+    } catch (err) {
+        console.error('GET /api/notifications/:id/image error:', err.message)
+        return res.status(500).json({ error: 'Internal server error' })
+    }
+})
+
+// DELETE /api/notifications/:id — permanent single delete + Cloudinary cleanup
+router.delete('/:id', async (req, res) => {
+    try {
+        const result = await db.query(
+            'SELECT image_url FROM notifications WHERE id = $1', [req.params.id]
+        )
+        const url = result.rows[0]?.image_url
+        const del = await db.query('DELETE FROM notifications WHERE id = $1', [req.params.id])
+        if (url) deleteImage(url)
+        return res.json({ deleted: del.rowCount })
+    } catch (err) {
+        console.error('DELETE /api/notifications/:id error:', err.message)
+        return res.status(500).json({ error: 'Internal server error' })
+    }
+})
+
+// POST /api/notifications/purge-images — remove Cloudinary images and clear the
+// stored URL. scope='archived' (default) only touches archived rows; 'all' clears
+// every image. Notification rows themselves are kept.
+router.post('/purge-images', async (req, res) => {
+    const scope = req.body?.scope === 'all' ? 'all' : 'archived'
+    try {
+        const where = scope === 'all'
+            ? 'image_url IS NOT NULL'
+            : 'image_url IS NOT NULL AND is_archived = TRUE'
+        const result = await db.query(`SELECT id, image_url FROM notifications WHERE ${where}`)
+        for (const row of result.rows) deleteImage(row.image_url)
+        const ids = result.rows.map(r => r.id)
+        if (ids.length) {
+            await db.query('UPDATE notifications SET image_url = NULL WHERE id = ANY($1::bigint[])', [ids])
+        }
+        return res.json({ purged: ids.length, scope })
+    } catch (err) {
+        console.error('POST /api/notifications/purge-images error:', err.message)
         return res.status(500).json({ error: 'Internal server error' })
     }
 })

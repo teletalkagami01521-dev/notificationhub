@@ -20,15 +20,43 @@ class NotificationForwarderService : NotificationListenerService() {
         const val DEDUP_BUCKET_MS = 60_000L
     }
 
-    // Only true system noise. Call/Play-Services packages are intentionally NOT
-    // blocked so missed-call and other real notifications still arrive.
+    // Only true system noise + apps the user never wants to hear from.
+    // Call/Play-Services packages are intentionally NOT blocked so missed-call
+    // and other real notifications still arrive.
     private val blocklist = setOf(
         "android",
         "com.android.systemui",
         "com.android.settings",
         "com.miui.daemon",
-        "com.miui.securitycenter"
+        "com.miui.securitycenter",
+        "com.google.android.youtube",
+        "com.google.android.apps.youtube.music",
+        "com.pinterest"
     )
+
+    // Promotional keywords. A notification whose title/text matches any of these
+    // is treated as an ad and dropped. English terms use word boundaries so e.g.
+    // "sale" doesn't match "wholesale"; Bangla terms are matched as substrings.
+    // Edit this list freely — it is the single source of truth for promo filtering.
+    private val promoRegex = Regex(
+        "\\b(offer|offers|discount|cash ?back|promo|promotion|sale|coupon|voucher|deal|" +
+        "subscribe|subscription|prize|winner|giveaway|lottery|" +
+        "buy now|shop now|book now|apply now|register now|click here|free gift|" +
+        "data pack|internet pack|recharge offer|special offer|exclusive offer)\\b",
+        RegexOption.IGNORE_CASE
+    )
+    private val promoSubstrings = listOf(
+        "% off", "%off", "%off)", "percent off",
+        "অফার", "ছাড়", "ক্যাশব্যাক", "লটারি", "পুরস্কার", "ধামাকা"
+    )
+
+    private fun isPromo(title: String?, text: String?): Boolean {
+        val hay = "${title.orEmpty()} ${text.orEmpty()}"
+        if (hay.isBlank()) return false
+        if (promoRegex.containsMatchIn(hay)) return true
+        val lower = hay.lowercase()
+        return promoSubstrings.any { lower.contains(it.lowercase()) }
+    }
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
         if (sbn.packageName in blocklist) return
@@ -38,6 +66,10 @@ class NotificationForwarderService : NotificationListenerService() {
         val extras = sbn.notification.extras
         val title = extras.getString(Notification.EXTRA_TITLE)
         val text  = extras.getCharSequence(Notification.EXTRA_TEXT)?.toString()
+
+        // Drop promotional/ad notifications before they ever reach the server.
+        if (isPromo(title, text)) return
+
         val imageData = extractImageData(extras)
 
         // Keep image-only notifications (no title/text but a picture).
