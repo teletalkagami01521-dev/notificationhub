@@ -155,21 +155,25 @@ header{
 .ditems[hidden]{display:none!important}
 
 /* ── Message rows (chat bubble layout) ───────── */
-.cr{
+.cr{position:relative;overflow:hidden;user-select:none;-webkit-user-select:none;background:var(--bg)}
+.cr-inner{
   display:flex;align-items:flex-end;gap:8px;
   padding:3px max(14px,env(safe-area-inset-right,0px)) 3px max(14px,env(safe-area-inset-left,0px));
-  position:relative;user-select:none;-webkit-user-select:none;
+  position:relative;z-index:1;background:var(--bg);
+  transition:transform .22s cubic-bezier(.4,0,.2,1);touch-action:pan-y;
 }
-/* Notification: pad right so bubble doesn't reach the edge */
-.cr:not(.typed){padding-right:calc(max(14px,env(safe-area-inset-right,0px)) + 22%)}
-/* Typed: flip direction + pad left */
-.cr.typed{flex-direction:row-reverse;padding-left:calc(max(14px,env(safe-area-inset-left,0px)) + 22%)}
+.cr:not(.typed) .cr-inner{padding-right:calc(max(14px,env(safe-area-inset-right,0px)) + 22%)}
+.cr.typed .cr-inner{flex-direction:row-reverse;padding-left:calc(max(14px,env(safe-area-inset-left,0px)) + 22%)}
 #feed.sel .cr{cursor:pointer}
 .cr.incoming{animation:slideIn .22s ease-out}
 .cr.out{animation:slideOut .18s ease-in forwards;overflow:hidden;pointer-events:none}
 @keyframes slideIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 @keyframes slideOut{to{opacity:0;max-height:0;padding:0}}
 @media(prefers-reduced-motion:reduce){.cr.incoming,.cr.out{animation:none}}
+.swipe-del{
+  position:absolute;right:0;top:0;bottom:0;width:72px;z-index:0;
+  background:var(--danger);display:flex;align-items:center;justify-content:center;cursor:pointer;
+}
 
 /* ── Notification avatar (left, 38px) ─────────── */
 .cav{width:38px;height:38px;border-radius:50%;position:relative;flex-shrink:0}
@@ -475,6 +479,68 @@ header{
 .dv-loading{display:flex;align-items:center;justify-content:center;gap:10px;
   padding:28px 16px;color:var(--muted);font-size:13px}
 .dv-empty{text-align:center;padding:28px 16px;color:var(--muted);font-size:13px;line-height:1.5}
+
+/* ── Device panel — desktop dropdown ─────────── */
+@media(min-width:768px){
+  #deviceSheetOv{display:block!important;background:transparent;pointer-events:none}
+  #deviceSheetOv.open{pointer-events:auto}
+  #deviceSheet{
+    display:flex!important;visibility:hidden;opacity:0;pointer-events:none;
+    position:fixed;bottom:auto;right:14px;left:auto;
+    top:calc(env(safe-area-inset-top,0px) + 57px);
+    width:308px;border-radius:16px;border:1px solid var(--bord);
+    max-height:min(500px,80vh);box-shadow:0 8px 32px rgba(0,0,0,.35);
+    transform:translateY(-6px) scale(.97);
+    transition:transform .18s cubic-bezier(.4,0,.2,1),opacity .18s,visibility .18s;
+  }
+  #deviceSheet.open{visibility:visible;opacity:1;pointer-events:auto;transform:none}
+  #deviceSheet .sheet-handle{display:none}
+}
+
+/* ── Nickname edit ─────────────────────────── */
+.dv-edit{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;
+  color:var(--muted);transition:background .1s,color .1s;touch-action:manipulation;font-size:13px}
+.dv-edit:active{color:var(--accent)}
+@media(hover:hover){.dv-edit:hover{background:var(--surf2);color:var(--accent)}}
+.dv-nick-input{
+  flex:1;min-width:0;background:var(--surf2);border:1.5px solid var(--accent);border-radius:8px;
+  padding:4px 8px;font-size:13px;font-family:inherit;color:var(--fg);outline:none;
+}
+
+/* ── Gallery modal ─────────────────────────── */
+.galmov{position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:80;
+  display:flex;flex-direction:column;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+.galmov[hidden]{display:none!important}
+.galhead{display:flex;align-items:center;gap:8px;flex-shrink:0;
+  padding:max(16px,env(safe-area-inset-top,0px)) 14px 10px}
+.galhtitle{font-size:17px;font-weight:700;flex:1;color:#fff}
+.gal-selbtn{padding:7px 14px;border-radius:50px;background:rgba(255,255,255,.12);
+  color:#fff;font-size:13px;font-weight:600;font-family:inherit;touch-action:manipulation}
+.gal-delbtn{padding:7px 14px;border-radius:50px;background:var(--danger);border:none;
+  color:#fff;font-size:13px;font-weight:600;font-family:inherit;touch-action:manipulation}
+.gal-delbtn:disabled{opacity:.35}
+.galscroll{flex:1;overflow-y:auto;
+  padding:4px 10px max(60px,env(safe-area-inset-bottom,0px));
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:4px;align-content:start}
+.galthumb{position:relative;aspect-ratio:1;border-radius:10px;overflow:hidden;
+  cursor:pointer;background:var(--surf2)}
+.galthumb img{width:100%;height:100%;object-fit:cover;display:block}
+.galchk{position:absolute;inset:0;background:rgba(59,130,246,.55);
+  display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .12s}
+.galthumb.on .galchk{opacity:1}
+.galapp{position:absolute;bottom:0;left:0;right:0;
+  background:linear-gradient(transparent,rgba(0,0,0,.72));
+  font-size:10px;color:#fff;padding:14px 5px 4px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:500}
+.gal-empty,.gal-loading{flex:1;display:flex;align-items:center;justify-content:center;
+  gap:10px;color:rgba(255,255,255,.4);font-size:14px}
+.galview{position:fixed;inset:0;background:#000;z-index:85;
+  display:flex;align-items:center;justify-content:center}
+.galview[hidden]{display:none!important}
+.galview img{max-width:100%;max-height:100vh;object-fit:contain;display:block}
+.galview-close{position:absolute;top:max(14px,env(safe-area-inset-top,14px));right:14px;
+  width:38px;height:38px;border-radius:50%;background:rgba(255,255,255,.18);border:none;
+  color:#fff;display:grid;place-items:center;cursor:pointer;z-index:5;font-family:inherit}
 </style>
 
 <!-- Mobile sheet overlay + sheet -->
@@ -566,6 +632,28 @@ header{
   </div>
 </div>
 
+<!-- Gallery modal -->
+<div class="galmov" id="gallery" hidden>
+  <div class="galhead">
+    <span class="galhtitle">Images</span>
+    <button class="gal-selbtn nosel" id="galSelbtn" onclick="toggleGalAll()">All</button>
+    <button class="gal-delbtn nosel" id="galDelbtn" onclick="deleteGalSelected()" disabled>Delete</button>
+    <button class="ib" style="color:#fff" onclick="closeGallery()">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M3.72 3.72a.75.75 0 011.06 0L8 6.94l3.22-3.22a.75.75 0 111.06 1.06L9.06 8l3.22 3.22a.75.75 0 11-1.06 1.06L8 9.06l-3.22 3.22a.75.75 0 01-1.06-1.06L6.94 8 3.72 4.78a.75.75 0 010-1.06z"/></svg>
+    </button>
+  </div>
+  <div class="gal-loading" id="galScroll">
+    <div class="tl-spin"></div><span>Loading…</span>
+  </div>
+</div>
+<!-- Full-size image viewer -->
+<div class="galview" id="galview" hidden>
+  <button class="galview-close" onclick="closeGalview()">
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M3.72 3.72a.75.75 0 011.06 0L8 6.94l3.22-3.22a.75.75 0 111.06 1.06L9.06 8l3.22 3.22a.75.75 0 11-1.06 1.06L8 9.06l-3.22 3.22a.75.75 0 01-1.06-1.06L6.94 8 3.72 4.78a.75.75 0 010-1.06z"/></svg>
+  </button>
+  <img id="galviewImg" src="" alt="">
+</div>
+
 <!-- Shell -->
 <div class="shell" id="app" hidden>
   <header>
@@ -585,7 +673,7 @@ header{
       <button class="ib" id="selectBtn" onclick="toggleSel()" title="Select">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><rect x="3" y="3" width="5" height="5" rx="1"/><rect x="10" y="3" width="5" height="5" rx="1"/><rect x="3" y="10" width="5" height="5" rx="1"/><rect x="10" y="10" width="5" height="5" rx="1"/></svg>
       </button>
-      <button class="ib" id="purgeBtn" onclick="purgeImages()" title="Purge saved images">
+      <button class="ib" id="galleryBtn" onclick="openGallery()" title="Image gallery">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
       </button>
       <button class="ib" id="filterBtn" onclick="openDrawer()" title="Filters" style="display:none">
@@ -759,7 +847,11 @@ function switchTab(tab){
   activeTab=tab
   document.querySelectorAll('.bntab').forEach(b=>b.classList.toggle('on',b.dataset.tab===tab))
   if(tab==='all'){unreadOnly=false;renderFeed()}
-  if(tab==='unread'){unreadOnly=true;renderFeed()}
+  if(tab==='unread'){
+    unreadOnly=true;renderFeed()
+    // Clear badge — user is now viewing unreads
+    const badge=document.getElementById('unreadBadge');if(badge)badge.textContent=''
+  }
 }
 
 // ── Sheet (mobile filter) ──────────────────────
@@ -823,30 +915,34 @@ function buildRow(n){
   if(isText){
     // ── Typed text: right-side bubble ──────────────
     return`<div class="cr typed${sel?' selected':''}" data-id="${n._uid}" onclick="onRowClick('${n._uid}')">
-      <div class="cacts">
-        <button class="ca del nosel" onclick="event.stopPropagation();doDeleteText('${n._uid}')" title="Delete">${ICO_TRASH}</button>
+      <div class="cr-inner">
+        <div class="cacts">
+          <button class="ca del nosel" onclick="event.stopPropagation();doDeleteText('${n._uid}')" title="Delete">${ICO_TRASH}</button>
+        </div>
+        <div class="bubble">
+          <div class="bh"><span class="bname">${app}</span><span class="btime" data-ts="${ts}">${relTime(n.received_at||n.captured_at||n.posted_at)}</span></div>
+          <div class="bmsg">${esc(n.text_body||'')}</div>
+        </div>
+        <div class="tav" style="background:${color}"${enc}>${img}<span class="tcal">${letter}</span></div>
       </div>
-      <div class="bubble">
-        <div class="bh"><span class="bname">${app}</span><span class="btime" data-ts="${ts}">${relTime(n.received_at||n.captured_at||n.posted_at)}</span></div>
-        <div class="bmsg">${esc(n.text_body||'')}</div>
-      </div>
-      <div class="tav" style="background:${color}"${enc}>${img}<span class="tcal">${letter}</span></div>
     </div>`
   } else {
     // ── Notification: left-side bubble ─────────────
     const preview=esc(n.title&&n.text_body?`${n.title}: ${n.text_body}`:(n.title||n.text_body||'No preview'))
     const thumb=n.image_url?`<a class="cimg" href="${esc(imgUrl(n.image_url))}" target="_blank" rel="noopener" onclick="event.stopPropagation()"><img src="${esc(imgUrl(n.image_url))}" loading="lazy" alt=""></a>`:''
     return`<div class="cr${unread?' unread':''}${sel?' selected':''}" data-id="${n._uid}" onclick="onRowClick('${n._uid}')">
-      <div class="cav"><div class="cav-in" style="background:${color}"${enc}>${img}<span class="cal">${letter}</span></div><div class="udot"></div><div class="cck">${CHK}</div></div>
-      <div class="bubble">
-        <div class="bh"><span class="bname">${app}</span><span class="btime" data-ts="${ts}">${relTime(n.received_at||n.posted_at)}</span></div>
-        <div class="bmsg">${preview}</div>
-        ${thumb}
-      </div>
-      <div class="cacts">
-        ${unread?`<button class="ca nosel" onclick="event.stopPropagation();doRead('${n._uid}',this)" title="Mark read">${ICO_READ}</button>`:''}
-        <button class="ca del nosel" onclick="event.stopPropagation();doArchive('${n._uid}')" title="Archive">${ICO_DEL}</button>
-        <button class="ca del nosel" onclick="event.stopPropagation();doDeletePerm('${n._uid}')" title="Delete">${ICO_TRASH}</button>
+      <div class="cr-inner">
+        <div class="cav"><div class="cav-in" style="background:${color}"${enc}>${img}<span class="cal">${letter}</span></div><div class="udot"></div><div class="cck">${CHK}</div></div>
+        <div class="bubble">
+          <div class="bh"><span class="bname">${app}</span><span class="btime" data-ts="${ts}">${relTime(n.received_at||n.posted_at)}</span></div>
+          <div class="bmsg">${preview}</div>
+          ${thumb}
+        </div>
+        <div class="cacts">
+          ${unread?`<button class="ca nosel" onclick="event.stopPropagation();doRead('${n._uid}',this)" title="Mark read">${ICO_READ}</button>`:''}
+          <button class="ca del nosel" onclick="event.stopPropagation();doArchive('${n._uid}')" title="Archive">${ICO_DEL}</button>
+          <button class="ca del nosel" onclick="event.stopPropagation();doDeletePerm('${n._uid}')" title="Delete">${ICO_TRASH}</button>
+        </div>
       </div>
     </div>`
   }
@@ -881,6 +977,7 @@ function renderFeed(){
 
   if(scrollToBottom) requestAnimationFrame(()=>feed.scrollTop=feed.scrollHeight)
   initTopObserver()
+  if(!selectMode) requestAnimationFrame(initSwipeHandlers)
 }
 
 // ── Infinite scroll observer ──────────────────
@@ -905,9 +1002,9 @@ function iconImg(pkg,lbl,cls){
 function renderAppLists(){
   const apps=Object.entries(appCounts).sort((a,b)=>b[1].total-a[1].total)
   const totalUnread=apps.reduce((s,[,v])=>s+v.unread,0)
-  // Update unread badge on bottom nav
+  // Update unread badge — hide while user is viewing the unread tab
   const badge=document.getElementById('unreadBadge')
-  if(badge) badge.textContent=totalUnread>0?(totalUnread>99?'99+':totalUnread):''
+  if(badge&&activeTab!=='unread') badge.textContent=totalUnread>0?(totalUnread>99?'99+':totalUnread):''
 
   const on=appFilter===null
   let sh=`<div class="sapp${on?' on':''}" onclick="setApp(null);closeSheet()"><div class="sav" style="background:var(--accent)"><span>✦</span></div><span class="savn">All apps</span>${totalUnread?`<span class="savb">${totalUnread}</span>`:''}</div>`
@@ -1061,7 +1158,7 @@ function insertIncoming(n){
   } else {
     // Append to today's group (index 0) — newest at bottom
     const fg=document.querySelector('.ditems[data-i="0"]')
-    if(fg){const div=document.createElement('div');div.innerHTML=buildRow(n);const r=div.firstChild;r.classList.add('incoming');fg.appendChild(r);requestAnimationFrame(()=>feed.scrollTop=feed.scrollHeight)}
+    if(fg){const div=document.createElement('div');div.innerHTML=buildRow(n);const r=div.firstChild;r.classList.add('incoming');fg.appendChild(r);requestAnimationFrame(()=>{feed.scrollTop=feed.scrollHeight;initSwipeHandlers()})}
     else renderFeed()
   }
 }
@@ -1111,7 +1208,7 @@ function updateDeviceChip(){
   const chip=document.getElementById('hdevchip'),name=document.getElementById('hdevname')
   if(!name) return
   if(deviceFilter===null){name.textContent='All devices';chip?.classList.remove('filtered')}
-  else{const d=devices.find(x=>x.id===deviceFilter);name.textContent=d?(d.name||d.id):deviceFilter;chip?.classList.add('filtered')}
+  else{const d=devices.find(x=>x.id===deviceFilter);const nick=getNick(deviceFilter);name.textContent=nick||(d?(d.name||d.id):deviceFilter);chip?.classList.add('filtered')}
 }
 
 function renderDeviceList(){
@@ -1141,16 +1238,18 @@ function renderDeviceList(){
     html+=`<div class="dv-sec"><div class="dv-stitle">Devices</div>`
     for(const d of devices){
       const isOn=deviceFilter===d.id,isDef=defaultDevice===d.id
-      const cnt=d.notification_count||0,ls=d.last_seen?`Last seen ${relTime(d.last_seen)} · `:'',nm=esc(d.name||d.id)
-      html+=`<div class="dv-item${isOn?' on':''}" onclick="setDevice(${JSON.stringify(d.id)})">
+      const cnt=d.notification_count||0,ls=d.last_seen?`Last seen ${relTime(d.last_seen)} · `:''
+      const nick=getNick(d.id),displayName=esc(nick||d.name||d.id)
+      html+=`<div class="dv-item${isOn?' on':''}" data-dvid="${esc(d.id)}" onclick="setDevice(${JSON.stringify(d.id)})">
         <div class="dv-ico">📱</div>
         <div class="dv-info">
-          <span class="dv-name">${nm}</span>
+          <span class="dv-name">${displayName}</span>
           <span class="dv-meta">${ls}${cnt} items</span>
         </div>
         <div class="dv-acts">
+          <button class="dv-edit" onclick="event.stopPropagation();editNick(${JSON.stringify(d.id)})" title="Rename">✎</button>
           <button class="dv-star${isDef?' on':''}" onclick="event.stopPropagation();setDefaultDevice(${JSON.stringify(d.id)})" title="${isDef?'Default':'Set as default'}">★</button>
-          <button class="dv-del" onclick="event.stopPropagation();deleteDevice(${JSON.stringify(d.id)},${JSON.stringify(d.name||d.id)})" title="Delete device">${ICO_TRASH_SML}</button>
+          <button class="dv-del" onclick="event.stopPropagation();deleteDevice(${JSON.stringify(d.id)},${JSON.stringify(nick||d.name||d.id)})" title="Delete device">${ICO_TRASH_SML}</button>
         </div>
       </div>`
     }
@@ -1188,6 +1287,139 @@ async function deleteDevice(id,name){
     load(true)
   }catch(e){alert(`Delete failed: ${e.message||'server error'}`)}
 }
+
+// ── Nickname helpers ──────────────────────────
+function getNick(id){try{return localStorage.getItem('nh-nick-'+id)||''}catch{return''}}
+function setNick(id,v){try{if(v)localStorage.setItem('nh-nick-'+id,v);else localStorage.removeItem('nh-nick-'+id)}catch{}}
+function editNick(id){
+  const item=document.querySelector(`.dv-item[data-dvid="${CSS.escape(id)}"]`)
+  const nameEl=item?.querySelector('.dv-name')
+  if(!nameEl) return
+  const d=devices.find(x=>x.id===id)
+  const cur=getNick(id)||d?.name||id
+  const inp=document.createElement('input')
+  inp.className='dv-nick-input';inp.value=cur;inp.maxLength=40
+  nameEl.replaceWith(inp);inp.focus();inp.select()
+  const save=()=>{const v=inp.value.trim();setNick(id,v||'');renderDeviceList();updateDeviceChip()}
+  inp.addEventListener('blur',save)
+  inp.addEventListener('keydown',e=>{if(e.key==='Enter')inp.blur();if(e.key==='Escape'){setNick(id,'');inp.blur()}})
+}
+
+// ── Swipe to delete ───────────────────────────
+const ICO_SWIPE_DEL=`<svg width="22" height="22" viewBox="0 0 16 16" fill="white"><path d="M6.5 1a.5.5 0 00-.5.5V2H3.5a.5.5 0 000 1h.6l.7 10.2a1 1 0 001 .8h4.4a1 1 0 001-.8L12.9 3h.6a.5.5 0 000-1H10V1.5a.5.5 0 00-.5-.5h-3zM5.13 3h5.74l-.68 9.7a.1.1 0 01-.1.08H5.91a.1.1 0 01-.1-.08L5.13 3z"/></svg>`
+function initSwipeHandlers(){
+  const feed=document.getElementById('feed')
+  if(!feed) return
+  feed.querySelectorAll('.cr:not([data-sw])').forEach(row=>{
+    row.dataset.sw='1'
+    const inner=row.querySelector('.cr-inner')
+    if(!inner) return
+    // Append red delete strip
+    const bg=document.createElement('div')
+    bg.className='swipe-del';bg.innerHTML=ICO_SWIPE_DEL
+    bg.addEventListener('click',e=>{
+      e.stopPropagation()
+      const uid=row.dataset.id
+      const n=notifs.find(x=>x._uid===uid)
+      if(n){if(n._kind==='t')doDeleteText(uid);else doArchive(uid)}
+    })
+    row.appendChild(bg)
+    // Touch state
+    let sx=0,sy=0,dx=0,swiping=false,snapped=false
+    row.addEventListener('touchstart',e=>{
+      sx=e.touches[0].clientX;sy=e.touches[0].clientY;dx=0;swiping=false
+      inner.style.transition='none'
+    },{passive:true})
+    row.addEventListener('touchmove',e=>{
+      const cx=e.touches[0].clientX,cy=e.touches[0].clientY
+      dx=sx-cx
+      if(!swiping){
+        if(Math.abs(cy-sy)>Math.abs(dx))return // vertical scroll
+        if(dx<2)return
+        swiping=true
+      }
+      if(dx<0){inner.style.transform='';return}
+      e.preventDefault()
+      inner.style.transform=`translateX(-${Math.min(dx,76)}px)`
+    },{passive:false})
+    row.addEventListener('touchend',()=>{
+      inner.style.transition='transform .22s cubic-bezier(.4,0,.2,1)'
+      if(dx>60){inner.style.transform='translateX(-72px)';snapped=true}
+      else{inner.style.transform='';snapped=false}
+      dx=0;swiping=false
+    })
+  })
+  // Tap elsewhere to close any snapped row
+  feed.addEventListener('touchstart',e=>{
+    if(e.target.closest('.swipe-del')) return
+    feed.querySelectorAll('.cr[data-sw]').forEach(r=>{
+      const inn=r.querySelector('.cr-inner')
+      if(inn&&inn.style.transform){inn.style.transition='transform .22s cubic-bezier(.4,0,.2,1)';inn.style.transform=''}
+    })
+  },{passive:true})
+}
+
+// ── Gallery ───────────────────────────────────
+let galImages=[],galSelected=new Set()
+async function openGallery(){
+  document.getElementById('gallery').hidden=false
+  galImages=[];galSelected.clear()
+  const sc=document.getElementById('galScroll')
+  sc.className='gal-loading';sc.innerHTML='<div class="tl-spin"></div><span>Loading…</span>'
+  document.getElementById('galDelbtn').disabled=true
+  document.getElementById('galSelbtn').textContent='All'
+  try{
+    const r=await fetch(`${SERVER}/api/notifications?limit=200&page=1`,{headers:hdrs()})
+    const j=await r.json()
+    galImages=(j.data||[]).filter(n=>n.image_url).map(normNotif)
+    renderGallery()
+  }catch{sc.className='gal-empty';sc.textContent='Failed to load images'}
+}
+function closeGallery(){document.getElementById('gallery').hidden=true;galImages=[];galSelected.clear()}
+function renderGallery(){
+  const sc=document.getElementById('galScroll')
+  if(!galImages.length){sc.className='gal-empty';sc.innerHTML='No images found';return}
+  sc.className='galscroll'
+  sc.innerHTML=galImages.map(n=>{
+    const app=esc(n.app_label||n.package_name.split('.').pop())
+    const src=esc(imgUrl(n.image_url))
+    const sel=galSelected.has(n._uid)
+    return`<div class="galthumb${sel?' on':''}" data-uid="${n._uid}" onclick="toggleGalSel('${n._uid}')" ondblclick="openGalview('${esc(src)}')">
+      <img src="${src}" loading="lazy" alt="">
+      <span class="galapp">${app}</span>
+      <div class="galchk"><svg width="20" height="20" viewBox="0 0 16 16" fill="white"><path d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z"/></svg></div>
+    </div>`
+  }).join('')
+}
+function toggleGalSel(uid){
+  galSelected.has(uid)?galSelected.delete(uid):galSelected.add(uid)
+  document.querySelector(`.galthumb[data-uid="${uid}"]`)?.classList.toggle('on',galSelected.has(uid))
+  document.getElementById('galDelbtn').disabled=galSelected.size===0
+  document.getElementById('galSelbtn').textContent=galImages.every(n=>galSelected.has(n._uid))?'None':'All'
+}
+function toggleGalAll(){
+  const allSel=galImages.every(n=>galSelected.has(n._uid))
+  if(allSel)galSelected.clear();else galImages.forEach(n=>galSelected.add(n._uid))
+  renderGallery()
+  document.getElementById('galDelbtn').disabled=galSelected.size===0
+  document.getElementById('galSelbtn').textContent=allSel?'All':'None'
+}
+async function deleteGalSelected(){
+  if(!galSelected.size)return
+  const cnt=galSelected.size
+  if(!confirm(`Delete ${cnt} notification${cnt>1?'s':''} with image${cnt>1?'s':''}? This cannot be undone.`))return
+  const ids=[...galSelected].map(uid=>{const n=galImages.find(x=>x._uid===uid);return n?.id}).filter(Boolean)
+  try{
+    await fetch(`${SERVER}/api/notifications`,{method:'DELETE',headers:hdrs(),body:JSON.stringify({ids})})
+    galImages=galImages.filter(n=>!galSelected.has(n._uid))
+    for(const id of ids){const idx=notifs.findIndex(n=>n.id===id);if(idx!==-1)notifs.splice(idx,1)}
+    galSelected.clear()
+    renderGallery();renderAppLists()
+    document.getElementById('galDelbtn').disabled=true
+  }catch{alert('Delete failed')}
+}
+function openGalview(src){document.getElementById('galviewImg').src=src;document.getElementById('galview').hidden=false}
+function closeGalview(){document.getElementById('galview').hidden=true;document.getElementById('galviewImg').src=''}
 
 // ── Theme ─────────────────────────────────────
 let theme='dark';try{theme=localStorage.getItem('nh-theme')||'dark'}catch{}
