@@ -22,7 +22,7 @@ class SyncForegroundService : Service() {
         createSilentChannel()
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle("NotifyHub")
+            .setContentTitle("Snap sync status")
             .setContentText("Slide to close this.")
             .setSilent(true)
             .setPriority(NotificationCompat.PRIORITY_MIN)
