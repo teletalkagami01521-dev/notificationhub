@@ -422,6 +422,59 @@ header{
   #filterBtn{display:grid!important}
   .selbar{left:260px}
 }
+
+/* ── Device selector ─────────────────────────── */
+.hdevchip{
+  display:flex;align-items:center;gap:3px;padding:4px 9px;border-radius:50px;
+  background:var(--surf);border:1.5px solid var(--bord);color:var(--fg);
+  font-size:12px;font-weight:600;white-space:nowrap;touch-action:manipulation;
+  transition:background .1s,border-color .1s;max-width:130px;overflow:hidden;
+  flex-shrink:0;
+}
+.hdevchip:active{background:var(--surf2)}
+@media(hover:hover){.hdevchip:hover{background:var(--surf2)}}
+.hdevchip.filtered{border-color:var(--accent);color:var(--accent)}
+.hdevchip-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* Device sheet items */
+.dv-sec{padding:10px 8px 4px;border-bottom:1px solid var(--bord)}
+.dv-sec:last-child{border-bottom:none}
+.dv-stitle{font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);padding:0 8px 8px}
+.dv-item{
+  display:flex;align-items:center;gap:10px;padding:10px 10px;border-radius:12px;
+  cursor:pointer;transition:background .1s;user-select:none;-webkit-user-select:none;
+  margin-bottom:1px;
+}
+.dv-item:active{background:var(--surf2)}
+@media(hover:hover){.dv-item:hover{background:var(--surf)}}
+.dv-item.on{background:var(--abg)}
+.dv-ico{
+  width:40px;height:40px;border-radius:50%;background:var(--surf2);flex-shrink:0;
+  display:grid;place-items:center;border:1px solid var(--bord);font-size:18px;
+}
+.dv-item.on .dv-ico{background:var(--abg);border-color:var(--accent)}
+.dv-info{flex:1;min-width:0}
+.dv-name{font-size:14px;font-weight:600;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dv-item.on .dv-name{color:var(--accent)}
+.dv-meta{font-size:12px;color:var(--muted);display:block;margin-top:2px}
+.dv-acts{display:flex;gap:1px;flex-shrink:0;align-items:center}
+.dv-star{
+  width:32px;height:32px;border-radius:50%;display:grid;place-items:center;
+  font-size:16px;line-height:1;color:var(--muted);transition:background .1s,color .1s;
+  touch-action:manipulation;
+}
+.dv-star:active{color:var(--warn)}
+.dv-star.on{color:var(--warn)}
+@media(hover:hover){.dv-star:hover{background:var(--surf2);color:var(--warn)}}
+.dv-del{
+  width:32px;height:32px;border-radius:50%;display:grid;place-items:center;
+  color:var(--muted);transition:background .1s,color .1s;touch-action:manipulation;
+}
+.dv-del:active{color:var(--danger)}
+@media(hover:hover){.dv-del:hover{background:var(--surf2);color:var(--danger)}}
+.dv-loading{display:flex;align-items:center;justify-content:center;gap:10px;
+  padding:28px 16px;color:var(--muted);font-size:13px}
+.dv-empty{text-align:center;padding:28px 16px;color:var(--muted);font-size:13px;line-height:1.5}
 </style>
 
 <!-- Mobile sheet overlay + sheet -->
@@ -450,6 +503,23 @@ header{
     <div class="sheet-sec">
       <div class="sheet-stitle">Apps</div>
       <div id="sheetApps"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Device selector sheet -->
+<div class="sheet-ov" id="deviceSheetOv" onclick="closeDeviceSheet()"></div>
+<div class="sheet" id="deviceSheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-head">
+    <span class="sheet-title nosel">Devices</span>
+    <button class="ib" onclick="closeDeviceSheet()">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M3.72 3.72a.75.75 0 011.06 0L8 6.94l3.22-3.22a.75.75 0 111.06 1.06L9.06 8l3.22 3.22a.75.75 0 11-1.06 1.06L8 9.06l-3.22 3.22a.75.75 0 01-1.06-1.06L6.94 8 3.72 4.78a.75.75 0 010-1.06z"/></svg>
+    </button>
+  </div>
+  <div class="sheet-body" id="deviceList">
+    <div class="dv-loading">
+      <div class="tl-spin"></div><span>Loading devices…</span>
     </div>
   </div>
 </div>
@@ -501,6 +571,10 @@ header{
   <header>
     <span class="htitle nosel">NotifyHub</span>
     <span class="sdot" id="sdot"></span>
+    <button class="hdevchip nosel" id="hdevchip" onclick="openDeviceSheet()" title="Switch device">
+      <span class="hdevchip-name" id="hdevname">All devices</span>
+      <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" style="flex-shrink:0"><path d="M4.427 7.427l3.396 3.396a.25.25 0 00.354 0l3.396-3.396A.25.25 0 0011.396 7H4.604a.25.25 0 00-.177.427z"/></svg>
+    </button>
     <div class="hbtns">
       <button class="ib" id="searchBtn" onclick="toggleSearch()" title="Search">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -676,6 +750,8 @@ let appCounts={},selectMode=false,selectedIds=new Set()
 let currentGroups=[],userToggledDays=new Set()
 let activeTab='all'
 let loadingMore=false,scrollToBottom=true,topObserver=null
+let devices=[],deviceFilter=null,defaultDevice=null
+try{const d=localStorage.getItem('nh-device');if(d){deviceFilter=d;defaultDevice=d}}catch{}
 
 // ── Bottom nav tab switch ──────────────────────
 function switchTab(tab){
@@ -862,8 +938,9 @@ function rebuildAppCounts(){
 async function load(reset=false){
   if(reset){page=1;notifs=[]}
   const p=new URLSearchParams({page,limit:50})
-  if(appFilter) p.set('package',appFilter)
-  if(searchQ)   p.set('search',searchQ)
+  if(appFilter)    p.set('package',appFilter)
+  if(searchQ)      p.set('search',searchQ)
+  if(deviceFilter) p.set('device_id',deviceFilter)
   try{
     const res=await fetch(`${SERVER}/api/notifications?${p}`,{headers:hdrs()})
     if(res.status===401){location.reload();return}
@@ -878,6 +955,7 @@ async function load(reset=false){
         if(tr.ok){const tj=await tr.json();notifs=notifs.concat((tj.data||[]).map(normText))}
       }catch{}
       sortItems();rebuildAppCounts()
+      if(!devices.length) loadDevices() // first load: fetch device list
     } else notifs=[...notifs,...rows]
     totalCount=json.pagination?.total??notifs.length;hasMore=json.pagination?.hasMore??false
     renderAppLists();renderFeed()
@@ -996,6 +1074,121 @@ function connectSSE(){
   evs.onerror=()=>{dot.className='sdot';evs.close();reconn=setTimeout(connectSSE,5000)}
 }
 
+// ── Device management ─────────────────────────
+function openDeviceSheet(){document.getElementById('deviceSheet').classList.add('open');document.getElementById('deviceSheetOv').classList.add('open')}
+function closeDeviceSheet(){document.getElementById('deviceSheet').classList.remove('open');document.getElementById('deviceSheetOv').classList.remove('open')}
+
+async function loadDevices(){
+  try{
+    const r=await fetch(`${SERVER}/api/devices`,{headers:hdrs()})
+    if(r.ok){const j=await r.json();devices=Array.isArray(j)?j:(j.data||[])}
+    else throw new Error()
+  }catch{
+    // Fallback: derive devices from already-loaded notification data
+    const map=new Map()
+    for(const n of notifs){
+      if(!n.device_id) continue
+      if(!map.has(n.device_id))map.set(n.device_id,{id:n.device_id,name:n.device_name||n.device_id,last_seen:n.received_at||n.posted_at,notification_count:0})
+      map.get(n.device_id).notification_count++
+      const ls=n.received_at||n.posted_at;if(ls>map.get(n.device_id).last_seen)map.get(n.device_id).last_seen=ls
+    }
+    devices=[...map.values()]
+  }
+
+  // Update header chip with device name now that we have the list
+  updateDeviceChip()
+
+  // Auto-prompt if multiple devices and no default set
+  if(devices.length>1&&!defaultDevice&&!localStorage.getItem('nh-device-seen')){
+    try{localStorage.setItem('nh-device-seen','1')}catch{}
+    openDeviceSheet()
+  }
+
+  renderDeviceList()
+}
+
+function updateDeviceChip(){
+  const chip=document.getElementById('hdevchip'),name=document.getElementById('hdevname')
+  if(!name) return
+  if(deviceFilter===null){name.textContent='All devices';chip?.classList.remove('filtered')}
+  else{const d=devices.find(x=>x.id===deviceFilter);name.textContent=d?(d.name||d.id):deviceFilter;chip?.classList.add('filtered')}
+}
+
+function renderDeviceList(){
+  const el=document.getElementById('deviceList')
+  if(!el) return
+  const ICO_TRASH_SML=`<svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M6.5 1a.5.5 0 00-.5.5V2H3.5a.5.5 0 000 1h.6l.7 10.2a1 1 0 001 .8h4.4a1 1 0 001-.8L12.9 3h.6a.5.5 0 000-1H10V1.5a.5.5 0 00-.5-.5h-3zM5.13 3h5.74l-.68 9.7a.1.1 0 01-.1.08H5.91a.1.1 0 01-.1-.08L5.13 3z"/></svg>`
+
+  const totalItems=notifs.length
+  const isAll=deviceFilter===null
+  const isAllDef=defaultDevice===null
+
+  let html=`<div class="dv-sec">
+    <div class="dv-stitle">View</div>
+    <div class="dv-item${isAll?' on':''}" onclick="setDevice(null)">
+      <div class="dv-ico">✦</div>
+      <div class="dv-info">
+        <span class="dv-name">All devices (Central)</span>
+        <span class="dv-meta">${devices.length} device${devices.length!==1?'s':''} · ${totalItems} items</span>
+      </div>
+      <div class="dv-acts">
+        <button class="dv-star${isAllDef?' on':''}" onclick="event.stopPropagation();setDefaultDevice(null)" title="${isAllDef?'Default':'Set as default'}">★</button>
+      </div>
+    </div>
+  </div>`
+
+  if(devices.length){
+    html+=`<div class="dv-sec"><div class="dv-stitle">Devices</div>`
+    for(const d of devices){
+      const isOn=deviceFilter===d.id,isDef=defaultDevice===d.id
+      const cnt=d.notification_count||0,ls=d.last_seen?`Last seen ${relTime(d.last_seen)} · `:'',nm=esc(d.name||d.id)
+      html+=`<div class="dv-item${isOn?' on':''}" onclick="setDevice(${JSON.stringify(d.id)})">
+        <div class="dv-ico">📱</div>
+        <div class="dv-info">
+          <span class="dv-name">${nm}</span>
+          <span class="dv-meta">${ls}${cnt} items</span>
+        </div>
+        <div class="dv-acts">
+          <button class="dv-star${isDef?' on':''}" onclick="event.stopPropagation();setDefaultDevice(${JSON.stringify(d.id)})" title="${isDef?'Default':'Set as default'}">★</button>
+          <button class="dv-del" onclick="event.stopPropagation();deleteDevice(${JSON.stringify(d.id)},${JSON.stringify(d.name||d.id)})" title="Delete device">${ICO_TRASH_SML}</button>
+        </div>
+      </div>`
+    }
+    html+=`</div>`
+  } else {
+    html+=`<div class="dv-empty">No individual devices found.<br>Notifications don't include a device ID yet.</div>`
+  }
+
+  el.innerHTML=html
+}
+
+function setDevice(id){
+  deviceFilter=id
+  updateDeviceChip()
+  renderDeviceList()
+  closeDeviceSheet()
+  load(true)
+}
+
+function setDefaultDevice(id){
+  defaultDevice=id
+  try{if(id===null)localStorage.removeItem('nh-device');else localStorage.setItem('nh-device',id)}catch{}
+  renderDeviceList()
+}
+
+async function deleteDevice(id,name){
+  if(!confirm(`Delete device "${name}" and all its data permanently?\n\nThis removes all notifications from this device.`)) return
+  try{
+    const r=await fetch(`${SERVER}/api/devices/${encodeURIComponent(id)}`,{method:'DELETE',headers:hdrs()})
+    if(!r.ok) throw new Error(await r.text())
+    if(deviceFilter===id) setDevice(null)
+    else if(defaultDevice===id){setDefaultDevice(null);renderDeviceList()}
+    devices=devices.filter(d=>d.id!==id)
+    renderDeviceList()
+    load(true)
+  }catch(e){alert(`Delete failed: ${e.message||'server error'}`)}
+}
+
 // ── Theme ─────────────────────────────────────
 let theme='dark';try{theme=localStorage.getItem('nh-theme')||'dark'}catch{}
 function applyTheme(t){document.documentElement.setAttribute('data-theme',t);document.getElementById('themeColorMeta')?.setAttribute('content',t==='dark'?'#111111':'#f5f5f7');try{localStorage.setItem('nh-theme',t)}catch{}}
@@ -1007,5 +1200,6 @@ const st=document.createElement('style');st.textContent='@keyframes spin{from{tr
 setInterval(()=>{document.querySelectorAll('.btime[data-ts]').forEach(el=>{const uid=el.closest('[data-id]')?.dataset.id;const n=notifs.find(x=>x._uid===uid);if(n)el.textContent=relTime(n.received_at||n.captured_at||n.posted_at)})},60000)
 
 document.getElementById('app').hidden=false
+updateDeviceChip() // set header chip before first load (device restored from localStorage)
 load(true);connectSSE()
 </script>
