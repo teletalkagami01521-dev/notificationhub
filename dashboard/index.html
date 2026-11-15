@@ -482,8 +482,6 @@ header{
 
 /* ── Device panel — desktop dropdown ─────────── */
 @media(min-width:768px){
-  #deviceSheetOv{display:block!important;background:transparent;pointer-events:none}
-  #deviceSheetOv.open{pointer-events:auto}
   #deviceSheet{
     display:flex!important;visibility:hidden;opacity:0;pointer-events:none;
     position:fixed;bottom:auto;right:14px;left:auto;
@@ -628,6 +626,25 @@ header{
     <div class="mlbtns">
       <button class="mlcan" onclick="closeModal()">Cancel</button>
       <button class="mlcon" onclick="execDelete()">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- Rename modal -->
+<div class="mlov" id="renameModal" hidden>
+  <div class="mlbox">
+    <div class="mlico">✏️</div>
+    <div class="mlh">Rename device</div>
+    <div class="mls" style="margin-bottom:12px">Give this device a nickname</div>
+    <input id="renameInput" type="text" maxlength="40" placeholder="e.g. My Phone"
+      style="width:100%;padding:11px 12px;border-radius:10px;border:1.5px solid var(--bord);
+             background:var(--surf2);color:var(--fg);font-size:15px;font-family:inherit;
+             outline:none;margin-bottom:16px;box-sizing:border-box"
+      onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--bord)'"
+      onkeydown="if(event.key==='Enter')saveRename();if(event.key==='Escape')closeRenameModal()">
+    <div class="mlbtns">
+      <button class="mlcan" onclick="closeRenameModal()">Cancel</button>
+      <button class="mlcon" onclick="saveRename()">Save</button>
     </div>
   </div>
 </div>
@@ -1172,8 +1189,28 @@ function connectSSE(){
 }
 
 // ── Device management ─────────────────────────
-function openDeviceSheet(){document.getElementById('deviceSheet').classList.add('open');document.getElementById('deviceSheetOv').classList.add('open')}
-function closeDeviceSheet(){document.getElementById('deviceSheet').classList.remove('open');document.getElementById('deviceSheetOv').classList.remove('open')}
+let _dvClickHandler=null
+function openDeviceSheet(){
+  document.getElementById('deviceSheet').classList.add('open')
+  if(window.innerWidth>=768){
+    // Desktop: close on click outside; don't show the mobile overlay
+    clearTimeout(window._dvTimer)
+    window._dvTimer=setTimeout(()=>{
+      _dvClickHandler=e=>{
+        const sheet=document.getElementById('deviceSheet'),chip=document.getElementById('hdevchip')
+        if(!sheet.contains(e.target)&&!chip.contains(e.target)) closeDeviceSheet()
+      }
+      document.addEventListener('click',_dvClickHandler,{once:true,capture:true})
+    },0)
+  } else {
+    document.getElementById('deviceSheetOv').classList.add('open')
+  }
+}
+function closeDeviceSheet(){
+  document.getElementById('deviceSheet').classList.remove('open')
+  document.getElementById('deviceSheetOv').classList.remove('open')
+  if(_dvClickHandler){document.removeEventListener('click',_dvClickHandler,{capture:true});_dvClickHandler=null}
+}
 
 async function loadDevices(){
   try{
@@ -1291,18 +1328,23 @@ async function deleteDevice(id,name){
 // ── Nickname helpers ──────────────────────────
 function getNick(id){try{return localStorage.getItem('nh-nick-'+id)||''}catch{return''}}
 function setNick(id,v){try{if(v)localStorage.setItem('nh-nick-'+id,v);else localStorage.removeItem('nh-nick-'+id)}catch{}}
+let _renameId=null
 function editNick(id){
-  const item=document.querySelector(`.dv-item[data-dvid="${CSS.escape(id)}"]`)
-  const nameEl=item?.querySelector('.dv-name')
-  if(!nameEl) return
+  _renameId=id
   const d=devices.find(x=>x.id===id)
-  const cur=getNick(id)||d?.name||id
-  const inp=document.createElement('input')
-  inp.className='dv-nick-input';inp.value=cur;inp.maxLength=40
-  nameEl.replaceWith(inp);inp.focus();inp.select()
-  const save=()=>{const v=inp.value.trim();setNick(id,v||'');renderDeviceList();updateDeviceChip()}
-  inp.addEventListener('blur',save)
-  inp.addEventListener('keydown',e=>{if(e.key==='Enter')inp.blur();if(e.key==='Escape'){setNick(id,'');inp.blur()}})
+  const inp=document.getElementById('renameInput')
+  inp.value=getNick(id)||d?.name||''
+  document.getElementById('renameModal').hidden=false
+  setTimeout(()=>{inp.focus();inp.select()},60)
+}
+function closeRenameModal(){document.getElementById('renameModal').hidden=true;_renameId=null}
+function saveRename(){
+  if(!_renameId) return
+  const v=document.getElementById('renameInput').value.trim()
+  setNick(_renameId,v)
+  closeRenameModal()
+  renderDeviceList()
+  updateDeviceChip()
 }
 
 // ── Swipe to delete ───────────────────────────
