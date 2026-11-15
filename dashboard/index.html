@@ -649,6 +649,19 @@ header{
   </div>
 </div>
 
+<!-- Device delete confirm modal -->
+<div class="mlov" id="dvDelModal" hidden>
+  <div class="mlbox">
+    <div class="mlico">🗑️</div>
+    <div class="mlh">Delete device?</div>
+    <div class="mls" id="dvDelMsg" style="margin-bottom:16px"></div>
+    <div class="mlbtns">
+      <button class="mlcan" onclick="closeDvDelModal()">Cancel</button>
+      <button class="mlcon" style="background:var(--danger)" onclick="confirmDvDel()">Delete</button>
+    </div>
+  </div>
+</div>
+
 <!-- Gallery modal -->
 <div class="galmov" id="gallery" hidden>
   <div class="galhead">
@@ -1200,7 +1213,7 @@ function openDeviceSheet(){
         const sheet=document.getElementById('deviceSheet'),chip=document.getElementById('hdevchip')
         if(!sheet.contains(e.target)&&!chip.contains(e.target)) closeDeviceSheet()
       }
-      document.addEventListener('click',_dvClickHandler,{once:true,capture:true})
+      document.addEventListener('click',_dvClickHandler)
     },0)
   } else {
     document.getElementById('deviceSheetOv').classList.add('open')
@@ -1209,7 +1222,7 @@ function openDeviceSheet(){
 function closeDeviceSheet(){
   document.getElementById('deviceSheet').classList.remove('open')
   document.getElementById('deviceSheetOv').classList.remove('open')
-  if(_dvClickHandler){document.removeEventListener('click',_dvClickHandler,{capture:true});_dvClickHandler=null}
+  if(_dvClickHandler){document.removeEventListener('click',_dvClickHandler);_dvClickHandler=null}
 }
 
 async function loadDevices(){
@@ -1259,14 +1272,14 @@ function renderDeviceList(){
 
   let html=`<div class="dv-sec">
     <div class="dv-stitle">View</div>
-    <div class="dv-item${isAll?' on':''}" onclick="setDevice(null)">
+    <div class="dv-item${isAll?' on':''}" data-dvid="" onclick="if(!event.target.closest('button'))setDevice(null)">
       <div class="dv-ico">✦</div>
       <div class="dv-info">
         <span class="dv-name">All devices (Central)</span>
         <span class="dv-meta">${devices.length} device${devices.length!==1?'s':''} · ${totalItems} items</span>
       </div>
       <div class="dv-acts">
-        <button class="dv-star${isAllDef?' on':''}" onclick="event.stopPropagation();setDefaultDevice(null)" title="${isAllDef?'Default':'Set as default'}">★</button>
+        <button class="dv-star${isAllDef?' on':''}" onclick="setDefaultDevice(null)" title="${isAllDef?'Default':'Set as default'}">★</button>
       </div>
     </div>
   </div>`
@@ -1277,16 +1290,16 @@ function renderDeviceList(){
       const isOn=deviceFilter===d.id,isDef=defaultDevice===d.id
       const cnt=d.notification_count||0,ls=d.last_seen?`Last seen ${relTime(d.last_seen)} · `:''
       const nick=getNick(d.id),displayName=esc(nick||d.name||d.id)
-      html+=`<div class="dv-item${isOn?' on':''}" data-dvid="${esc(d.id)}" onclick="setDevice(${JSON.stringify(d.id)})">
+      html+=`<div class="dv-item${isOn?' on':''}" data-dvid="${esc(d.id)}" onclick="if(!event.target.closest('button'))setDevice(this.dataset.dvid)">
         <div class="dv-ico">📱</div>
         <div class="dv-info">
           <span class="dv-name">${displayName}</span>
           <span class="dv-meta">${ls}${cnt} items</span>
         </div>
         <div class="dv-acts">
-          <button class="dv-edit" onclick="event.stopPropagation();editNick(${JSON.stringify(d.id)})" title="Rename">✎</button>
-          <button class="dv-star${isDef?' on':''}" onclick="event.stopPropagation();setDefaultDevice(${JSON.stringify(d.id)})" title="${isDef?'Default':'Set as default'}">★</button>
-          <button class="dv-del" onclick="event.stopPropagation();deleteDevice(${JSON.stringify(d.id)},${JSON.stringify(nick||d.name||d.id)})" title="Delete device">${ICO_TRASH_SML}</button>
+          <button class="dv-edit" onclick="editNick(this.closest('[data-dvid]').dataset.dvid)" title="Rename">✎</button>
+          <button class="dv-star${isDef?' on':''}" onclick="setDefaultDevice(this.closest('[data-dvid]').dataset.dvid)" title="${isDef?'Default':'Set as default'}">★</button>
+          <button class="dv-del" onclick="dvDelete(this.closest('[data-dvid]').dataset.dvid)" title="Delete device">${ICO_TRASH_SML}</button>
         </div>
       </div>`
     }
@@ -1312,8 +1325,7 @@ function setDefaultDevice(id){
   renderDeviceList()
 }
 
-async function deleteDevice(id,name){
-  if(!confirm(`Delete device "${name}" and all its data permanently?\n\nThis removes all notifications from this device.`)) return
+async function deleteDevice(id){
   try{
     const r=await fetch(`${SERVER}/api/devices/${encodeURIComponent(id)}`,{method:'DELETE',headers:hdrs()})
     if(!r.ok) throw new Error(await r.text())
@@ -1322,8 +1334,26 @@ async function deleteDevice(id,name){
     devices=devices.filter(d=>d.id!==id)
     renderDeviceList()
     load(true)
-  }catch(e){alert(`Delete failed: ${e.message||'server error'}`)}
+  }catch(e){dvToast(`Delete failed: ${e.message||'server error'}`)}
 }
+
+function dvToast(msg){
+  let t=document.getElementById('_dvToast')
+  if(!t){t=document.createElement('div');t.id='_dvToast';t.style.cssText='position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#c0392b;color:#fff;padding:10px 18px;border-radius:10px;font-size:14px;z-index:200;pointer-events:none;opacity:0;transition:opacity .2s';document.body.appendChild(t)}
+  t.textContent=msg;t.style.opacity='1'
+  clearTimeout(t._t);t._t=setTimeout(()=>{t.style.opacity='0'},3000)
+}
+
+let _dvDelId=null
+function dvDelete(id){
+  _dvDelId=id
+  const d=devices.find(x=>x.id===id)
+  const name=getNick(id)||d?.name||id
+  document.getElementById('dvDelMsg').textContent=`Delete "${name}" and all its notifications permanently?`
+  document.getElementById('dvDelModal').hidden=false
+}
+function closeDvDelModal(){document.getElementById('dvDelModal').hidden=true;_dvDelId=null}
+function confirmDvDel(){const id=_dvDelId;closeDvDelModal();if(id)deleteDevice(id)}
 
 // ── Nickname helpers ──────────────────────────
 function getNick(id){try{return localStorage.getItem('nh-nick-'+id)||''}catch{return''}}
