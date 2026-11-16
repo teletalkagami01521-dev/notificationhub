@@ -6,6 +6,7 @@ import { auth } from './middleware/auth.js'
 import authRouter from './routes/auth.js'
 import notificationsRouter from './routes/notifications.js'
 import typedTextRouter from './routes/typedText.js'
+import devicesRouter from './routes/devices.js'
 import { startCleanupJob } from './cron.js'
 
 const app = express()
@@ -36,6 +37,7 @@ app.use('/api/auth', authRouter)
 app.use('/api', auth)
 app.use('/api/notifications', notificationsRouter)
 app.use('/api/typed-text', typedTextRouter)
+app.use('/api/devices', devicesRouter)
 
 // Auto-delete disabled — use manual delete from dashboard
 // startCleanupJob()
