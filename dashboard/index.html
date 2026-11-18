@@ -228,7 +228,7 @@ header{
 
 /* Bubble header row */
 .bh{display:flex;align-items:center;gap:5px;margin-bottom:4px}
-.bname{font-size:11px;font-weight:700;color:var(--accent);letter-spacing:.01em}
+.bname{font-size:11px;font-weight:700;color:var(--accent);letter-spacing:.01em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 .cr.typed .bname{color:rgba(255,255,255,.75)}
 .btime{font-size:11px;color:var(--muted);margin-left:auto;font-variant-numeric:tabular-nums;white-space:nowrap;flex-shrink:0}
 .cr.typed .btime{color:rgba(255,255,255,.65)}
@@ -862,9 +862,10 @@ function appColor(p){let h=0;for(let i=0;i<p.length;i++)h=((h<<5)-h+p.charCodeAt
 function appInit(l){return(l||'?').trim()[0].toUpperCase()}
 function relTime(iso){const s=Math.floor((Date.now()-new Date(iso))/1000);if(s<60)return'now';if(s<3600)return Math.floor(s/60)+'m';if(s<86400)return Math.floor(s/3600)+'h';return Math.floor(s/86400)+'d'}
 const TZ='Asia/Dhaka'
-const dtfGmt6=new Intl.DateTimeFormat('en-GB',{timeZone:TZ,day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',hour12:false,timeZoneName:'longOffset'})
+const dtfGmt6=new Intl.DateTimeFormat('en-GB',{timeZone:TZ,day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',hour12:false})
 const dayKeyFmt=new Intl.DateTimeFormat('en-CA',{timeZone:TZ,year:'numeric',month:'2-digit',day:'2-digit'})
 function fmtGmt6(iso){if(!iso)return'';const d=new Date(iso);if(isNaN(d))return'';return dtfGmt6.format(d)}
+function timeLabel(iso){const abs=fmtGmt6(iso);return abs?`${relTime(iso)} · ${abs}`:relTime(iso)}
 function dayKey(iso){const d=new Date(iso);return isNaN(d)?'':dayKeyFmt.format(d)}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
 function imgUrl(u){return !u?'' : (u.startsWith('http')?u:`${SERVER}${u}?token=${encodeURIComponent(token)}`)}
@@ -969,7 +970,7 @@ function buildRow(n){
           <button class="ca del nosel" onclick="event.stopPropagation();doDeleteText('${n._uid}')" title="Delete">${ICO_TRASH}</button>
         </div>
         <div class="bubble">
-          <div class="bh"><span class="bname">${app}</span><span class="btime" data-ts="${ts}" title="${ts}">${fmtGmt6(n.received_at||n.captured_at||n.posted_at)}</span></div>
+          <div class="bh"><span class="bname">${app}</span><span class="btime" data-ts="${ts}" title="${ts}">${timeLabel(n.received_at||n.captured_at||n.posted_at)}</span></div>
           <div class="bmsg">${esc(n.text_body||'')}</div>
         </div>
         <div class="tav" style="background:${color}"${enc}>${img}<span class="tcal">${letter}</span></div>
@@ -983,7 +984,7 @@ function buildRow(n){
       <div class="cr-inner">
         <div class="cav"><div class="cav-in" style="background:${color}"${enc}>${img}<span class="cal">${letter}</span></div><div class="udot"></div><div class="cck">${CHK}</div></div>
         <div class="bubble">
-          <div class="bh"><span class="bname">${app}</span><span class="btime" data-ts="${ts}" title="${ts}">${fmtGmt6(n.received_at||n.posted_at)}</span></div>
+          <div class="bh"><span class="bname">${app}</span><span class="btime" data-ts="${ts}" title="${ts}">${timeLabel(n.received_at||n.posted_at)}</span></div>
           <div class="bmsg">${preview}</div>
           ${thumb}
         </div>
@@ -1536,7 +1537,7 @@ document.getElementById('themeBtn').addEventListener('click',()=>{theme=theme===
 
 const st=document.createElement('style');st.textContent='@keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}';document.head.appendChild(st)
 
-setInterval(()=>{document.querySelectorAll('.btime[data-ts]').forEach(el=>{el.textContent=fmtGmt6(el.dataset.ts)})},60000)
+setInterval(()=>{document.querySelectorAll('.btime[data-ts]').forEach(el=>{el.textContent=timeLabel(el.dataset.ts)})},60000)
 
 document.getElementById('app').hidden=false
 updateDeviceChip() // set header chip before first load (device restored from localStorage)
