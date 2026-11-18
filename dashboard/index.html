@@ -568,6 +568,10 @@ header{
       <div class="sheet-stitle">Apps</div>
       <div id="sheetApps"></div>
     </div>
+    <div class="sheet-sec">
+      <div class="sheet-stitle">Danger zone</div>
+      <button class="stb" style="grid-column:1/-1;color:var(--danger);border-color:var(--danger)" onclick="clearAllHistory()">Delete all history</button>
+    </div>
   </div>
 </div>
 
@@ -613,6 +617,10 @@ header{
     <div class="drsec">
       <div class="drstitle">Apps</div>
       <div id="drawerApps"></div>
+    </div>
+    <div class="drsec">
+      <div class="drstitle">Danger zone</div>
+      <button class="dtb" style="width:100%;color:var(--danger);border-color:var(--danger)" onclick="clearAllHistory()">Delete all history</button>
     </div>
   </div>
 </div>
@@ -799,7 +807,7 @@ header{
 <div class="selbar" id="selbar">
   <button class="sbc nosel" onclick="toggleSel()">Cancel</button>
   <span class="sbi nosel" id="selinfo">Select items</span>
-  <button class="sball nosel" id="selall" onclick="toggleSelAll()">All</button>
+  <button class="sball nosel" id="selall" onclick="toggleSelAll()" title="Selects loaded items only">All shown</button>
   <button class="sbdel nosel" id="seldel" onclick="showModal()" disabled>Delete</button>
 </div>
 
@@ -853,6 +861,11 @@ const PAL=['#1877f2','#e91e63','#9c27b0','#00897b','#e65100','#1565c0','#2e7d32'
 function appColor(p){let h=0;for(let i=0;i<p.length;i++)h=((h<<5)-h+p.charCodeAt(i))|0;return PAL[Math.abs(h)%PAL.length]}
 function appInit(l){return(l||'?').trim()[0].toUpperCase()}
 function relTime(iso){const s=Math.floor((Date.now()-new Date(iso))/1000);if(s<60)return'now';if(s<3600)return Math.floor(s/60)+'m';if(s<86400)return Math.floor(s/3600)+'h';return Math.floor(s/86400)+'d'}
+const TZ='Asia/Dhaka'
+const dtfGmt6=new Intl.DateTimeFormat('en-GB',{timeZone:TZ,day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',hour12:false,timeZoneName:'longOffset'})
+const dayKeyFmt=new Intl.DateTimeFormat('en-CA',{timeZone:TZ,year:'numeric',month:'2-digit',day:'2-digit'})
+function fmtGmt6(iso){if(!iso)return'';const d=new Date(iso);if(isNaN(d))return'';return dtfGmt6.format(d)}
+function dayKey(iso){const d=new Date(iso);return isNaN(d)?'':dayKeyFmt.format(d)}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
 function imgUrl(u){return !u?'' : (u.startsWith('http')?u:`${SERVER}${u}?token=${encodeURIComponent(token)}`)}
 
@@ -899,14 +912,14 @@ function setTime(t){
   renderFeed()
 }
 function filteredNotifs(){
-  const now=Date.now(),todayMs=new Date().setHours(0,0,0,0)
+  const now=Date.now(),nowKey=dayKey(new Date(now))
   return notifs.filter(n=>{
     if(unreadOnly&&(n._kind!=='n'||n.is_read))return false
     if(appFilter&&n.package_name!==appFilter) return false
     if(searchQ){const q=searchQ.toLowerCase();if(!(n.title||'').toLowerCase().includes(q)&&!(n.text_body||'').toLowerCase().includes(q)&&!(n.app_label||'').toLowerCase().includes(q)) return false}
-    const t=new Date(n.received_at||n.posted_at).getTime()
-    if(timeFilter==='today') return t>=todayMs
-    if(timeFilter==='earlier') return t<todayMs
+    const iso=n.received_at||n.posted_at,t=new Date(iso).getTime()
+    if(timeFilter==='today') return dayKey(iso)===nowKey
+    if(timeFilter==='earlier') return dayKey(iso)!==nowKey
     const h=parseInt(timeFilter);if(!isNaN(h)) return now-t<=h*3600000
     return true
   })
@@ -914,8 +927,14 @@ function filteredNotifs(){
 
 // ── Day grouping ──────────────────────────────
 function groupByDay(list){
-  const map=new Map(),now=new Date(),tod=new Date(now);tod.setHours(0,0,0,0);const yes=new Date(tod);yes.setDate(yes.getDate()-1)
-  for(const n of list){const d=new Date(n.received_at||n.posted_at),ds=new Date(d);ds.setHours(0,0,0,0);const tk=ds.getTime();const lbl=tk===tod.getTime()?'Today':tk===yes.getTime()?'Yesterday':d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});if(!map.has(lbl))map.set(lbl,{lbl,tk,items:[]});map.get(lbl).items.push(n)}
+  const map=new Map(),nowKey=dayKey(new Date()),yesKey=dayKey(new Date(Date.now()-86400000))
+  for(const n of list){
+    const iso=n.received_at||n.posted_at,key=dayKey(iso),d=new Date(iso)
+    const lbl=key===nowKey?'Today':key===yesKey?'Yesterday':d.toLocaleDateString('en-US',{timeZone:TZ,weekday:'short',month:'short',day:'numeric'})
+    const tk=key?new Date(`${key}T00:00:00+06:00`).getTime():0
+    if(!map.has(key))map.set(key,{lbl,tk,items:[]})
+    map.get(key).items.push(n)
+  }
   return[...map.values()].sort((a,b)=>b.tk-a.tk)
 }
 function isDayCol(lbl){const def=lbl!=='Today'&&lbl!=='Yesterday';return userToggledDays.has(lbl)?!def:def}
@@ -950,7 +969,7 @@ function buildRow(n){
           <button class="ca del nosel" onclick="event.stopPropagation();doDeleteText('${n._uid}')" title="Delete">${ICO_TRASH}</button>
         </div>
         <div class="bubble">
-          <div class="bh"><span class="bname">${app}</span><span class="btime" data-ts="${ts}">${relTime(n.received_at||n.captured_at||n.posted_at)}</span></div>
+          <div class="bh"><span class="bname">${app}</span><span class="btime" data-ts="${ts}" title="${ts}">${fmtGmt6(n.received_at||n.captured_at||n.posted_at)}</span></div>
           <div class="bmsg">${esc(n.text_body||'')}</div>
         </div>
         <div class="tav" style="background:${color}"${enc}>${img}<span class="tcal">${letter}</span></div>
@@ -964,7 +983,7 @@ function buildRow(n){
       <div class="cr-inner">
         <div class="cav"><div class="cav-in" style="background:${color}"${enc}>${img}<span class="cal">${letter}</span></div><div class="udot"></div><div class="cck">${CHK}</div></div>
         <div class="bubble">
-          <div class="bh"><span class="bname">${app}</span><span class="btime" data-ts="${ts}">${relTime(n.received_at||n.posted_at)}</span></div>
+          <div class="bh"><span class="bname">${app}</span><span class="btime" data-ts="${ts}" title="${ts}">${fmtGmt6(n.received_at||n.posted_at)}</span></div>
           <div class="bmsg">${preview}</div>
           ${thumb}
         </div>
@@ -1138,6 +1157,22 @@ async function purgeImages(){
   if(!confirm('Delete saved image files for archived notifications? The notification rows are kept.'))return
   try{const res=await fetch(`${SERVER}/api/notifications/purge-images`,{method:'POST',headers:hdrs(),body:JSON.stringify({scope:'archived'})});const j=await res.json();alert(`Purged ${j.purged||0} image(s).`)}catch{alert('Purge failed.')}
 }
+async function clearAllHistory(){
+  if(!confirm('Delete ALL notifications and typed-text history from the server? This cannot be undone.'))return
+  try{
+    const res=await fetch(`${SERVER}/api/history`,{method:'DELETE',headers:hdrs(),body:JSON.stringify({confirm:'DELETE ALL'})})
+    const j=await res.json().catch(()=>({}))
+    if(!res.ok) throw new Error(j.error||`HTTP ${res.status}`)
+    notifs=[];appCounts={};page=1;totalCount=0;hasMore=false;selectedIds.clear();selectMode=false;newPending=0
+    const nb=document.getElementById('nb');if(nb)nb.hidden=true
+    document.getElementById('feed').classList.remove('sel')
+    document.getElementById('selbar').classList.remove('show')
+    document.getElementById('selectBtn').classList.remove('on')
+    closeDrawer();closeSheet()
+    renderAppLists();renderFeed()
+    alert(`Deleted ${j.notifications??0} notifications and ${j.typedText??0} typed entries.`)
+  }catch(e){alert(`Delete all failed: ${e.message||'server error'}`)}
+}
 document.getElementById('feed').addEventListener('click',()=>{document.getElementById('nb').hidden=true;newPending=0})
 
 // ── Select ────────────────────────────────────
@@ -1150,7 +1185,7 @@ function toggleSel(){
 }
 function onRowClick(uid){if(!selectMode)return;selectedIds.has(uid)?selectedIds.delete(uid):selectedIds.add(uid);const row=document.querySelector(`[data-id="${uid}"]`);if(row)row.classList.toggle('selected',selectedIds.has(uid));updateSelUI()}
 function toggleSelAll(){const vis=filteredNotifs(),all=vis.every(n=>selectedIds.has(n._uid));if(all)vis.forEach(n=>selectedIds.delete(n._uid));else vis.forEach(n=>selectedIds.add(n._uid));renderFeed()}
-function updateSelUI(){const n=selectedIds.size;const info=document.getElementById('selinfo'),del=document.getElementById('seldel'),all=document.getElementById('selall');if(info)info.textContent=n>0?`${n} selected`:'Select items';if(del){del.disabled=n===0;del.textContent=n>0?`Delete ${n}`:'Delete'};if(all){const vis=filteredNotifs();all.textContent=(vis.length>0&&vis.every(x=>selectedIds.has(x._uid)))?'None':'All'}}
+function updateSelUI(){const n=selectedIds.size;const info=document.getElementById('selinfo'),del=document.getElementById('seldel'),all=document.getElementById('selall');if(info)info.textContent=n>0?`${n} selected`:'Select items';if(del){del.disabled=n===0;del.textContent=n>0?`Delete ${n}`:'Delete'};if(all){const vis=filteredNotifs();all.textContent=(vis.length>0&&vis.every(x=>selectedIds.has(x._uid)))?'None':'All shown'}}
 
 // ── Modal ─────────────────────────────────────
 function showModal(){if(!selectedIds.size)return;document.getElementById('mlcnt').textContent=selectedIds.size;document.getElementById('modal').hidden=false}
@@ -1501,7 +1536,7 @@ document.getElementById('themeBtn').addEventListener('click',()=>{theme=theme===
 
 const st=document.createElement('style');st.textContent='@keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}';document.head.appendChild(st)
 
-setInterval(()=>{document.querySelectorAll('.btime[data-ts]').forEach(el=>{const uid=el.closest('[data-id]')?.dataset.id;const n=notifs.find(x=>x._uid===uid);if(n)el.textContent=relTime(n.received_at||n.captured_at||n.posted_at)})},60000)
+setInterval(()=>{document.querySelectorAll('.btime[data-ts]').forEach(el=>{el.textContent=fmtGmt6(el.dataset.ts)})},60000)
 
 document.getElementById('app').hidden=false
 updateDeviceChip() // set header chip before first load (device restored from localStorage)
