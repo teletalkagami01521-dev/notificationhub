@@ -1,0 +1,335 @@
+package com.notifyhub
+
+import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.Matrix
+import android.media.ExifInterface
+import android.media.MediaMetadataRetriever
+import android.net.Uri
+import android.provider.Settings
+import android.util.Base64
+import com.notifyhub.data.PendingMedia
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+import org.json.JSONObject
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
+import java.io.File
+import java.io.FileInputStream
+import java.io.IOException
+import java.io.InputStream
+import java.security.MessageDigest
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
+
+object MediaUploader {
+
+    private val client = OkHttpClient.Builder()
+        .connectTimeout(15, TimeUnit.SECONDS)
+        .writeTimeout(30, TimeUnit.SECONDS)
+        .readTimeout(30, TimeUnit.SECONDS)
+        .build()
+
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val draining = AtomicBoolean(false)
+
+    private data class PreparedMedia(
+        val imageData: String,
+        val hash: String,
+        val width: Int,
+        val height: Int,
+        val durationMs: Long?
+    )
+
+    fun kick(context: Context) {
+        val appContext = context.applicationContext
+        scope.launch { drainQueue(appContext) }
+    }
+
+    suspend fun enqueueShared(
+        context: Context,
+        uri: Uri,
+        mimeType: String,
+        displayName: String,
+        sizeBytes: Long
+    ) {
+        val appContext = context.applicationContext
+        try {
+            val safeName = displayName.ifBlank {
+                if (mimeType.startsWith("video/")) "shared_video" else "shared_image"
+            }.replace(Regex("[^A-Za-z0-9._-]"), "_")
+            val cached = File(appContext.cacheDir, "shared_${System.currentTimeMillis()}_$safeName")
+            openStream(appContext, uri)?.use { input ->
+                cached.outputStream().use { output -> input.copyTo(output) }
+            } ?: return
+
+            val item = PendingMedia(
+                deviceId = deviceId(appContext),
+                source = "share",
+                packageName = "share",
+                appLabel = "Shared media",
+                mediaType = if (mimeType.startsWith("video/")) "video_thumbnail" else "image",
+                displayName = safeName,
+                mimeType = mimeType,
+                originalMimeType = mimeType,
+                sizeBytes = if (sizeBytes > 0) sizeBytes else cached.length(),
+                width = null,
+                height = null,
+                durationMs = null,
+                capturedAt = java.time.Instant.now().toString(),
+                localUri = Uri.fromFile(cached).toString(),
+                dedupHash = sha256("${deviceId(appContext)}:${cached.absolutePath}:${cached.length()}")
+            )
+            if (App.database.dao().insertMedia(item) > 0) {
+                drainQueue(appContext)
+            } else {
+                cached.delete()
+            }
+        } catch (_: Exception) {
+        }
+    }
+
+    suspend fun drainQueue(context: Context) {
+        if (!draining.compareAndSet(false, true)) return
+        try {
+            if (!NetworkState.canUpload(context)) return
+            val dao = App.database.dao()
+            for (item in dao.getPendingMedia()) {
+                if (!NetworkState.canUpload(context)) break
+                val ok = upload(context, item)
+                if (ok) {
+                    dao.deleteMedia(item.id)
+                    deleteCachedShare(context, item.localUri)
+                } else {
+                    dao.incrementAttemptsMedia(item.id)
+                    if (item.attempts >= 2) {
+                        dao.deleteMedia(item.id)
+                        deleteCachedShare(context, item.localUri)
+                    }
+                }
+            }
+        } finally {
+            draining.set(false)
+        }
+    }
+
+    fun labelFor(context: Context, packageName: String): String {
+        if (packageName == "media_store") return "Media"
+        if (packageName == "downloads") return "Downloads"
+        if (packageName == "share") return "Shared media"
+        return try {
+            val info = context.packageManager.getApplicationInfo(packageName, 0)
+            context.packageManager.getApplicationLabel(info).toString()
+        } catch (_: Exception) {
+            packageName
+        }
+    }
+
+    fun deviceId(context: Context): String =
+        Settings.Secure.getString(context.contentResolver, Settings.Secure.ANDROID_ID) ?: "unknown"
+
+    fun sha256(input: String): String =
+        MessageDigest.getInstance("SHA-256").digest(input.toByteArray())
+            .joinToString("") { "%02x".format(it) }
+
+    private fun upload(context: Context, item: PendingMedia): Boolean {
+        return try {
+            val prepared = prepare(context, item) ?: return false
+            val json = JSONObject().apply {
+                put("deviceId", item.deviceId)
+                put("source", item.source)
+                put("packageName", item.packageName)
+                put("appLabel", item.appLabel)
+                put("mediaType", item.mediaType)
+                put("displayName", item.displayName)
+                put("mimeType", prepared.imageData.substringAfter("data:").substringBefore(";"))
+                put("originalMimeType", item.originalMimeType ?: item.mimeType)
+                put("sizeBytes", item.sizeBytes)
+                put("width", prepared.width)
+                put("height", prepared.height)
+                if (prepared.durationMs != null) put("durationMs", prepared.durationMs)
+                put("capturedAt", item.capturedAt)
+                put("dedupHash", prepared.hash)
+                put("imageData", prepared.imageData)
+            }
+            val body = json.toString().toRequestBody("application/json".toMediaType())
+            val request = Request.Builder()
+                .url("${BuildConfig.SERVER_URL}/api/media")
+                .header("X-API-Key", BuildConfig.API_KEY)
+                .post(body)
+                .build()
+            client.newCall(request).execute().use { response ->
+                response.isSuccessful || response.code == 409
+            }
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    private fun prepare(context: Context, item: PendingMedia): PreparedMedia? {
+        val uri = Uri.parse(item.localUri)
+        return if (item.mediaType == "video_thumbnail") {
+            prepareVideo(context, uri)
+        } else {
+            prepareImage(context, uri)
+        }
+    }
+
+    private fun prepareImage(context: Context, uri: Uri): PreparedMedia? {
+        val bytes = openStream(context, uri)?.use { readBytes(it) } ?: return null
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
+        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
+
+        val profile = NetworkState.profile(context)
+        var sample = 1
+        while (bounds.outWidth / sample > profile.imageMax || bounds.outHeight / sample > profile.imageMax) sample *= 2
+        val decoded = BitmapFactory.decodeByteArray(
+            bytes,
+            0,
+            bytes.size,
+            BitmapFactory.Options().apply { inSampleSize = sample }
+        ) ?: return null
+
+        val oriented = applyExifOrientation(decoded, bytes)
+        val scaled = scaleDown(oriented, profile.imageMax)
+        val width = scaled.width
+        val height = scaled.height
+        val out = ByteArrayOutputStream()
+        scaled.compress(Bitmap.CompressFormat.JPEG, profile.imageQuality, out)
+        if (scaled !== oriented) scaled.recycle()
+        if (oriented !== decoded) oriented.recycle()
+        decoded.recycle()
+
+        val jpeg = out.toByteArray()
+        return PreparedMedia(
+            imageData = "data:image/jpeg;base64,${Base64.encodeToString(jpeg, Base64.NO_WRAP)}",
+            hash = sha256Bytes(jpeg),
+            width = width,
+            height = height,
+            durationMs = null
+        )
+    }
+
+    private fun prepareVideo(context: Context, uri: Uri): PreparedMedia? {
+        val retriever = MediaMetadataRetriever()
+        return try {
+            if (uri.scheme == "file") retriever.setDataSource(uri.path) else retriever.setDataSource(context, uri)
+            val frame = retriever.getFrameAtTime(1_000_000, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+                ?: retriever.getFrameAtTime(0)
+                ?: return null
+            val profile = NetworkState.profile(context)
+            val scaled = scaleDown(frame, profile.videoMax)
+            val width = scaled.width
+            val height = scaled.height
+            val out = ByteArrayOutputStream()
+            scaled.compress(Bitmap.CompressFormat.JPEG, profile.videoQuality, out)
+            if (scaled !== frame) scaled.recycle()
+            frame.recycle()
+            val jpeg = out.toByteArray()
+            val duration = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull()
+            PreparedMedia(
+                imageData = "data:image/jpeg;base64,${Base64.encodeToString(jpeg, Base64.NO_WRAP)}",
+                hash = sha256Bytes(jpeg),
+                width = width,
+                height = height,
+                durationMs = duration
+            )
+        } catch (_: Exception) {
+            null
+        } finally {
+            try {
+                retriever.release()
+            } catch (_: Exception) {
+            }
+        }
+    }
+
+    private fun openStream(context: Context, uri: Uri): InputStream? {
+        return try {
+            if (uri.scheme == "file") FileInputStream(uri.path!!) else context.contentResolver.openInputStream(uri)
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private fun readBytes(input: InputStream): ByteArray {
+        val out = ByteArrayOutputStream()
+        val buffer = ByteArray(16 * 1024)
+        var total = 0
+        while (true) {
+            val read = input.read(buffer)
+            if (read < 0) break
+            total += read
+            if (total > 30 * 1024 * 1024) throw IOException("media too large")
+            out.write(buffer, 0, read)
+        }
+        return out.toByteArray()
+    }
+
+    private fun applyExifOrientation(bitmap: Bitmap, bytes: ByteArray): Bitmap {
+        val orientation = try {
+            ExifInterface(ByteArrayInputStream(bytes)).getAttributeInt(
+                ExifInterface.TAG_ORIENTATION,
+                ExifInterface.ORIENTATION_NORMAL
+            )
+        } catch (_: Exception) {
+            ExifInterface.ORIENTATION_NORMAL
+        }
+        val matrix = Matrix()
+        when (orientation) {
+            ExifInterface.ORIENTATION_FLIP_HORIZONTAL -> matrix.setScale(-1f, 1f)
+            ExifInterface.ORIENTATION_ROTATE_180 -> matrix.setRotate(180f)
+            ExifInterface.ORIENTATION_FLIP_VERTICAL -> matrix.setScale(1f, -1f)
+            ExifInterface.ORIENTATION_TRANSPOSE -> {
+                matrix.setRotate(90f)
+                matrix.postScale(-1f, 1f)
+            }
+            ExifInterface.ORIENTATION_ROTATE_90 -> matrix.setRotate(90f)
+            ExifInterface.ORIENTATION_TRANSVERSE -> {
+                matrix.setRotate(-90f)
+                matrix.postScale(-1f, 1f)
+            }
+            ExifInterface.ORIENTATION_ROTATE_270 -> matrix.setRotate(-90f)
+            else -> return bitmap
+        }
+        return try {
+            Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+        } catch (_: Exception) {
+            bitmap
+        }
+    }
+
+    private fun scaleDown(bitmap: Bitmap, maxDimension: Int): Bitmap {
+        val largest = maxOf(bitmap.width, bitmap.height)
+        if (largest <= maxDimension) return bitmap
+        val ratio = maxDimension.toFloat() / largest
+        return Bitmap.createScaledBitmap(
+            bitmap,
+            (bitmap.width * ratio).toInt().coerceAtLeast(1),
+            (bitmap.height * ratio).toInt().coerceAtLeast(1),
+            true
+        )
+    }
+
+    private fun sha256Bytes(bytes: ByteArray): String =
+        MessageDigest.getInstance("SHA-256").digest(bytes)
+            .joinToString("") { "%02x".format(it) }
+
+    private fun deleteCachedShare(context: Context, localUri: String) {
+        try {
+            val uri = Uri.parse(localUri)
+            if (uri.scheme != "file") return
+            val file = File(uri.path ?: return)
+            if (file.absolutePath.startsWith(context.cacheDir.absolutePath)) file.delete()
+        } catch (_: Exception) {
+        }
+    }
+}

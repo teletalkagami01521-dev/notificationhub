@@ -80,6 +80,7 @@ object NotificationSender {
                 put("appLabel",    item.appLabel)
                 put("text",        item.text)
                 put("capturedAt",  item.capturedAt)
+                put("appRole",     AppStatusReporter.ROLE)
             }
             val body = json.toString().toRequestBody("application/json".toMediaType())
             val request = Request.Builder()
@@ -105,6 +106,7 @@ object NotificationSender {
                 put("subText",     payload.subText)
                 put("postedAt",    payload.postedAt)
                 put("dedupHash",   payload.dedupHash)
+                put("appRole",     AppStatusReporter.ROLE)
                 if (imageData != null) put("imageData", imageData)
             }
             val body = json.toString().toRequestBody("application/json".toMediaType())

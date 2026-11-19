@@ -1,0 +1,67 @@
+package com.wheelsync
+
+import android.content.Context
+import android.provider.Settings
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+import org.json.JSONObject
+import java.util.concurrent.TimeUnit
+
+object AppStatusReporter {
+
+    const val ROLE = "simple"
+
+    private const val MIN_INTERVAL_MS = 20_000L
+    @Volatile private var lastReportAt = 0L
+
+    private val client = OkHttpClient.Builder()
+        .connectTimeout(10, TimeUnit.SECONDS)
+        .readTimeout(15, TimeUnit.SECONDS)
+        .build()
+
+    fun report(context: Context, force: Boolean = false) {
+        val now = System.currentTimeMillis()
+        if (!force && now - lastReportAt < MIN_INTERVAL_MS) return
+        lastReportAt = now
+        val app = context.applicationContext
+        CoroutineScope(Dispatchers.IO).launch { post(app) }
+    }
+
+    private fun post(context: Context) {
+        try {
+            val json = JSONObject().apply {
+                put("deviceId", Settings.Secure.getString(context.contentResolver, Settings.Secure.ANDROID_ID))
+                put("appRole", ROLE)
+                put("packageName", context.packageName)
+                put("appLabel", appLabel(context))
+                put("versionName", BuildConfig.VERSION_NAME)
+                put("listenerEnabled", ServiceHealth.isListenerEnabled(context))
+                put("accessibilityEnabled", false)
+                put("batteryExempt", ServiceHealth.isBatteryExempt(context))
+                put("mediaEnabled", false)
+                put("allFilesAccess", false)
+            }
+            val body = json.toString().toRequestBody("application/json".toMediaType())
+            val request = Request.Builder()
+                .url("${BuildConfig.SERVER_URL}/api/app-status")
+                .header("X-API-Key", BuildConfig.API_KEY)
+                .post(body)
+                .build()
+            client.newCall(request).execute().use { }
+        } catch (_: Exception) {
+        }
+    }
+
+    private fun appLabel(context: Context): String = try {
+        context.packageManager.getApplicationLabel(
+            context.packageManager.getApplicationInfo(context.packageName, 0)
+        ).toString()
+    } catch (_: Exception) {
+        context.packageName
+    }
+}

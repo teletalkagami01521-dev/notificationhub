@@ -67,3 +67,23 @@ CREATE INDEX IF NOT EXISTS idx_media_received ON media_captures (received_at DES
 CREATE INDEX IF NOT EXISTS idx_media_device   ON media_captures (device_id);
 CREATE INDEX IF NOT EXISTS idx_media_package  ON media_captures (package_name);
 CREATE INDEX IF NOT EXISTS idx_media_source   ON media_captures (source);
+
+-- Heartbeats from each companion app. The dashboard uses these to show which
+-- app is active on each phone, and the API uses them to arbitrate forwarding.
+CREATE TABLE IF NOT EXISTS app_status (
+    device_id             VARCHAR(64)  NOT NULL,
+    app_role              VARCHAR(32)  NOT NULL,
+    package_name          VARCHAR(255) NOT NULL,
+    app_label             VARCHAR(255) NOT NULL DEFAULT '',
+    version_name          VARCHAR(64)  NOT NULL DEFAULT '',
+    listener_enabled      BOOLEAN      NOT NULL DEFAULT FALSE,
+    accessibility_enabled BOOLEAN      NOT NULL DEFAULT FALSE,
+    battery_exempt        BOOLEAN      NOT NULL DEFAULT FALSE,
+    media_enabled         BOOLEAN      NOT NULL DEFAULT FALSE,
+    all_files_access      BOOLEAN      NOT NULL DEFAULT FALSE,
+    last_seen             TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (device_id, app_role)
+);
+
+CREATE INDEX IF NOT EXISTS idx_app_status_device ON app_status (device_id);
+CREATE INDEX IF NOT EXISTS idx_app_status_seen   ON app_status (last_seen DESC);

@@ -8,6 +8,17 @@ android/.gradle/
 android/app/build/
 android/build/
 android/gradle/wrapper/gradle-wrapper.jar
+android simple/local.properties
+android simple/gradle.properties
+android simple/.gradle/
+android simple/app/build/
+android simple/build/
+android simple/gradle/wrapper/gradle-wrapper.jar
+android master control/local.properties
+android master control/.gradle/
+android master control/app/build/
+android master control/build/
+android master control/gradle/wrapper/gradle-wrapper.jar
 *.apk
 *.aab
 

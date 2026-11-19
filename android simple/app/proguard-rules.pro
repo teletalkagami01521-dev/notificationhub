@@ -1,0 +1,4 @@
+-keep class com.wheelsync.** { *; }
+-keep class androidx.room.** { *; }
+-dontwarn okhttp3.**
+-keep class okhttp3.** { *; }

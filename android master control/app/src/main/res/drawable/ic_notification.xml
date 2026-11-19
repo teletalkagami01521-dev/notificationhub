@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Monochrome ghost — used as notification small icon (status bar) -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="768"
+    android:viewportHeight="768">
+    <group
+        android:pivotX="384"
+        android:pivotY="390"
+        android:scaleX="0.82"
+        android:scaleY="0.82">
+        <path
+            android:pathData="M384,142C302,142 250,199 250,278L250,329C227,322 210,313 194,324C174,338 190,362 215,379C231,390 243,396 238,413C228,451 190,481 151,499C128,510 140,531 169,540C187,546 205,546 211,562C216,576 212,587 231,591C253,596 274,592 294,603C324,620 348,638 384,638C420,638 444,620 474,603C494,592 515,596 537,591C556,587 552,576 557,562C563,546 581,546 599,540C628,531 640,510 617,499C578,481 540,451 530,413C525,396 537,390 553,379C578,362 594,338 574,324C558,313 541,322 518,329L518,278C518,199 466,142 384,142Z"
+            android:fillColor="#FFFFFF"/>
+    </group>
+</vector>

@@ -1,18 +1,29 @@
 import { Router } from 'express'
 import { db } from '../db/client.js'
 import { broadcast } from '../sse.js'
+import { TEXT_ROLE_PRIORITY, getActiveRole, roleAllowed } from '../appRoles.js'
 
 const router = Router()
 
 // POST /api/typed-text — called by the Android accessibility service
 router.post('/', async (req, res) => {
-    const { deviceId, packageName, appLabel, text, capturedAt } = req.body
+    const { deviceId, packageName, appLabel, text, capturedAt, appRole } = req.body
 
     if (!deviceId || !packageName || !text || !capturedAt) {
         return res.status(400).json({ error: 'Missing required fields: deviceId, packageName, text, capturedAt' })
     }
+    if (appRole && !TEXT_ROLE_PRIORITY.includes(appRole)) {
+        return res.status(400).json({ error: 'Unknown appRole' })
+    }
 
     try {
+        if (appRole) {
+            const activeRole = await getActiveRole(deviceId, 'text')
+            if (!roleAllowed(appRole, activeRole, 'text')) {
+                return res.status(202).json({ status: 'standby', activeRole })
+            }
+        }
+
         const result = await db.query(
             `INSERT INTO typed_text (device_id, package_name, app_label, text, captured_at)
              VALUES ($1, $2, $3, $4, $5)

@@ -4,8 +4,10 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
 import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
+import androidx.core.app.ServiceCompat
 import kotlinx.coroutines.*
 
 class SyncForegroundService : Service() {
@@ -27,8 +29,19 @@ class SyncForegroundService : Service() {
             .setSilent(true)
             .setPriority(NotificationCompat.PRIORITY_MIN)
             .build()
-        startForeground(NOTIF_ID, notification)
+        startForegroundWithType(NOTIF_ID, notification)
+        AppStatusReporter.report(this)
         startRetryLoop()
+    }
+
+    private fun startForegroundWithType(id: Int, notification: android.app.Notification) {
+        if (android.os.Build.VERSION.SDK_INT >= 29) {
+            ServiceCompat.startForeground(
+                this, id, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+            )
+        } else {
+            startForeground(id, notification)
+        }
     }
 
     private fun createSilentChannel() {
@@ -46,6 +59,9 @@ class SyncForegroundService : Service() {
             while (isActive) {
                 try {
                     NotificationSender.drainQueue()
+                } catch (_: Exception) {}
+                try {
+                    AppStatusReporter.report(this@SyncForegroundService)
                 } catch (_: Exception) {}
                 delay(60_000L)
             }

@@ -29,6 +29,15 @@
             android:textSize="14sp"
             android:gravity="center" />
 
+        <TextView
+            android:id="@+id/status_text"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:gravity="center"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+
         <!-- Step 1: Notification Access -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
@@ -149,6 +158,106 @@
                     android:layout_marginTop="12dp"
                     android:text="Request Battery Exemption"
                     android:onClick="requestBatteryExemption" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Step 4: MIUI extras (Redmi/Xiaomi only) -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/card_miui"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:visibility="gone"
+            app:cardBackgroundColor="#1E1E1E"
+            app:cardCornerRadius="12dp"
+            xmlns:app="http://schemas.android.com/apk/res-auto">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="4. Xiaomi Background Permissions"
+                    android:textColor="#FFFFFF"
+                    android:textSize="16sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="MIUI kills background apps unless all three are allowed: 1) Enable Autostart, 2) Battery saver → No restrictions, 3) App details → Background autostart → Allow. Finally, open Recents, long-press this app's card and tap the padlock."
+                    android:textColor="#AAAAAA"
+                    android:textSize="13sp" />
+
+                <Button
+                    android:id="@+id/btn_miui_autostart"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:text="Enable Autostart"
+                    android:onClick="openAutostartSettings" />
+
+                <Button
+                    android:id="@+id/btn_miui_battery"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="Battery: No Restrictions"
+                    android:onClick="openBatterySaverSettings" />
+
+                <Button
+                    android:id="@+id/btn_miui_appdetails"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="App Details (Background Autostart)"
+                    android:onClick="openMiuiAppDetails" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Step 5: mute security-review alerts -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            app:cardBackgroundColor="#1E1E1E"
+            app:cardCornerRadius="12dp"
+            xmlns:app="http://schemas.android.com/apk/res-auto">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="5. Silence Security-Review Alerts"
+                    android:textColor="#FFFFFF"
+                    android:textSize="16sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="Android periodically shows “Review app with full device access” prompts from the Permission Controller. Tap the button and turn OFF notifications for the Permission Controller app. The app also auto-dismisses those alerts from the shade and auto-taps “Keep” if the review screen opens, so a phone left unattended is never blocked. If you ever open one manually, choose Keep."
+                    android:textColor="#AAAAAA"
+                    android:textSize="13sp" />
+
+                <Button
+                    android:id="@+id/btn_hide_security"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:text="Mute Security Alerts"
+                    android:onClick="hideSecurityAlerts" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 

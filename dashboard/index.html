@@ -461,6 +461,14 @@ header{
 .dv-name{font-size:14px;font-weight:600;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .dv-item.on .dv-name{color:var(--accent)}
 .dv-meta{font-size:12px;color:var(--muted);display:block;margin-top:2px}
+.dv-apps{display:flex;flex-wrap:wrap;gap:3px;margin-top:5px}
+.dv-app{display:inline-flex;align-items:center;gap:4px;padding:2px 6px;border-radius:50px;
+  background:var(--surf2);color:var(--muted);font-size:10px;font-weight:600;white-space:nowrap}
+.dv-app i{width:5px;height:5px;border-radius:50%;background:var(--muted);display:block;flex-shrink:0}
+.dv-app.on{background:var(--abg);color:var(--accent)}
+.dv-app.on i{background:var(--accent)}
+.dv-app.media{background:rgba(139,195,74,.14);color:#8bc34a}
+.dv-app.media i{background:#8bc34a}
 .dv-acts{display:flex;gap:1px;flex-shrink:0;align-items:center}
 .dv-star{
   width:32px;height:32px;border-radius:50%;display:grid;place-items:center;
@@ -1306,6 +1314,28 @@ function updateDeviceChip(){
   else{const d=devices.find(x=>x.id===deviceFilter);const nick=getNick(deviceFilter);name.textContent=nick||(d?(d.name||d.id):deviceFilter);chip?.classList.add('filtered')}
 }
 
+function appStatusChips(d){
+  const apps=Array.isArray(d.apps)?d.apps:[]
+  if(!apps.length) return ''
+  return `<span class="dv-apps">${apps.map(a=>{
+    const name=a.role==='sync'?'Sync':a.role==='simple'?'Simple':a.role==='master_control'?'Master':esc(a.role)
+    const notifActive=d.activeNotificationRole===a.role
+    const textActive=d.activeTextRole===a.role
+    const mediaActive=!!a.mediaEnabled
+    let state=!a.online?'offline':(a.role==='master_control'&&mediaActive)?'media':((notifActive||textActive)?'active':'standby')
+    const cls=!a.online?'':(a.role==='master_control'&&mediaActive?' media':' on')
+    const tip=[
+      a.versionName?`v${a.versionName}`:'',
+      a.listenerEnabled?'notif on':'notif off',
+      a.accessibilityEnabled?'text on':'text off',
+      a.role==='master_control'?(a.mediaEnabled?'media on':'media off'):'',
+      a.role==='master_control'?(a.allFilesAccess?'all files':'limited files'):'',
+      a.lastSeen?`seen ${relTime(a.lastSeen)}`:''
+    ].filter(Boolean).join(' · ')
+    return `<span class="dv-app${cls}" title="${esc(tip)}"><i></i>${name} · ${state}</span>`
+  }).join('')}</span>`
+}
+
 function renderDeviceList(){
   const el=document.getElementById('deviceList')
   if(!el) return
@@ -1340,6 +1370,7 @@ function renderDeviceList(){
         <div class="dv-info">
           <span class="dv-name">${displayName}</span>
           <span class="dv-meta">${ls}${cnt} items</span>
+          ${appStatusChips(d)}
         </div>
         <div class="dv-acts">
           <button class="dv-edit" onclick="editNick(this.closest('[data-dvid]').dataset.dvid)" title="Rename">✎</button>
