@@ -1125,7 +1125,10 @@ async function load(reset=false){
       }catch{}
       sortItems();rebuildAppCounts()
       if(!devices.length) loadDevices() // first load: fetch device list
-    } else notifs=[...notifs,...rows]
+    } else {
+      notifs=[...notifs,...rows]
+      sortItems();rebuildAppCounts()
+    }
     totalCount=json.pagination?.total??notifs.length;hasMore=json.pagination?.hasMore??false
     renderAppLists();renderFeed()
   }catch{document.getElementById('feed').innerHTML=`<div class="empty"><p style="color:var(--danger)">Could not load</p></div>`}
