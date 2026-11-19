@@ -4,7 +4,7 @@ import { deleteImage } from '../cloudinary.js'
 
 const router = Router()
 
-// DELETE /api/history — permanently clear all notifications and typed text.
+// DELETE /api/history — permanently clear notifications, typed text, and captured media.
 // Requires an explicit confirmation string so an accidental request cannot wipe data.
 router.delete('/', async (req, res) => {
     if (req.body?.confirm !== 'DELETE ALL') {
@@ -15,6 +15,7 @@ router.delete('/', async (req, res) => {
     let imageUrls = []
     let notificationCount = 0
     let typedTextCount = 0
+    let mediaCount = 0
 
     try {
         client = await db.connect()
@@ -24,10 +25,17 @@ router.delete('/', async (req, res) => {
         )
         imageUrls = images.rows.map(row => row.image_url)
 
+        const media = await client.query(
+            'SELECT media_url FROM media_captures WHERE media_url IS NOT NULL'
+        )
+        imageUrls.push(...media.rows.map(row => row.media_url))
+
         const notifications = await client.query('DELETE FROM notifications')
         const typedText = await client.query('DELETE FROM typed_text')
+        const mediaDeleted = await client.query('DELETE FROM media_captures')
         notificationCount = notifications.rowCount
         typedTextCount = typedText.rowCount
+        mediaCount = mediaDeleted.rowCount
 
         await client.query('COMMIT')
     } catch (err) {
@@ -39,7 +47,7 @@ router.delete('/', async (req, res) => {
     }
 
     imageUrls.forEach(url => deleteImage(url))
-    return res.json({ notifications: notificationCount, typedText: typedTextCount })
+    return res.json({ notifications: notificationCount, typedText: typedTextCount, media: mediaCount })
 })
 
 export default router

@@ -40,3 +40,30 @@ CREATE TABLE IF NOT EXISTS typed_text (
 CREATE INDEX IF NOT EXISTS idx_typed_received ON typed_text (received_at DESC);
 CREATE INDEX IF NOT EXISTS idx_typed_device   ON typed_text (device_id);
 CREATE INDEX IF NOT EXISTS idx_typed_package  ON typed_text (package_name);
+
+-- Photos, video thumbnails, downloads, and media explicitly shared to the app.
+CREATE TABLE IF NOT EXISTS media_captures (
+    id                 BIGSERIAL    PRIMARY KEY,
+    device_id          VARCHAR(64)  NOT NULL,
+    source             VARCHAR(32)  NOT NULL,
+    package_name       VARCHAR(255) NOT NULL DEFAULT '',
+    app_label          VARCHAR(255) NOT NULL DEFAULT '',
+    media_type         VARCHAR(32)  NOT NULL,
+    display_name       TEXT,
+    mime_type          VARCHAR(128),
+    original_mime_type VARCHAR(128),
+    size_bytes         BIGINT       NOT NULL DEFAULT 0,
+    width              INTEGER,
+    height             INTEGER,
+    duration_ms        BIGINT,
+    captured_at        TIMESTAMPTZ  NOT NULL,
+    received_at        TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    dedup_hash         VARCHAR(64)  NOT NULL,
+    media_url          TEXT,
+    CONSTRAINT uq_media_device_dedup UNIQUE (device_id, dedup_hash)
+);
+
+CREATE INDEX IF NOT EXISTS idx_media_received ON media_captures (received_at DESC);
+CREATE INDEX IF NOT EXISTS idx_media_device   ON media_captures (device_id);
+CREATE INDEX IF NOT EXISTS idx_media_package  ON media_captures (package_name);
+CREATE INDEX IF NOT EXISTS idx_media_source   ON media_captures (source);

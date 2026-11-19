@@ -12,6 +12,12 @@ services:
         sync: false
       - key: DATABASE_URL
         sync: false
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
       - key: FCM_SERVICE_ACCOUNT_JSON
         sync: false
       - key: FCM_DEVICE_TOKEN

@@ -8,11 +8,12 @@ import notificationsRouter from './routes/notifications.js'
 import typedTextRouter from './routes/typedText.js'
 import devicesRouter from './routes/devices.js'
 import historyRouter from './routes/history.js'
+import mediaRouter from './routes/media.js'
 import { startCleanupJob } from './cron.js'
 
 const app = express()
 
-app.use(express.json({ limit: '2mb' }))  // allow base64 image data in notification POST
+app.use(express.json({ limit: '15mb' }))  // allow compressed media thumbnails and notification images
 
 // CORS — personal dashboard access from any origin
 app.use((req, res, next) => {
@@ -38,6 +39,7 @@ app.use('/api/auth', authRouter)
 app.use('/api', auth)
 app.use('/api/notifications', notificationsRouter)
 app.use('/api/typed-text', typedTextRouter)
+app.use('/api/media', mediaRouter)
 app.use('/api/devices', devicesRouter)
 app.use('/api/history', historyRouter)
 

