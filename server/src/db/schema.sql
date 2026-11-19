@@ -60,8 +60,11 @@ CREATE TABLE IF NOT EXISTS media_captures (
     received_at        TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
     dedup_hash         VARCHAR(64)  NOT NULL,
     media_url          TEXT,
+    thumbnail_urls     TEXT NOT NULL DEFAULT '[]',
     CONSTRAINT uq_media_device_dedup UNIQUE (device_id, dedup_hash)
 );
+
+ALTER TABLE media_captures ADD COLUMN IF NOT EXISTS thumbnail_urls TEXT NOT NULL DEFAULT '[]';
 
 CREATE INDEX IF NOT EXISTS idx_media_received ON media_captures (received_at DESC);
 CREATE INDEX IF NOT EXISTS idx_media_device   ON media_captures (device_id);

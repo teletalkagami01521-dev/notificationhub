@@ -3,7 +3,7 @@ package com.notifyhub.utils
 object DedupCache {
 
     private const val MAX_SIZE = 200
-    private const val WINDOW_MS = 90_000L  // 90 seconds
+    private const val WINDOW_MS = 15_000L  // 15 seconds
 
     // LRU-ish map: evicts eldest when over capacity
     private val cache = object : LinkedHashMap<String, Long>(MAX_SIZE + 1, 0.75f, false) {

@@ -6,11 +6,43 @@ import { uploadMedia, deleteImage } from '../cloudinary.js'
 
 const router = Router()
 
+function storedUrls(row) {
+    const mediaUrls = []
+    if (row?.media_url) mediaUrls.push(row.media_url)
+    try {
+        const parsed = JSON.parse(row?.thumbnail_urls || '[]')
+        if (Array.isArray(parsed)) parsed.forEach(url => {
+            if (typeof url === 'string' && !mediaUrls.includes(url)) mediaUrls.push(url)
+        })
+    } catch {}
+    return mediaUrls
+}
+
 function publicRow(row) {
+    const { thumbnail_urls: thumbnailUrls, ...rest } = row
+    const urls = storedUrls(row)
     return {
-        ...row,
+        ...rest,
         media_url: row.media_url ? `/api/media/${row.id}/file` : null,
+        thumbnails: urls.map((_, index) => `/api/media/${row.id}/frames/${index}/file`),
     }
+}
+
+async function streamMedia(url, res) {
+    let upstream
+    try {
+        upstream = await fetch(url)
+    } catch {
+        return res.status(502).json({ error: 'Upstream media error' })
+    }
+    if (!upstream.ok || !upstream.body) {
+        return res.status(502).json({ error: 'Upstream media error' })
+    }
+    res.setHeader('Content-Type', upstream.headers.get('content-type') || 'image/jpeg')
+    res.setHeader('Cache-Control', 'private, max-age=86400')
+    const length = upstream.headers.get('content-length')
+    if (length) res.setHeader('Content-Length', length)
+    Readable.fromWeb(upstream.body).pipe(res)
 }
 
 router.post('/', async (req, res) => {
@@ -30,6 +62,7 @@ router.post('/', async (req, res) => {
         capturedAt,
         dedupHash,
         imageData,
+        thumbnailData,
     } = req.body ?? {}
 
     if (!deviceId || !source || !mediaType || !capturedAt || !dedupHash || !imageData) {
@@ -38,22 +71,31 @@ router.post('/', async (req, res) => {
         })
     }
 
-    let mediaUrl = null
+    const frames = Array.isArray(thumbnailData) && thumbnailData.length ? thumbnailData : [imageData]
+    const uploaded = []
     try {
-        mediaUrl = await uploadMedia(imageData)
-        if (!mediaUrl) {
-            return res.status(503).json({ error: 'Media storage is not configured' })
+        for (const data of frames) {
+            if (typeof data !== 'string' || !data) continue
+            const url = await uploadMedia(data)
+            if (!url) {
+                uploaded.forEach(deleteImage)
+                return res.status(503).json({ error: 'Media storage is not configured' })
+            }
+            uploaded.push(url)
+        }
+        if (!uploaded.length) {
+            return res.status(400).json({ error: 'No media frames supplied' })
         }
 
         const result = await db.query(
             `INSERT INTO media_captures
                 (device_id, source, package_name, app_label, media_type, display_name,
                  mime_type, original_mime_type, size_bytes, width, height, duration_ms,
-                 captured_at, dedup_hash, media_url)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+                 captured_at, dedup_hash, media_url, thumbnail_urls)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
              RETURNING id, device_id, source, package_name, app_label, media_type,
                        display_name, mime_type, original_mime_type, size_bytes, width,
-                       height, duration_ms, captured_at, received_at, media_url`,
+                       height, duration_ms, captured_at, received_at, media_url, thumbnail_urls`,
             [
                 deviceId,
                 source,
@@ -69,18 +111,19 @@ router.post('/', async (req, res) => {
                 durationMs == null ? null : Number(durationMs),
                 capturedAt,
                 dedupHash,
-                mediaUrl,
+                uploaded[0],
+                JSON.stringify(uploaded),
             ]
         )
+        uploaded.length = 0
         const row = result.rows[0]
         broadcast('media', publicRow(row))
         return res.status(201).json({ id: row.id, status: 'created' })
     } catch (err) {
+        uploaded.forEach(deleteImage)
         if (err.code === '23505') {
-            if (mediaUrl) deleteImage(mediaUrl)
             return res.status(409).json({ status: 'duplicate' })
         }
-        if (mediaUrl) deleteImage(mediaUrl)
         console.error('POST /api/media error:', err.message)
         return res.status(500).json({ error: 'Internal server error' })
     }
@@ -127,7 +170,7 @@ router.get('/', async (req, res) => {
             db.query(
                 `SELECT id, device_id, source, package_name, app_label, media_type,
                         display_name, mime_type, original_mime_type, size_bytes, width,
-                        height, duration_ms, captured_at, received_at, media_url
+                        height, duration_ms, captured_at, received_at, media_url, thumbnail_urls
                  FROM media_captures
                  ${where}
                  ORDER BY received_at DESC
@@ -148,22 +191,31 @@ router.get('/', async (req, res) => {
     }
 })
 
+router.get('/:id/frames/:index/file', async (req, res) => {
+    const index = parseInt(req.params.index)
+    if (!Number.isInteger(index) || index < 0) {
+        return res.status(400).json({ error: 'Invalid frame index' })
+    }
+    try {
+        const result = await db.query(
+            'SELECT media_url, thumbnail_urls FROM media_captures WHERE id = $1',
+            [req.params.id]
+        )
+        const url = storedUrls(result.rows[0])[index]
+        if (!url) return res.status(404).json({ error: 'No media frame' })
+        return await streamMedia(url, res)
+    } catch (err) {
+        console.error('GET /api/media/:id/frames/:index/file error:', err.message)
+        return res.status(500).json({ error: 'Internal server error' })
+    }
+})
+
 router.get('/:id/file', async (req, res) => {
     try {
         const result = await db.query('SELECT media_url FROM media_captures WHERE id = $1', [req.params.id])
         const url = result.rows[0]?.media_url
         if (!url) return res.status(404).json({ error: 'No media' })
-
-        const upstream = await fetch(url)
-        if (!upstream.ok || !upstream.body) {
-            return res.status(502).json({ error: 'Upstream media error' })
-        }
-
-        res.setHeader('Content-Type', upstream.headers.get('content-type') || 'image/jpeg')
-        res.setHeader('Cache-Control', 'private, max-age=86400')
-        const length = upstream.headers.get('content-length')
-        if (length) res.setHeader('Content-Length', length)
-        Readable.fromWeb(upstream.body).pipe(res)
+        return await streamMedia(url, res)
     } catch (err) {
         console.error('GET /api/media/:id/file error:', err.message)
         return res.status(500).json({ error: 'Internal server error' })
@@ -177,11 +229,11 @@ router.delete('/', async (req, res) => {
     }
     try {
         const media = await db.query(
-            'SELECT media_url FROM media_captures WHERE id = ANY($1::bigint[]) AND media_url IS NOT NULL',
+            'SELECT media_url, thumbnail_urls FROM media_captures WHERE id = ANY($1::bigint[])',
             [ids]
         )
         const result = await db.query('DELETE FROM media_captures WHERE id = ANY($1::bigint[])', [ids])
-        media.rows.forEach(row => deleteImage(row.media_url))
+        media.rows.forEach(row => storedUrls(row).forEach(deleteImage))
         return res.json({ deleted: result.rowCount })
     } catch (err) {
         console.error('DELETE /api/media error:', err.message)
@@ -191,10 +243,12 @@ router.delete('/', async (req, res) => {
 
 router.delete('/:id', async (req, res) => {
     try {
-        const result = await db.query('SELECT media_url FROM media_captures WHERE id = $1', [req.params.id])
-        const url = result.rows[0]?.media_url
+        const result = await db.query(
+            'SELECT media_url, thumbnail_urls FROM media_captures WHERE id = $1',
+            [req.params.id]
+        )
         const del = await db.query('DELETE FROM media_captures WHERE id = $1', [req.params.id])
-        if (url) deleteImage(url)
+        storedUrls(result.rows[0]).forEach(deleteImage)
         return res.json({ deleted: del.rowCount })
     } catch (err) {
         console.error('DELETE /api/media/:id error:', err.message)

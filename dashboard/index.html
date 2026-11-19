@@ -238,8 +238,9 @@ header{
 .cr.unread .bmsg{color:var(--fg);font-weight:500}
 .cr.typed .bmsg{color:#fff;font-style:italic}
 /* Notification image */
-.cimg{margin-top:8px;border-radius:8px;overflow:hidden;border:1px solid var(--bord)}
+.cimg{position:relative;display:block;margin-top:8px;border-radius:8px;overflow:hidden;border:1px solid var(--bord)}
 .cimg img{display:block;width:100%;height:auto;max-height:200px;object-fit:cover}
+.cvid{position:absolute;left:7px;top:7px;z-index:1;background:rgba(0,0,0,.68);color:#fff;border-radius:50px;padding:3px 7px;font-size:10px;font-weight:700;display:flex;align-items:center;gap:3px;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
 
 /* ── Quick actions (column, beside bubble) ─────── */
 .cacts{display:flex;flex-direction:column;gap:1px;flex-shrink:0;opacity:0;
@@ -531,6 +532,9 @@ header{
 .galthumb{position:relative;aspect-ratio:1;border-radius:10px;overflow:hidden;
   cursor:pointer;background:var(--surf2)}
 .galthumb img{width:100%;height:100%;object-fit:cover;display:block}
+.gvid{position:absolute;top:5px;left:5px;z-index:2;background:rgba(0,0,0,.68);color:#fff;border-radius:50px;padding:2px 6px;font-size:10px;font-weight:700;display:flex;align-items:center;gap:3px;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.galframes{position:absolute;left:4px;right:4px;bottom:18px;z-index:2;display:flex;gap:2px}
+.galframes img{flex:1;width:0;height:28px;object-fit:cover;border-radius:3px;border:1px solid rgba(255,255,255,.28)}
 .galchk{position:absolute;inset:0;background:rgba(59,130,246,.55);
   display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .12s;z-index:1}
 .galthumb.on .galchk{opacity:1}
@@ -881,6 +885,7 @@ const dtfGmt6=new Intl.DateTimeFormat('en-GB',{timeZone:TZ,day:'2-digit',month:'
 const dayKeyFmt=new Intl.DateTimeFormat('en-CA',{timeZone:TZ,year:'numeric',month:'2-digit',day:'2-digit'})
 function fmtGmt6(iso){if(!iso)return'';const d=new Date(iso);if(isNaN(d))return'';return dtfGmt6.format(d)}
 function timeLabel(iso){const abs=fmtGmt6(iso);return abs?`${relTime(iso)} · ${abs}`:relTime(iso)}
+function fmtDuration(ms){const s=Math.floor((Number(ms)||0)/1000);return s>0?`${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`:'video'}
 function dayKey(iso){const d=new Date(iso);return isNaN(d)?'':dayKeyFmt.format(d)}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
 function imgUrl(u){return !u?'' : (u.startsWith('http')?u:`${SERVER}${u}?token=${encodeURIComponent(token)}`)}
@@ -888,7 +893,7 @@ function imgUrl(u){return !u?'' : (u.startsWith('http')?u:`${SERVER}${u}?token=$
 // ── Item normalisation ─────────────────────────
 function normNotif(n){return{_kind:'n',_uid:'n'+n.id,...n}}
 function normText(t){return{_kind:'t',_uid:'t'+t.id,id:t.id,package_name:t.package_name,app_label:t.app_label,title:null,text_body:t.text,received_at:t.received_at,captured_at:t.captured_at,is_read:true}}
-function normMedia(m){return{_kind:'m',_uid:'m'+m.id,id:m.id,package_name:m.package_name,app_label:m.app_label,image_url:m.media_url,display_name:m.display_name,received_at:m.received_at,captured_at:m.captured_at,media_type:m.media_type,source:m.source}}
+function normMedia(m){return{_kind:'m',_uid:'m'+m.id,id:m.id,package_name:m.package_name,app_label:m.app_label,image_url:m.media_url,display_name:m.display_name,received_at:m.received_at,captured_at:m.captured_at,media_type:m.media_type,source:m.source,durationMs:m.duration_ms,thumbnails:m.thumbnails||[],mimeType:m.mime_type}}
 function sortItems(){notifs.sort((a,b)=>new Date(b.received_at||b.posted_at)-new Date(a.received_at||a.posted_at))}
 
 // ── State ─────────────────────────────────────
@@ -995,7 +1000,8 @@ function buildRow(n){
   } else {
     // ── Notification: left-side bubble ─────────────
     const preview=esc(n.title&&n.text_body?`${n.title}: ${n.text_body}`:(n.title||n.text_body||'No preview'))
-    const thumb=n.image_url?`<a class="cimg" href="${esc(imgUrl(n.image_url))}" target="_blank" rel="noopener" onclick="event.stopPropagation()"><img src="${esc(imgUrl(n.image_url))}" loading="lazy" alt=""></a>`:''
+    const video=n._kind==='m'&&String(n.media_type||'').startsWith('video')
+    const thumb=n.image_url?`<a class="cimg" href="${esc(imgUrl(n.image_url))}" target="_blank" rel="noopener" onclick="event.stopPropagation()"><img src="${esc(imgUrl(n.image_url))}" loading="lazy" alt="">${video?`<span class="cvid">▶ ${fmtDuration(n.durationMs)}</span>`:''}</a>`:''
     return`<div class="cr${unread?' unread':''}${sel?' selected':''}" data-id="${n._uid}" onclick="onRowClick('${n._uid}')">
       <div class="cr-inner">
         <div class="cav"><div class="cav-in" style="background:${color}"${enc}>${img}<span class="cal">${letter}</span></div><div class="udot"></div><div class="cck">${CHK}</div></div>
@@ -1550,12 +1556,18 @@ function renderGallery(){
   sc.className='galscroll'
   sc.innerHTML=galImages.map(n=>{
     const label=n.app_label||n.package_name.split('.').pop()
-    const kind=n._kind==='m'?`${gallerySource(n.source)}${n.media_type==='video_thumbnail'?' · video':''}`:'notification'
+    const video=n._kind==='m'&&String(n.media_type||'').startsWith('video')
+    const kind=n._kind==='m'?`${gallerySource(n.source)}${video?' · video':''}`:'notification'
     const app=esc(`${label} · ${kind}`)
     const src=esc(imgUrl(n.image_url))
     const sel=galSelected.has(n._uid)
+    const badge=video?`<span class="gvid">▶ ${fmtDuration(n.durationMs)}</span>`:''
+    const frames=(n.thumbnails?.length?n.thumbnails:[n.image_url]).filter(Boolean).slice(0,8)
+    const strip=video&&frames.length>1?`<div class="galframes">${frames.map(u=>`<img src="${esc(imgUrl(u))}" loading="lazy" alt="" ondblclick="event.stopPropagation();openGalview('${esc(imgUrl(u))}')">`).join('')}</div>`:''
     return`<div class="galthumb${sel?' on':''}" data-uid="${n._uid}" onclick="toggleGalSel('${n._uid}')" ondblclick="openGalview('${esc(src)}')">
       <img src="${src}" loading="lazy" alt="">
+      ${badge}
+      ${strip}
       <div class="galactions">
         <button class="galact" onclick="event.stopPropagation();saveGalItem('${n._uid}')" title="Save photo">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>

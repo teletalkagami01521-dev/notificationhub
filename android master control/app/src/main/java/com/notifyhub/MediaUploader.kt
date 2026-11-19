@@ -18,6 +18,7 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import org.json.JSONArray
 import org.json.JSONObject
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
@@ -42,6 +43,7 @@ object MediaUploader {
 
     private data class PreparedMedia(
         val imageData: String,
+        val frameData: List<String>,
         val hash: String,
         val width: Int,
         val height: Int,
@@ -158,6 +160,9 @@ object MediaUploader {
                 put("capturedAt", item.capturedAt)
                 put("dedupHash", prepared.hash)
                 put("imageData", prepared.imageData)
+                val frames = JSONArray()
+                prepared.frameData.forEach { frames.put(it) }
+                put("thumbnailData", frames)
             }
             val body = json.toString().toRequestBody("application/json".toMediaType())
             val request = Request.Builder()
@@ -209,8 +214,10 @@ object MediaUploader {
         decoded.recycle()
 
         val jpeg = out.toByteArray()
+        val data = "data:image/jpeg;base64,${Base64.encodeToString(jpeg, Base64.NO_WRAP)}"
         return PreparedMedia(
-            imageData = "data:image/jpeg;base64,${Base64.encodeToString(jpeg, Base64.NO_WRAP)}",
+            imageData = data,
+            frameData = listOf(data),
             hash = sha256Bytes(jpeg),
             width = width,
             height = height,
@@ -222,22 +229,51 @@ object MediaUploader {
         val retriever = MediaMetadataRetriever()
         return try {
             if (uri.scheme == "file") retriever.setDataSource(uri.path) else retriever.setDataSource(context, uri)
-            val frame = retriever.getFrameAtTime(1_000_000, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
-                ?: retriever.getFrameAtTime(0)
-                ?: return null
+            val duration = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull() ?: 0L
+            val count = when {
+                duration <= 0L -> 1
+                duration < 10_000L -> 1
+                duration < 30_000L -> 3
+                duration < 60_000L -> 6
+                else -> 8
+            }
+            val times = if (duration > 0L) {
+                (0 until count).map { i ->
+                    val fraction = if (count == 1) {
+                        0.5
+                    } else {
+                        (i + 1).toDouble() / (count + 1)
+                    }
+                    (duration * fraction * 1000).toLong().coerceAtLeast(0L)
+                }
+            } else listOf(0L)
+
             val profile = NetworkState.profile(context)
-            val scaled = scaleDown(frame, profile.videoMax)
-            val width = scaled.width
-            val height = scaled.height
-            val out = ByteArrayOutputStream()
-            scaled.compress(Bitmap.CompressFormat.JPEG, profile.videoQuality, out)
-            if (scaled !== frame) scaled.recycle()
-            frame.recycle()
-            val jpeg = out.toByteArray()
-            val duration = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull()
+            val frames = mutableListOf<String>()
+            var hashSource = ByteArray(0)
+            var width = 0
+            var height = 0
+            for (timeUs in times) {
+                val frame = retriever.getFrameAtTime(timeUs, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+                    ?: continue
+                val scaled = scaleDown(frame, profile.videoMax)
+                if (width == 0) {
+                    width = scaled.width
+                    height = scaled.height
+                }
+                val out = ByteArrayOutputStream()
+                scaled.compress(Bitmap.CompressFormat.JPEG, profile.videoQuality, out)
+                if (scaled !== frame) scaled.recycle()
+                frame.recycle()
+                val jpeg = out.toByteArray()
+                if (hashSource.isEmpty()) hashSource = jpeg
+                frames.add("data:image/jpeg;base64,${Base64.encodeToString(jpeg, Base64.NO_WRAP)}")
+            }
+            if (frames.isEmpty()) return null
             PreparedMedia(
-                imageData = "data:image/jpeg;base64,${Base64.encodeToString(jpeg, Base64.NO_WRAP)}",
-                hash = sha256Bytes(jpeg),
+                imageData = frames.first(),
+                frameData = frames,
+                hash = sha256Bytes(hashSource),
                 width = width,
                 height = height,
                 durationMs = duration

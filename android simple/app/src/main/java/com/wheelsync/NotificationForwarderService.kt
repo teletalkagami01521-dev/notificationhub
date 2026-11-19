@@ -16,10 +16,10 @@ import java.util.concurrent.ConcurrentHashMap
 class NotificationForwarderService : NotificationListenerService() {
 
     private companion object {
-        // Window for server-side dedup: identical content repeats are allowed once
-        // this bucket changes (1 minute), so recurring notifications aren't blocked.
-        const val DEDUP_BUCKET_MS = 60_000L
-        const val STATE_WINDOW_MS = 5 * 60_000L
+        // Dedup identity is the platform notification key, exact post time and
+        // exact content. The short state window only drops repeated callbacks
+        // for the same update, never a second distinct reply.
+        const val STATE_WINDOW_MS = 1_500L
     }
 
     private data class NotifState(val signature: String, val at: Long)
@@ -109,18 +109,19 @@ class NotificationForwarderService : NotificationListenerService() {
         return !terminalPhraseRegex.containsMatchIn(hay)
     }
 
-    private fun collapseSignature(title: String?, text: String?, subText: String?): String {
-        fun norm(s: String?) = s.orEmpty()
-            .lowercase()
-            .replace(Regex("""\d+(?:[.,]\d+)?\s*(?:%|kb|mb|gb|tb|bytes?|items?|files?|photos?|videos?|messages?)"""), "#")
-            .replace(Regex("""\d+"""), "#")
-            .replace(Regex("""\s+"""), " ")
-            .trim()
-        return "${norm(title)}|${norm(text)}|${norm(subText)}"
-    }
+    private fun exactSignature(
+        title: String?,
+        text: String?,
+        subText: String?,
+        bigText: String?,
+        imageData: String?
+    ): String = listOf(
+        title.orEmpty(), text.orEmpty(), subText.orEmpty(), bigText.orEmpty(),
+        (imageData?.hashCode() ?: 0).toString()
+    ).joinToString("\u0001")
 
     private fun shouldSuppressState(sbn: StatusBarNotification, signature: String): Boolean {
-        val key = "${sbn.packageName}|${sbn.id}|${sbn.tag ?: ""}"
+        val key = sbn.key
         val now = System.currentTimeMillis()
         val prev = recentStates[key]
         recentStates[key] = NotifState(signature, now)
@@ -163,13 +164,12 @@ class NotificationForwarderService : NotificationListenerService() {
 
         // Collapse repeated posts of the same notification slot where only
         // progress/count details changed.
-        if (shouldSuppressState(sbn, collapseSignature(title, text, subText))) return
+        if (shouldSuppressState(sbn, exactSignature(title, text, subText, bigText, imageData))) return
 
-        // Time-bucketed dedup hash: identical content within the same minute is
-        // suppressed, but the same content at a later time is allowed through
-        // (the DB unique constraint would otherwise block it forever).
-        val bucket = sbn.postTime / DEDUP_BUCKET_MS
-        val hash = sha256("${sbn.packageName}:${title.orEmpty()}:${text.orEmpty()}:${imageData?.hashCode() ?: 0}:$bucket")
+        // Dedup by the platform notification key + exact post time + exact content.
+        // Two replies posted at the same millisecond stay distinct when Android
+        // gives them different keys or different text.
+        val hash = sha256("${sbn.key}:${sbn.postTime}:${exactSignature(title, text, subText, bigText, imageData)}")
         if (DedupCache.isDuplicate(hash)) return
 
         val appLabel = try {
