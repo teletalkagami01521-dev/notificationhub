@@ -9,11 +9,11 @@ android {
     compileSdk 34
 
     defaultConfig {
-        applicationId "com.notifyhub.mastercontrol"
+        applicationId "com.storagesync"
         minSdk 26
         targetSdk 34
-        versionCode 1
-        versionName "1.0-master-control"
+        versionCode 81603
+        versionName "8.16.3"
 
         // Injected from gradle.properties (override in ~/.gradle/gradle.properties)
         buildConfigField "String", "API_KEY",    "\"${project.findProperty('API_KEY') ?: ''}\""

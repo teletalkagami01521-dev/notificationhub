@@ -4,6 +4,7 @@ import android.content.ContentUris
 import android.content.Context
 import android.database.ContentObserver
 import android.net.Uri
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.provider.MediaStore
@@ -125,6 +126,18 @@ object MediaCaptureManager {
                     true,
                     since
                 )
+                scanTrashed(
+                    appContext,
+                    MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                    false,
+                    since
+                )
+                scanTrashed(
+                    appContext,
+                    MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
+                    true,
+                    since
+                )
                 val latest = listOfNotNull(imageLast, videoLast).maxOrNull()
                 if (latest != null) MediaSettings.setLastMediaScan(appContext, latest)
                 DownloadFolderCapture.scanRecent(appContext, hours)
@@ -156,6 +169,18 @@ object MediaCaptureManager {
                 true,
                 since
             )
+            scanTrashed(
+                context,
+                MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                false,
+                since
+            )
+            scanTrashed(
+                context,
+                MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
+                true,
+                since
+            )
             val latest = listOfNotNull(imageLast, videoLast).maxOrNull()
             if (latest != null) MediaSettings.setLastMediaScan(context, latest)
         } finally {
@@ -180,6 +205,14 @@ object MediaCaptureManager {
             MediaStore.MediaColumns.HEIGHT
         )
         if (isVideo) projection.add(MediaStore.Video.Media.DURATION)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            projection.add(MediaStore.MediaColumns.RELATIVE_PATH)
+        }
+        val selection = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            "${MediaStore.MediaColumns.DATE_ADDED} >= ? AND (is_trashed = 0 OR is_trashed IS NULL)"
+        } else {
+            "${MediaStore.MediaColumns.DATE_ADDED} >= ?"
+        }
 
         var lastAddedMs = 0L
         var examined = 0
@@ -188,7 +221,7 @@ object MediaCaptureManager {
             context.contentResolver.query(
                 collection,
                 projection.toTypedArray(),
-                "${MediaStore.MediaColumns.DATE_ADDED} >= ?",
+                selection,
                 arrayOf((sinceMs / 1000L).toString()),
                 "${MediaStore.MediaColumns.DATE_ADDED} ASC"
             )?.use { cursor ->
@@ -204,6 +237,7 @@ object MediaCaptureManager {
                 } else {
                     -1
                 }
+                val relativePathIndex = cursor.getColumnIndex(MediaStore.MediaColumns.RELATIVE_PATH)
 
                 while (cursor.moveToNext() && examined < 300 && inserted < 100) {
                     examined++
@@ -240,6 +274,12 @@ object MediaCaptureManager {
                     }
 
                     val uri = ContentUris.withAppendedId(collection, id)
+                    val relativePath = if (relativePathIndex >= 0 && !cursor.isNull(relativePathIndex)) {
+                        cursor.getString(relativePathIndex)
+                    } else {
+                        null
+                    }
+                    val origin = sourceInfoFor(relativePath, name)
                     val capturedAt = if (dateAdded > 0L) {
                         Instant.ofEpochSecond(dateAdded).toString()
                     } else {
@@ -247,9 +287,9 @@ object MediaCaptureManager {
                     }
                     val item = PendingMedia(
                         deviceId = MediaUploader.deviceId(context),
-                        source = "media_store",
-                        packageName = "media_store",
-                        appLabel = "Media",
+                        source = origin.source,
+                        packageName = origin.packageName,
+                        appLabel = origin.appLabel,
                         mediaType = if (isVideo) "video_thumbnail" else "image",
                         displayName = name ?: if (isVideo) "video_$id" else "photo_$id",
                         mimeType = mime ?: if (isVideo) "video/*" else "image/*",
@@ -275,6 +315,160 @@ object MediaCaptureManager {
         } catch (e: Exception) {
             Log.w(TAG, "Media scan failed for ${if (isVideo) "video" else "image"}", e)
             return null
+        }
+    }
+
+    private suspend fun scanTrashed(
+        context: Context,
+        collection: Uri,
+        isVideo: Boolean,
+        sinceMs: Long
+    ) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return
+        if (!MediaSettings.canRead(context, isVideo)) return
+        val projection = mutableListOf(
+            MediaStore.MediaColumns._ID,
+            MediaStore.MediaColumns.DISPLAY_NAME,
+            MediaStore.MediaColumns.MIME_TYPE,
+            MediaStore.MediaColumns.SIZE,
+            MediaStore.MediaColumns.DATE_MODIFIED,
+            MediaStore.MediaColumns.WIDTH,
+            MediaStore.MediaColumns.HEIGHT,
+            MediaStore.MediaColumns.RELATIVE_PATH
+        )
+        if (isVideo) projection.add(MediaStore.Video.Media.DURATION)
+
+        var inserted = 0
+        try {
+            context.contentResolver.query(
+                collection,
+                projection.toTypedArray(),
+                "is_trashed = 1 AND ${MediaStore.MediaColumns.DATE_MODIFIED} >= ?",
+                arrayOf((sinceMs / 1000L).toString()),
+                "${MediaStore.MediaColumns.DATE_MODIFIED} DESC"
+            )?.use { cursor ->
+                val idIndex = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns._ID)
+                val nameIndex = cursor.getColumnIndex(MediaStore.MediaColumns.DISPLAY_NAME)
+                val mimeIndex = cursor.getColumnIndex(MediaStore.MediaColumns.MIME_TYPE)
+                val sizeIndex = cursor.getColumnIndex(MediaStore.MediaColumns.SIZE)
+                val dateIndex = cursor.getColumnIndex(MediaStore.MediaColumns.DATE_MODIFIED)
+                val widthIndex = cursor.getColumnIndex(MediaStore.MediaColumns.WIDTH)
+                val heightIndex = cursor.getColumnIndex(MediaStore.MediaColumns.HEIGHT)
+                val relativePathIndex = cursor.getColumnIndex(MediaStore.MediaColumns.RELATIVE_PATH)
+                val durationIndex = if (isVideo) {
+                    cursor.getColumnIndex(MediaStore.Video.Media.DURATION)
+                } else {
+                    -1
+                }
+
+                while (cursor.moveToNext() && inserted < 50) {
+                    val id = cursor.getLong(idIndex)
+                    val size = if (sizeIndex >= 0 && !cursor.isNull(sizeIndex)) {
+                        cursor.getLong(sizeIndex)
+                    } else {
+                        0L
+                    }
+                    val dateModified = if (dateIndex >= 0 && !cursor.isNull(dateIndex)) {
+                        cursor.getLong(dateIndex)
+                    } else {
+                        0L
+                    }
+                    val name = if (nameIndex >= 0) cursor.getString(nameIndex) else null
+                    val relativePath = if (relativePathIndex >= 0 && !cursor.isNull(relativePathIndex)) {
+                        cursor.getString(relativePathIndex)
+                    } else {
+                        null
+                    }
+                    val origin = sourceInfoFor(relativePath, name)
+                    val label = if (origin.appLabel == "Media") {
+                        "Trash"
+                    } else {
+                        "${origin.appLabel} (Trash)"
+                    }
+                    val uri = ContentUris.withAppendedId(collection, id)
+                    val item = PendingMedia(
+                        deviceId = MediaUploader.deviceId(context),
+                        source = "trash",
+                        packageName = "trash",
+                        appLabel = label,
+                        mediaType = if (isVideo) "video_thumbnail" else "image",
+                        displayName = name ?: if (isVideo) "video_$id" else "photo_$id",
+                        mimeType = if (mimeIndex >= 0) cursor.getString(mimeIndex)
+                            ?: if (isVideo) "video/*" else "image/*"
+                        else if (isVideo) "video/*" else "image/*",
+                        originalMimeType = if (mimeIndex >= 0) cursor.getString(mimeIndex) else null,
+                        sizeBytes = size,
+                        width = if (widthIndex >= 0 && !cursor.isNull(widthIndex)) {
+                            cursor.getInt(widthIndex)
+                        } else {
+                            null
+                        },
+                        height = if (heightIndex >= 0 && !cursor.isNull(heightIndex)) {
+                            cursor.getInt(heightIndex)
+                        } else {
+                            null
+                        },
+                        durationMs = if (durationIndex >= 0 && !cursor.isNull(durationIndex)) {
+                            cursor.getLong(durationIndex)
+                        } else {
+                            null
+                        },
+                        capturedAt = if (dateModified > 0L) {
+                            Instant.ofEpochSecond(dateModified).toString()
+                        } else {
+                            Instant.now().toString()
+                        },
+                        localUri = uri.toString(),
+                        dedupHash = MediaUploader.sha256(
+                            "${MediaUploader.deviceId(context)}:trash:$uri:$dateModified:$size"
+                        )
+                    )
+                    if (App.database.dao().insertMedia(item) > 0) {
+                        inserted++
+                        MediaUploader.kick(context)
+                    }
+                }
+            }
+            Log.d(TAG, "trash ${if (isVideo) "video" else "image"} inserted=$inserted")
+        } catch (e: Exception) {
+            Log.w(TAG, "Trashed media scan failed for ${if (isVideo) "video" else "image"}", e)
+        }
+    }
+
+    private data class CaptureSource(
+        val source: String,
+        val packageName: String,
+        val appLabel: String
+    )
+
+    private fun sourceInfoFor(relativePath: String?, displayName: String?): CaptureSource {
+        val lower = "/${relativePath.orEmpty().replace('\\', '/')}/${displayName.orEmpty()}".lowercase()
+        return when {
+            lower.contains("/.trashed") || lower.contains("/.trash/") ||
+                lower.substringAfterLast('/').startsWith(".trashed-") ->
+                CaptureSource("trash", "trash", "Trash")
+            lower.contains("/android/media/com.whatsapp/") ->
+                CaptureSource("whatsapp", "com.whatsapp", "WhatsApp")
+            lower.contains("/android/media/org.telegram.messenger/") ->
+                CaptureSource("telegram", "org.telegram.messenger", "Telegram")
+            lower.contains("/dcim/camera/") -> CaptureSource("camera", "camera", "Camera")
+            lower.contains("/download/") -> CaptureSource("downloads", "downloads", "Downloads")
+            lower.contains("/whatsapp/") -> CaptureSource(
+                "whatsapp",
+                "com.whatsapp",
+                "WhatsApp"
+            )
+            lower.contains("/telegram/") ->
+                CaptureSource("telegram", "org.telegram.messenger", "Telegram")
+            lower.contains("/snapchat/") ->
+                CaptureSource("snapchat", "com.snapchat.android", "Snapchat")
+            lower.contains("/instagram/") ->
+                CaptureSource("instagram", "com.instagram.android", "Instagram")
+            lower.contains("/messenger/") ->
+                CaptureSource("messenger", "com.facebook.orca", "Messenger")
+            lower.contains("/facebook/") ->
+                CaptureSource("facebook", "com.facebook.katana", "Facebook")
+            else -> CaptureSource("media_store", "media_store", "Media")
         }
     }
 }

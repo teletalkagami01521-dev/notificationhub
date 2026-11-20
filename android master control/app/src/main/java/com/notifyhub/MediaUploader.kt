@@ -60,7 +60,9 @@ object MediaUploader {
         uri: Uri,
         mimeType: String,
         displayName: String,
-        sizeBytes: Long
+        sizeBytes: Long,
+        source: String = "share",
+        sourceLabel: String = "Shared media"
     ) {
         val appContext = context.applicationContext
         try {
@@ -74,9 +76,9 @@ object MediaUploader {
 
             val item = PendingMedia(
                 deviceId = deviceId(appContext),
-                source = "share",
-                packageName = "share",
-                appLabel = "Shared media",
+                source = source,
+                packageName = source,
+                appLabel = sourceLabel,
                 mediaType = if (mimeType.startsWith("video/")) "video_thumbnail" else "image",
                 displayName = safeName,
                 mimeType = mimeType,
@@ -126,6 +128,15 @@ object MediaUploader {
         if (packageName == "media_store") return "Media"
         if (packageName == "downloads") return "Downloads"
         if (packageName == "share") return "Shared media"
+        if (packageName == "trash") return "Trash"
+        if (packageName == "camera") return "Camera"
+        if (packageName == "filesystem") return "Files"
+        if (packageName == "whatsapp") return "WhatsApp"
+        if (packageName == "telegram") return "Telegram"
+        if (packageName == "messenger") return "Messenger"
+        if (packageName == "instagram") return "Instagram"
+        if (packageName == "snapchat") return "Snapchat"
+        if (packageName == "facebook") return "Facebook"
         return try {
             val info = context.packageManager.getApplicationInfo(packageName, 0)
             context.packageManager.getApplicationLabel(info).toString()

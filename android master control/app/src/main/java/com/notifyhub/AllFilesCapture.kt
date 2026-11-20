@@ -34,8 +34,6 @@ object AllFilesCapture {
         ".thumbnails",
         "Thumbnails",
         "thumbnails",
-        ".trashed",
-        ".trash",
         ".Statuses",
         "Private",
         "ViewOnce"
@@ -141,7 +139,8 @@ object AllFilesCapture {
                     break
                 }
                 if (!file.isFile) continue
-                if (file.name.startsWith(".")) continue
+                val trash = isTrashPath(file)
+                if (file.name.startsWith(".") && !trash) continue
                 val extension = file.extension.lowercase()
                 val isVideo = extension in videoExtensions
                 if (!isVideo && extension !in imageExtensions) continue
@@ -212,12 +211,14 @@ object AllFilesCapture {
             File(storage, "Telegram"),
             File(storage, "Snapchat"),
             File(storage, "WhatsApp"),
+            File(storage, "Pictures"),
             File(storage, "Pictures/Instagram"),
             File(storage, "Pictures/Facebook"),
             File(storage, "Pictures/Messenger"),
             File(storage, "Pictures/WhatsApp"),
             File(storage, "Pictures/Telegram"),
             File(storage, "Pictures/Snapchat"),
+            File(storage, "DCIM"),
             File(storage, "DCIM/Camera"),
             File(storage, "DCIM/Instagram"),
             File(storage, "DCIM/Facebook"),
@@ -225,8 +226,19 @@ object AllFilesCapture {
         )
     }
 
+    private fun isTrashPath(file: File): Boolean {
+        val lower = file.absolutePath.lowercase()
+        return lower.contains("/.trashed") || lower.contains("/.trash/") ||
+            file.name.startsWith(".trashed-")
+    }
+
     private fun sourceFor(path: String): Source {
         val lower = path.lowercase()
+        if (lower.contains("/.trashed") || lower.contains("/.trash/") ||
+            lower.substringAfterLast('/').startsWith(".trashed-")
+        ) {
+            return Source("trash", "trash")
+        }
         val androidMedia = "/android/media/"
         val mediaIndex = lower.indexOf(androidMedia)
         if (mediaIndex >= 0) {
@@ -244,14 +256,14 @@ object AllFilesCapture {
             lower.contains("/download/") -> Source("downloads", "downloads")
             lower.contains("/telegram/") -> Source("org.telegram.messenger", "telegram")
             lower.contains("/snapchat/") -> Source("com.snapchat.android", "snapchat")
-            lower.contains("/instagram/") -> Source("com.instagram.android", "files")
-            lower.contains("/facebook/") -> Source("com.facebook.katana", "files")
-            lower.contains("/messenger/") -> Source("com.facebook.orca", "files")
+            lower.contains("/instagram/") -> Source("com.instagram.android", "instagram")
+            lower.contains("/messenger/") -> Source("com.facebook.orca", "messenger")
+            lower.contains("/facebook/") -> Source("com.facebook.katana", "facebook")
             lower.contains("/whatsapp/") -> Source(
                 "com.whatsapp",
-                if (lower.contains("/sent/")) "whatsapp_sent" else "files"
+                if (lower.contains("/sent/")) "whatsapp_sent" else "whatsapp"
             )
-            lower.contains("/dcim/camera/") -> Source("camera", "files")
+            lower.contains("/dcim/camera/") -> Source("camera", "camera")
             else -> Source("filesystem", "files")
         }
     }

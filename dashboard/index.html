@@ -231,6 +231,7 @@ header{
 .bname{font-size:11px;font-weight:700;color:var(--accent);letter-spacing:.01em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 .cr.typed .bname{color:rgba(255,255,255,.75)}
 .btime{font-size:11px;color:var(--muted);margin-left:auto;font-variant-numeric:tabular-nums;white-space:nowrap;flex-shrink:0}
+.msrc{font-size:10px;color:var(--muted);background:rgba(255,255,255,.07);padding:1px 6px;border-radius:50px;white-space:nowrap;flex-shrink:0}
 .cr.typed .btime{color:rgba(255,255,255,.65)}
 .cr.unread .btime{color:var(--accent);font-weight:600}
 /* Bubble body text */
@@ -982,6 +983,7 @@ function buildRow(n){
   const enc=srcs.length?` data-srcs="${esc(JSON.stringify(srcs))}" data-si="0"`:''
   const img=srcs.length?`<img class="cai" src="${esc(srcs[0])}" loading="lazy" onload="this.parentElement.classList.add('iv')" onerror="tryNextIcon(this.parentElement)" alt="">`:''
   const ts=esc(n.received_at||n.captured_at||n.posted_at)
+  const mediaSrc=!isText&&n._kind==='m'?`<span class="msrc" title="${esc(n.package_name||'')}">${esc(gallerySource(n.source))}</span>`:''
 
   if(isText){
     // ── Typed text: right-side bubble ──────────────
@@ -1006,7 +1008,7 @@ function buildRow(n){
       <div class="cr-inner">
         <div class="cav"><div class="cav-in" style="background:${color}"${enc}>${img}<span class="cal">${letter}</span></div><div class="udot"></div><div class="cck">${CHK}</div></div>
         <div class="bubble">
-          <div class="bh"><span class="bname">${app}</span><span class="btime" data-ts="${ts}" title="${ts}">${timeLabel(n.received_at||n.posted_at)}</span></div>
+          <div class="bh"><span class="bname">${app}</span>${mediaSrc}<span class="btime" data-ts="${ts}" title="${ts}">${timeLabel(n.received_at||n.posted_at)}</span></div>
           <div class="bmsg">${preview}</div>
           ${thumb}
         </div>
@@ -1543,14 +1545,22 @@ async function openGallery(){
 }
 function closeGallery(){document.getElementById('gallery').hidden=true;galImages=[];galSelected.clear()}
 function gallerySource(source){
-  return source==='media_store'?'device'
-    :source==='downloads'?'downloads'
+  return source==='media_store'?'device gallery'
+    :source==='downloads'?'Downloads'
+    :source==='camera'?'Camera'
+    :source==='trash'?'trash'
     :source==='share'?'shared'
+    :source==='shared_app'?'shared app'
     :source==='android_media'?'app media'
     :source==='whatsapp_sent'?'WhatsApp sent'
+    :source==='whatsapp'?'WhatsApp'
     :source==='telegram'?'Telegram'
     :source==='snapchat'?'Snapchat'
+    :source==='instagram'?'Instagram'
+    :source==='messenger'?'Messenger'
+    :source==='facebook'?'Facebook'
     :source==='files'?'files'
+    :source==='filesystem'?'files'
     :source||'app'
 }
 function renderGallery(){

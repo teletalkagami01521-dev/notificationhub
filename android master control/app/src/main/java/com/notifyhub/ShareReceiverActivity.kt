@@ -21,6 +21,7 @@ class ShareReceiverActivity : AppCompatActivity() {
             finish()
             return
         }
+        val (source, sourceLabel) = referrerInfo(intent)
         Toast.makeText(this, "Saving to Storage Sync…", Toast.LENGTH_SHORT).show()
         lifecycleScope.launch {
             var saved = 0
@@ -29,7 +30,9 @@ class ShareReceiverActivity : AppCompatActivity() {
                     val mime = contentResolver.getType(uri) ?: intent.type ?: continue
                     if (!mime.startsWith("image/") && !mime.startsWith("video/")) continue
                     val (name, size) = metadata(uri)
-                    MediaUploader.enqueueShared(this@ShareReceiverActivity, uri, mime, name, size)
+                    MediaUploader.enqueueShared(
+                        this@ShareReceiverActivity, uri, mime, name, size, source, sourceLabel
+                    )
                     saved++
                 }
             }
@@ -40,6 +43,31 @@ class ShareReceiverActivity : AppCompatActivity() {
             ).show()
             finish()
         }
+    }
+
+    private fun referrerInfo(intent: Intent): Pair<String, String> {
+        val referrer: Uri? = if (Build.VERSION.SDK_INT >= 33) {
+            intent.getParcelableExtra(Intent.EXTRA_REFERRER, Uri::class.java)
+        } else {
+            @Suppress("DEPRECATION")
+            intent.getParcelableExtra(Intent.EXTRA_REFERRER)
+        }
+        val raw = intent.getStringExtra(Intent.EXTRA_REFERRER_NAME) ?: referrer?.toString()
+            ?: return "share" to "Shared media"
+        val host = runCatching { Uri.parse(raw).host }.getOrNull()
+            ?: raw.substringAfter("//").substringBefore("/").substringBefore("?")
+        val pkg = host.substringBefore(":").ifBlank { return "share" to "Shared media" }
+        val source = when {
+            pkg.contains("whatsapp") -> "whatsapp"
+            pkg.contains("telegram") -> "telegram"
+            pkg.contains("snapchat") -> "snapchat"
+            pkg.contains("instagram") -> "instagram"
+            pkg.contains("facebook.orca") || pkg.contains("messenger") -> "messenger"
+            pkg.contains("facebook") -> "facebook"
+            else -> "shared_app"
+        }
+        val label = MediaUploader.labelFor(this, pkg).takeIf { it != pkg } ?: pkg
+        return source to label
     }
 
     private fun sharedUris(intent: Intent): List<Uri> {
