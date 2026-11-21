@@ -529,8 +529,8 @@ header{
   color:#fff;font-size:13px;font-weight:600;font-family:inherit;touch-action:manipulation}
 .gal-delbtn:disabled{opacity:.35}
 .galscroll{flex:1;overflow-y:auto;
-  padding:4px 10px max(60px,env(safe-area-inset-bottom,0px));
-  display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:4px;align-content:start}
+  padding:10px 12px max(70px,env(safe-area-inset-bottom,0px));
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;align-content:start}
 .galthumb{position:relative;aspect-ratio:1;border-radius:10px;overflow:hidden;
   cursor:pointer;background:var(--surf2)}
 .galthumb img{width:100%;height:100%;object-fit:cover;display:block}
@@ -560,6 +560,14 @@ header{
 .galview-close{position:absolute;top:max(14px,env(safe-area-inset-top,14px));right:14px;
   width:38px;height:38px;border-radius:50%;background:rgba(255,255,255,.18);border:none;
   color:#fff;display:grid;place-items:center;cursor:pointer;z-index:5;font-family:inherit}
+.galview-nav{position:absolute;top:50%;transform:translateY(-50%);width:44px;height:44px;
+  border-radius:50%;background:rgba(255,255,255,.16);border:none;color:#fff;
+  display:grid;place-items:center;cursor:pointer;z-index:5;touch-action:manipulation}
+.galview-prev{left:14px}
+.galview-next{right:14px}
+.galview-count{position:absolute;bottom:max(16px,env(safe-area-inset-bottom,16px));left:50%;
+  transform:translateX(-50%);background:rgba(0,0,0,.6);color:#fff;border-radius:50px;
+  padding:5px 12px;font-size:12px;font-weight:700;z-index:5}
 </style>
 
 <!-- Mobile sheet overlay + sheet -->
@@ -710,7 +718,14 @@ header{
   <button class="galview-close" onclick="closeGalview()">
     <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M3.72 3.72a.75.75 0 011.06 0L8 6.94l3.22-3.22a.75.75 0 111.06 1.06L9.06 8l3.22 3.22a.75.75 0 11-1.06 1.06L8 9.06l-3.22 3.22a.75.75 0 01-1.06-1.06L6.94 8 3.72 4.78a.75.75 0 010-1.06z"/></svg>
   </button>
+  <button class="galview-nav galview-prev" onclick="galViewStep(-1)" title="Previous">
+    <svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor"><path d="M10.07 3.28a.75.75 0 010 1.06L6.41 8l3.66 3.66a.75.75 0 11-1.06 1.06L4.59 8l4.42-4.72a.75.75 0 011.06 0z"/></svg>
+  </button>
   <img id="galviewImg" src="" alt="">
+  <button class="galview-nav galview-next" onclick="galViewStep(1)" title="Next">
+    <svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor"><path d="M5.93 3.28a.75.75 0 011.06 0L11.41 8l-4.42 4.72a.75.75 0 11-1.06-1.06L9.59 8 5.93 4.34a.75.75 0 010-1.06z"/></svg>
+  </button>
+  <span class="galview-count" id="galviewCount"></span>
 </div>
 
 <!-- Shell -->
@@ -1610,8 +1625,8 @@ function renderGallery(){
     const sel=galSelected.has(n._uid)
     const badge=video?`<span class="gvid">▶ ${fmtDuration(n.durationMs)}</span>`:''
     const frames=(n.thumbnails?.length?n.thumbnails:[n.image_url]).filter(Boolean).slice(0,8)
-    const strip=video&&frames.length>1?`<div class="galframes">${frames.map(u=>`<img src="${esc(imgUrl(u))}" loading="lazy" alt="" ondblclick="event.stopPropagation();openGalview('${esc(imgUrl(u))}')">`).join('')}</div>`:''
-    return`<div class="galthumb${sel?' on':''}" data-uid="${n._uid}" onclick="toggleGalSel('${n._uid}')" ondblclick="openGalview('${esc(src)}')">
+    const strip=video&&frames.length>1?`<div class="galframes">${frames.map((u,fi)=>`<img src="${esc(imgUrl(u))}" loading="lazy" alt="" ondblclick="event.stopPropagation();openGalview('${n._uid}',${fi})">`).join('')}</div>`:''
+    return`<div class="galthumb${sel?' on':''}" data-uid="${n._uid}" onclick="toggleGalSel('${n._uid}')" ondblclick="event.stopPropagation();openGalview('${n._uid}',0)">
       <img src="${src}" loading="lazy" alt="">
       ${badge}
       ${strip}
@@ -1700,8 +1715,35 @@ async function deleteGalSelected(){
     document.getElementById('galDelbtn').disabled=true
   }catch{alert('Delete failed')}
 }
-function openGalview(src){document.getElementById('galviewImg').src=src;document.getElementById('galview').hidden=false}
+let galViewIndex=0
+function showGalView(frame=0){
+  const n=galImages[galViewIndex]
+  if(!n)return
+  const frames=n.thumbnails?.length?n.thumbnails:[n.image_url]
+  const src=frames[Math.min(frame,frames.length-1)]||n.image_url
+  document.getElementById('galviewImg').src=imgUrl(src)
+  document.getElementById('galviewCount').textContent=`${galViewIndex+1} / ${galImages.length}`
+}
+function openGalview(uid,frame=0){
+  const idx=galImages.findIndex(x=>x._uid===uid)
+  if(idx<0)return
+  galViewIndex=idx
+  document.getElementById('galview').hidden=false
+  showGalView(frame)
+}
+function galViewStep(delta){
+  if(!galImages.length)return
+  galViewIndex=(galViewIndex+delta+galImages.length)%galImages.length
+  showGalView(0)
+}
 function closeGalview(){document.getElementById('galview').hidden=true;document.getElementById('galviewImg').src=''}
+document.addEventListener('keydown',e=>{
+  const v=document.getElementById('galview')
+  if(v.hidden)return
+  if(e.key==='Escape')closeGalview()
+  if(e.key==='ArrowLeft')galViewStep(-1)
+  if(e.key==='ArrowRight')galViewStep(1)
+})
 
 // ── Theme ─────────────────────────────────────
 let theme='dark';try{theme=localStorage.getItem('nh-theme')||'dark'}catch{}
