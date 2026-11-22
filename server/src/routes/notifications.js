@@ -3,7 +3,7 @@ import { db } from '../db/client.js'
 import { addClient, broadcast } from '../sse.js'
 import { sendFcm } from '../fcm.js'
 import { uploadImage, deleteImage } from '../cloudinary.js'
-import { NOTIFICATION_ROLE_PRIORITY, getActiveRole, roleAllowed } from '../appRoles.js'
+import { NOTIFICATION_ROLE_PRIORITY } from '../appRoles.js'
 
 const router = Router()
 
@@ -25,13 +25,6 @@ router.post('/', async (req, res) => {
     }
 
     try {
-        if (appRole) {
-            const activeRole = await getActiveRole(deviceId, 'notification')
-            if (!roleAllowed(appRole, activeRole, 'notification')) {
-                return res.status(202).json({ status: 'standby', activeRole })
-            }
-        }
-
         // Upload image to Cloudinary before INSERT so the URL is included in the SSE broadcast
         let imageUrl = null
         if (imageData) {

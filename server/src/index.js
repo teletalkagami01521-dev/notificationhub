@@ -10,6 +10,8 @@ import devicesRouter from './routes/devices.js'
 import historyRouter from './routes/history.js'
 import mediaRouter from './routes/media.js'
 import appStatusRouter from './routes/appStatus.js'
+import favoritesRouter from './routes/favorites.js'
+import { migrate } from './db/migrate.js'
 import { startCleanupJob } from './cron.js'
 
 const app = express()
@@ -44,12 +46,18 @@ app.use('/api/media', mediaRouter)
 app.use('/api/app-status', appStatusRouter)
 app.use('/api/devices', devicesRouter)
 app.use('/api/history', historyRouter)
+app.use('/api/favorites', favoritesRouter)
 
 // Auto-delete disabled — use manual delete from dashboard
 // startCleanupJob()
 
 const PORT = process.env.PORT ?? 3000
-app.listen(PORT, () => {
-    console.log(`NotifyHub server running on port ${PORT}`)
-    console.log(`Dashboard: http://localhost:${PORT}`)
-})
+migrate()
+    .then(() => app.listen(PORT, () => {
+        console.log(`NotifyHub server running on port ${PORT}`)
+        console.log(`Dashboard: http://localhost:${PORT}`)
+    }))
+    .catch(err => {
+        console.error('Database migration failed:', err.message)
+        process.exit(1)
+    })

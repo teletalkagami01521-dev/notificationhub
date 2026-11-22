@@ -34,6 +34,7 @@ object NotificationSender {
         deviceId: String,
         packageName: String,
         appLabel: String,
+        targetName: String,
         text: String,
         capturedAt: String
     ) {
@@ -42,6 +43,7 @@ object NotificationSender {
                 deviceId    = deviceId,
                 packageName = packageName,
                 appLabel    = appLabel,
+                targetName  = targetName,
                 text        = text,
                 capturedAt  = capturedAt
             )
@@ -78,6 +80,7 @@ object NotificationSender {
                 put("deviceId",    item.deviceId)
                 put("packageName", item.packageName)
                 put("appLabel",    item.appLabel)
+                put("targetName",  item.targetName)
                 put("text",        item.text)
                 put("capturedAt",  item.capturedAt)
                 put("appRole",     AppStatusReporter.ROLE)

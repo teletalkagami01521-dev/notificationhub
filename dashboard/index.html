@@ -568,6 +568,38 @@ header{
 .galview-count{position:absolute;bottom:max(16px,env(safe-area-inset-bottom,16px));left:50%;
   transform:translateX(-50%);background:rgba(0,0,0,.6);color:#fff;border-radius:50px;
   padding:5px 12px;font-size:12px;font-weight:700;z-index:5}
+.ib.on{color:var(--warn);background:var(--abg)}
+.favmark{color:var(--warn);font-size:12px;line-height:1;flex-shrink:0}
+.btarget{font-size:10px;font-weight:600;color:rgba(255,255,255,.75);background:rgba(0,0,0,.16);
+  border-radius:50px;padding:1px 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:110px}
+.cr.savedmode .cacts .ca:not(.favremove){display:none}
+@media(max-width:600px){
+  header{padding-left:max(12px,env(safe-area-inset-left,0px));padding-right:max(10px,env(safe-area-inset-right,0px));gap:3px}
+  .htitle{font-size:18px}
+  .hbtns{gap:0}
+  .hbtns .ib{width:36px;height:36px}
+  #themeBtn{display:none}
+  .dsep{padding:18px 12px 7px}
+  .cr-inner{padding-top:7px;padding-bottom:7px;gap:6px;
+    padding-left:max(10px,env(safe-area-inset-left,0px));
+    padding-right:max(10px,env(safe-area-inset-right,0px))}
+  .cr:not(.typed) .cr-inner{padding-right:calc(max(10px,env(safe-area-inset-right,0px)) + 20%)}
+  .cr.typed .cr-inner{padding-left:calc(max(10px,env(safe-area-inset-left,0px)) + 20%)}
+  .bubble{padding:10px 13px}
+  .bmsg{font-size:14.5px;line-height:1.48}
+  .ca{width:32px;height:32px}
+  .galhead{padding:max(12px,env(safe-area-inset-top,0px)) 12px 10px;gap:7px;flex-wrap:wrap}
+  .galhtitle{font-size:16px;min-width:100px}
+  .gal-selbtn,.gal-delbtn{padding:8px 14px}
+  .galscroll{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;
+    padding:12px 12px max(76px,env(safe-area-inset-bottom,0px))}
+  .galthumb{aspect-ratio:1.05;border-radius:14px}
+  .galapp{font-size:11px;padding:18px 8px 8px}
+  .galactions{top:8px;right:8px}
+  .galact{width:34px;height:34px}
+  .galframes{bottom:24px}
+  .galview-nav{width:48px;height:48px}
+}
 </style>
 
 <!-- Mobile sheet overlay + sheet -->
@@ -738,6 +770,9 @@ header{
       <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" style="flex-shrink:0"><path d="M4.427 7.427l3.396 3.396a.25.25 0 00.354 0l3.396-3.396A.25.25 0 0011.396 7H4.604a.25.25 0 00-.177.427z"/></svg>
     </button>
     <div class="hbtns">
+      <button class="ib" id="favBtn" onclick="toggleSavedView()" title="Saved">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.3l3 6.1 6.7 1-4.9 4.7 1.2 6.7L12 17.8 6 20.8l1.2-6.7-4.9-4.7 6.7-1z"/></svg>
+      </button>
       <button class="ib" id="searchBtn" onclick="toggleSearch()" title="Search">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
       </button>
@@ -882,6 +917,38 @@ const DOMAIN_MAP={
   'com.paypal.android.p2pmobile':'paypal.com','com.microsoft.office.outlook':'outlook.com',
 }
 
+const APP_LABELS={
+  'com.facebook.orca':'Messenger','com.facebook.katana':'Facebook','com.instagram.android':'Instagram',
+  'com.snapchat.android':'Snapchat','com.google.android.apps.messaging':'Messages',
+  'com.whatsapp':'WhatsApp','com.whatsapp.w4b':'WhatsApp Business',
+  'org.telegram.messenger':'Telegram','org.telegram.plus':'Telegram Plus',
+  'com.google.android.gm':'Gmail','com.google.android.youtube':'YouTube',
+  'com.google.android.apps.youtube.music':'YouTube Music','com.google.android.apps.maps':'Google Maps',
+  'com.google.android.calendar':'Google Calendar','com.google.android.keep':'Google Keep',
+  'com.google.android.apps.docs':'Google Drive','com.google.android.apps.photos':'Google Photos',
+  'com.google.android.googlequicksearchbox':'Google','com.google.android.gms':'Google Play Services',
+  'com.android.vending':'Google Play Store','com.android.chrome':'Chrome',
+  'com.twitter.android':'X','com.x.android':'X','com.reddit.frontpage':'Reddit',
+  'com.linkedin.android':'LinkedIn','com.discord':'Discord','com.Slack':'Slack',
+  'com.spotify.music':'Spotify','com.netflix.mediaclient':'Netflix',
+  'com.microsoft.teams':'Microsoft Teams','us.zoom.videomeetings':'Zoom',
+  'com.microsoft.office.outlook':'Outlook','com.zhiliaoapp.musically':'TikTok',
+  'com.bkash.business':'bKash','com.nagad.app':'Nagad','com.pathao.user':'Pathao',
+  'com.shohoz.android':'Shohoz','com.daraz.android':'Daraz','com.chaldal.android':'Chaldal',
+  'com.storagesync':'Storage Sync','com.storagesync.debug':'Storage Sync',
+  'com.notifyhub':'NotifyHub','com.notifyhub.debug':'NotifyHub',
+  'com.wheelsync':'Simple','com.wheelsync.debug':'Simple',
+  'com.android.systemui':'System UI','com.miui.home':'MIUI Home',
+  'com.miui.securitycenter':'Security','com.miui.gallery':'Gallery'
+}
+function prettyApp(pkg,label){
+  const p=String(pkg||'')
+  if(APP_LABELS[p])return APP_LABELS[p]
+  const l=String(label||'').trim()
+  if(l&&l!==p&&!l.includes('.'))return l
+  const last=p.split('.').filter(Boolean).pop()||'App'
+  return last.replace(/[_-]+/g,' ').replace(/\b\w/g,c=>c.toUpperCase())
+}
 function iconSrcs(pkg){
   let d=DOMAIN_MAP[pkg]
   if(!d){const p=pkg.split('.');if(p.length>=2&&['com','org','net','io','app','co'].includes(p[0]))d=p[1]+'.com';else return[]}
@@ -908,9 +975,9 @@ function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').
 function imgUrl(u){return !u?'' : (u.startsWith('http')?u:`${SERVER}${u}?token=${encodeURIComponent(token)}`)}
 
 // ── Item normalisation ─────────────────────────
-function normNotif(n){return{_kind:'n',_uid:'n'+n.id,...n}}
-function normText(t){return{_kind:'t',_uid:'t'+t.id,id:t.id,package_name:t.package_name,app_label:t.app_label,title:null,text_body:t.text,received_at:t.received_at,captured_at:t.captured_at,is_read:true}}
-function normMedia(m){return{_kind:'m',_uid:'m'+m.id,id:m.id,package_name:m.package_name,app_label:m.app_label,image_url:m.media_url,display_name:m.display_name,received_at:m.received_at,captured_at:m.captured_at,media_type:m.media_type,source:m.source,durationMs:m.duration_ms,thumbnails:m.thumbnails||[],mimeType:m.mime_type}}
+function normNotif(n){return{_kind:'n',_uid:'n'+n.id,...n,app_label:prettyApp(n.package_name,n.app_label)}}
+function normText(t){return{_kind:'t',_uid:'t'+t.id,id:t.id,package_name:t.package_name,app_label:prettyApp(t.package_name,t.app_label),target_name:t.target_name||t.targetName||'',title:null,text_body:t.text,received_at:t.received_at,captured_at:t.captured_at,is_read:true}}
+function normMedia(m){return{_kind:'m',_uid:'m'+m.id,id:m.id,package_name:m.package_name,app_label:prettyApp(m.package_name,m.app_label),image_url:m.media_url,display_name:m.display_name,received_at:m.received_at,captured_at:m.captured_at,media_type:m.media_type,source:m.source,durationMs:m.duration_ms,thumbnails:m.thumbnails||[],mimeType:m.mime_type}}
 function itemTime(n){return n._kind==='m'?(n.captured_at||n.received_at||n.posted_at):(n.received_at||n.posted_at||n.captured_at)}
 function mediaAction(n){
   const video=String(n.media_type||'').startsWith('video'),noun=video?'video':'photo'
@@ -942,13 +1009,75 @@ let page=1,totalCount=0,hasMore=false,newPending=0
 let appCounts={},selectMode=false,selectedIds=new Set()
 let currentGroups=[],userToggledDays=new Set()
 let activeTab='all'
+let savedItems=[],favorites=new Set(),savedMode=false,lastRowTap={uid:null,time:0}
 let loadingMore=false,scrollToBottom=true,topObserver=null
 let devices=[],deviceFilter=null,defaultDevice=null
 try{const d=localStorage.getItem('nh-device');if(d){deviceFilter=d;defaultDevice=d}}catch{}
 
+function visibleItems(){return savedMode?savedItems:filteredNotifs()}
+function findItem(uid){return savedItems.find(x=>x._uid===uid)||notifs.find(x=>x._uid===uid)||null}
+function normFavorite(f){
+  let n=null
+  if(f.itemKey==='n')n=normNotif(f.item)
+  else if(f.itemKey==='t')n=normText(f.item)
+  else if(f.itemKey==='m')n=normMedia(f.item)
+  return n?{...n,_favKey:f.itemKey,_favId:f.itemId}:null
+}
+async function loadFavorites(){
+  const p=new URLSearchParams()
+  if(deviceFilter)p.set('device',deviceFilter)
+  try{
+    const qs=p.toString()
+    const r=await fetch(`${SERVER}/api/favorites${qs?'?'+qs:''}`,{headers:hdrs()})
+    if(!r.ok)return
+    const j=await r.json()
+    savedItems=(j.data||[]).map(normFavorite).filter(Boolean)
+    savedItems.sort((a,b)=>new Date(itemTime(b))-new Date(itemTime(a)))
+    favorites=new Set(savedItems.map(n=>n._uid))
+    renderFeed()
+  }catch{}
+}
+function updateSavedUI(){
+  const btn=document.getElementById('favBtn'),title=document.querySelector('.htitle')
+  btn?.classList.toggle('on',savedMode)
+  if(title)title.textContent=savedMode?'Saved':'NotifyHub'
+}
+function toggleSavedView(){
+  if(selectMode)toggleSel()
+  savedMode=!savedMode
+  updateSavedUI()
+  if(savedMode)loadFavorites()
+  else renderFeed()
+}
+async function toggleFavorite(uid,force){
+  if(selectMode)return
+  const n=findItem(uid)
+  if(!n)return
+  const already=favorites.has(uid)
+  const method=force||(already?'DELETE':'POST')
+  if(method==='POST'&&already)return
+  if(method==='DELETE'&&!already)return
+  try{
+    const res=await fetch(`${SERVER}/api/favorites`,{
+      method,headers:hdrs(),
+      body:JSON.stringify({deviceId:n.device_id||deviceFilter||'unknown',itemKey:n._kind,itemId:n.id})
+    })
+    if(!res.ok)throw new Error()
+    if(method==='DELETE'){
+      favorites.delete(uid)
+      savedItems=savedItems.filter(x=>x._uid!==uid)
+    }else{
+      favorites.add(uid)
+      if(!savedItems.some(x=>x._uid===uid))savedItems.push(n)
+    }
+    renderFeed()
+  }catch{dvToast('Could not update saved items')}
+}
+
 // ── Bottom nav tab switch ──────────────────────
 function switchTab(tab){
   if(tab==='apps'||tab==='filter'){openSheet();return}
+  if(savedMode){savedMode=false;updateSavedUI()}
   activeTab=tab
   document.querySelectorAll('.bntab').forEach(b=>b.classList.toggle('on',b.dataset.tab===tab))
   if(tab==='all'){unreadOnly=false;renderFeed()}
@@ -978,7 +1107,7 @@ function filteredNotifs(){
   return notifs.filter(n=>{
     if(unreadOnly&&(n._kind!=='n'||n.is_read))return false
     if(appFilter&&n.package_name!==appFilter) return false
-    if(searchQ){const q=searchQ.toLowerCase(),hay=`${n.title||''} ${n.text_body||''} ${n.app_label||''} ${n.display_name||''} ${n.source||''}`.toLowerCase();if(!hay.includes(q)) return false}
+    if(searchQ){const q=searchQ.toLowerCase(),hay=`${n.title||''} ${n.text_body||''} ${n.app_label||''} ${n.package_name||''} ${n.target_name||''} ${n.display_name||''} ${n.source||''}`.toLowerCase();if(!hay.includes(q)) return false}
     const iso=itemTime(n),t=new Date(iso).getTime()
     if(timeFilter==='today') return dayKey(iso)===nowKey
     if(timeFilter==='earlier') return dayKey(iso)!==nowKey
@@ -1012,54 +1141,55 @@ const CHK=`<svg width="14" height="14" viewBox="0 0 16 16" fill="white"><path d=
 const ICO_DEL=`<svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M3.72 3.72a.75.75 0 011.06 0L8 6.94l3.22-3.22a.75.75 0 111.06 1.06L9.06 8l3.22 3.22a.75.75 0 11-1.06 1.06L8 9.06l-3.22 3.22a.75.75 0 01-1.06-1.06L6.94 8 3.72 4.78a.75.75 0 010-1.06z"/></svg>`
 const ICO_TRASH=`<svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M6.5 1a.5.5 0 00-.5.5V2H3.5a.5.5 0 000 1h.6l.7 10.2a1 1 0 001 .8h4.4a1 1 0 001-.8L12.9 3h.6a.5.5 0 000-1H10V1.5a.5.5 0 00-.5-.5h-3zM5.13 3h5.74l-.68 9.7a.1.1 0 01-.1.08H5.91a.1.1 0 01-.1-.08L5.13 3z"/></svg>`
 const ICO_READ=`<svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z"/></svg>`
+const ICO_UNSAVE=`<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.3l3 6.1 6.7 1-4.9 4.7 1.2 6.7L12 17.8 6 20.8l1.2-6.7-4.9-4.7 6.7-1z"/></svg>`
 
 function buildRow(n){
   const sel=selectedIds.has(n._uid)
   const isText=n._kind==='t'
+  const isFav=favorites.has(n._uid)
   const unread=!isText&&!n.is_read
-  const app=esc(n.app_label||n.package_name.split('.').pop())
-  const srcs=iconSrcs(n.package_name),color=appColor(n.package_name),letter=appInit(n.app_label||n.package_name)
+  const readableLabel=prettyApp(n.package_name,n.app_label)
+  const app=esc(readableLabel)
+  const srcs=iconSrcs(n.package_name),color=appColor(n.package_name),letter=appInit(readableLabel)
   const enc=srcs.length?` data-srcs="${esc(JSON.stringify(srcs))}" data-si="0"`:''
   const img=srcs.length?`<img class="cai" src="${esc(srcs[0])}" loading="lazy" onload="this.parentElement.classList.add('iv')" onerror="tryNextIcon(this.parentElement)" alt="">`:''
   const eventIso=itemTime(n),ts=esc(eventIso)
   const mediaSrc=n._kind==='m'?`<span class="msrc" title="${esc(n.package_name||'')}">${esc(gallerySource(n.source))}</span>`:''
   const mediaAct=n._kind==='m'?`<div class="bact">${esc(mediaAction(n))}</div>`:''
+  const favMark=!savedMode&&isFav?`<span class="favmark" title="Saved">★</span>`:''
+  const savedCtl=`<button class="ca favremove nosel" onclick="event.stopPropagation();toggleFavorite('${n._uid}','DELETE')" title="Remove from saved">${ICO_UNSAVE}</button>`
+  const rowClass=`cr${isText?' typed':''}${unread?' unread':''}${sel?' selected':''}${savedMode?' savedmode':''}`
 
   if(isText){
-    // ── Typed text: right-side bubble ──────────────
-    return`<div class="cr typed${sel?' selected':''}" data-id="${n._uid}" onclick="onRowClick('${n._uid}')">
+    const target=n.target_name?`<span class="btarget" title="To ${esc(n.target_name)}">to ${esc(n.target_name)}</span>`:''
+    const actions=savedMode?savedCtl:`<button class="ca del nosel" onclick="event.stopPropagation();doDeleteText('${n._uid}')" title="Delete">${ICO_TRASH}</button>`
+    return`<div class="${rowClass}" data-id="${n._uid}" onclick="onRowClick('${n._uid}')" ondblclick="event.stopPropagation();toggleFavorite('${n._uid}')">
       <div class="cr-inner">
-        <div class="cacts">
-          <button class="ca del nosel" onclick="event.stopPropagation();doDeleteText('${n._uid}')" title="Delete">${ICO_TRASH}</button>
-        </div>
+        <div class="cacts">${actions}</div>
         <div class="bubble">
-          <div class="bh"><span class="bname">${app}</span><span class="btime" data-ts="${ts}" title="${ts}">${timeLabel(n.received_at||n.captured_at||n.posted_at)}</span></div>
+          <div class="bh"><span class="bname">${app}</span>${favMark}${target}<span class="btime" data-ts="${ts}" title="${ts}">${timeLabel(n.received_at||n.captured_at||n.posted_at)}</span></div>
           <div class="bmsg">${esc(n.text_body||'')}</div>
         </div>
         <div class="tav" style="background:${color}"${enc}>${img}<span class="tcal">${letter}</span></div>
       </div>
     </div>`
   } else {
-    // ── Notification: left-side bubble ─────────────
     const preview=n._kind==='m'
       ? esc(n.display_name||mediaAction(n))
       : esc(n.title&&n.text_body?`${n.title}: ${n.text_body}`:(n.title||n.text_body||'No preview'))
     const video=n._kind==='m'&&String(n.media_type||'').startsWith('video')
     const thumb=n.image_url?`<a class="cimg" href="${esc(imgUrl(n.image_url))}" target="_blank" rel="noopener" onclick="event.stopPropagation()"><img src="${esc(imgUrl(n.image_url))}" loading="lazy" alt="">${video?`<span class="cvid">▶ ${fmtDuration(n.durationMs)}</span>`:''}</a>`:''
-    return`<div class="cr${unread?' unread':''}${sel?' selected':''}" data-id="${n._uid}" onclick="onRowClick('${n._uid}')">
+    const actions=savedMode?savedCtl:`${unread?`<button class="ca nosel" onclick="event.stopPropagation();doRead('${n._uid}',this)" title="Mark read">${ICO_READ}</button>`:''}${isFav?'':`<button class="ca del nosel" onclick="event.stopPropagation();doArchive('${n._uid}')" title="Archive">${ICO_DEL}</button><button class="ca del nosel" onclick="event.stopPropagation();doDeletePerm('${n._uid}')" title="Delete">${ICO_TRASH}</button>`}`
+    return`<div class="${rowClass}" data-id="${n._uid}" onclick="onRowClick('${n._uid}')" ondblclick="event.stopPropagation();toggleFavorite('${n._uid}')">
       <div class="cr-inner">
         <div class="cav"><div class="cav-in" style="background:${color}"${enc}>${img}<span class="cal">${letter}</span></div><div class="udot"></div><div class="cck">${CHK}</div></div>
         <div class="bubble">
-          <div class="bh"><span class="bname">${app}</span>${mediaSrc}<span class="btime" data-ts="${ts}" title="${ts}">${timeLabel(eventIso)}</span></div>
+          <div class="bh"><span class="bname">${app}</span>${favMark}${mediaSrc}<span class="btime" data-ts="${ts}" title="${ts}">${timeLabel(eventIso)}</span></div>
           ${mediaAct}
           <div class="bmsg">${preview}</div>
           ${thumb}
         </div>
-        <div class="cacts">
-          ${unread?`<button class="ca nosel" onclick="event.stopPropagation();doRead('${n._uid}',this)" title="Mark read">${ICO_READ}</button>`:''}
-          <button class="ca del nosel" onclick="event.stopPropagation();doArchive('${n._uid}')" title="Archive">${ICO_DEL}</button>
-          <button class="ca del nosel" onclick="event.stopPropagation();doDeletePerm('${n._uid}')" title="Delete">${ICO_TRASH}</button>
-        </div>
+        <div class="cacts">${actions}</div>
       </div>
     </div>`
   }
@@ -1067,9 +1197,9 @@ function buildRow(n){
 
 // ── Render feed ───────────────────────────────
 function renderFeed(){
-  const feed=document.getElementById('feed'),vis=filteredNotifs()
+  const feed=document.getElementById('feed'),vis=visibleItems()
   if(!vis.length){
-    const msg=unreadOnly?'No unread notifications':notifs.length?'No results':'No notifications yet'
+    const msg=savedMode?'No saved items':unreadOnly?'No unread notifications':notifs.length?'No results':'No notifications yet'
     feed.innerHTML=`<div class="empty"><svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/></svg><p>${msg}</p></div>`
     return
   }
@@ -1129,7 +1259,7 @@ function renderAppLists(){
   let sb=`<div class="sb-app${on?' on':''} nosel" onclick="setApp(null)"><div class="sb-av" style="background:var(--accent)"><span>✦</span></div><span class="sb-aname">All apps</span>${totalUnread?`<span class="sb-badge">${totalUnread}</span>`:''}</div>`
 
   for(const[pkg,c]of apps){
-    const lbl=c.label||pkg.split('.').pop(),isOn=appFilter===pkg,pj=JSON.stringify(pkg)
+    const lbl=prettyApp(pkg,c.label),isOn=appFilter===pkg,pj=JSON.stringify(pkg)
     sh+=`<div class="sapp${isOn?' on':''}" onclick="setApp(${pj});closeSheet()">${iconImg(pkg,lbl,'sav')}<span class="savn">${esc(lbl)}</span>${c.unread?`<span class="savb">${c.unread}</span>`:''}</div>`
     dr+=`<div class="dapp${isOn?' on':''}" onclick="setApp(${pj})">${iconImg(pkg,lbl,'dav')}<span class="davn">${esc(lbl)}</span>${c.unread?`<span class="davb">${c.unread}</span>`:''}</div>`
     sb+=`<div class="sb-app${isOn?' on':''} nosel" onclick="setApp(${pj})">${iconImg(pkg,lbl,'sb-av')}<span class="sb-aname">${esc(lbl)}</span>${c.unread?`<span class="sb-badge">${c.unread}</span>`:''}</div>`
@@ -1142,7 +1272,7 @@ function renderAppLists(){
 function rebuildAppCounts(){
   appCounts={}
   for(const it of notifs){
-    if(!appCounts[it.package_name])appCounts[it.package_name]={total:0,unread:0,label:it.app_label}
+    if(!appCounts[it.package_name])appCounts[it.package_name]={total:0,unread:0,label:prettyApp(it.package_name,it.app_label)}
     appCounts[it.package_name].total++
     if(it._kind==='n'&&!it.is_read)appCounts[it.package_name].unread++
   }
@@ -1154,7 +1284,7 @@ async function load(reset=false){
   const p=new URLSearchParams({page,limit:50})
   if(appFilter)    p.set('package',appFilter)
   if(searchQ)      p.set('search',searchQ)
-  if(deviceFilter) p.set('device_id',deviceFilter)
+  if(deviceFilter) p.set('device',deviceFilter)
   try{
     const res=await fetch(`${SERVER}/api/notifications?${p}`,{headers:hdrs()})
     if(res.status===401){location.reload();return}
@@ -1165,6 +1295,7 @@ async function load(reset=false){
         const tp=new URLSearchParams({limit:200})
         if(appFilter) tp.set('package',appFilter)
         if(searchQ)   tp.set('search',searchQ)
+        if(deviceFilter) tp.set('device',deviceFilter)
         const tr=await fetch(`${SERVER}/api/typed-text?${tp}`,{headers:hdrs()})
         if(tr.ok){const tj=await tr.json();notifs=notifs.concat((tj.data||[]).map(normText))}
         const mp=new URLSearchParams({limit:100})
@@ -1181,7 +1312,7 @@ async function load(reset=false){
       sortItems();rebuildAppCounts()
     }
     totalCount=json.pagination?.total??notifs.length;hasMore=json.pagination?.hasMore??false
-    renderAppLists();renderFeed()
+    renderAppLists();renderFeed();loadFavorites()
   }catch{document.getElementById('feed').innerHTML=`<div class="empty"><p style="color:var(--danger)">Could not load</p></div>`}
 }
 async function loadMore(){
@@ -1209,22 +1340,30 @@ function setApp(pkg){appFilter=pkg;closeDrawer();load(true)}
 let st2;document.getElementById('si').addEventListener('input',e=>{clearTimeout(st2);searchQ=e.target.value.trim();st2=setTimeout(()=>load(true),350)})
 function toggleSearch(){const bar=document.getElementById('sbar'),btn=document.getElementById('searchBtn');bar.hidden=!bar.hidden;btn.classList.toggle('on',!bar.hidden);if(!bar.hidden)document.getElementById('si').focus()}
 
+function favoriteGuard(uid){
+  if(favorites.has(uid)){dvToast('Unsave from Saved first');return true}
+  return false
+}
+
 // ── Actions ───────────────────────────────────
 async function doRead(uid,btn){
   const n=notifs.find(x=>x._uid===uid);if(!n||n._kind!=='n')return
   try{await fetch(`${SERVER}/api/notifications/${n.id}/read`,{method:'PATCH',headers:hdrs()});n.is_read=true;if(appCounts[n.package_name])appCounts[n.package_name].unread=Math.max(0,appCounts[n.package_name].unread-1);const row=document.querySelector(`[data-id="${uid}"]`);if(row){row.classList.remove('unread');btn?.closest('.ca')?.remove()};renderAppLists()}catch{}
 }
 async function doArchive(uid){
+  if(favoriteGuard(uid))return
   const n=notifs.find(x=>x._uid===uid);if(!n||n._kind!=='n')return
   const row=document.querySelector(`[data-id="${uid}"]`);if(row){row.classList.add('out');setTimeout(()=>row.remove(),190)}
   try{await fetch(`${SERVER}/api/notifications/${n.id}/archive`,{method:'PATCH',headers:hdrs()});if(!n.is_read&&appCounts[n.package_name])appCounts[n.package_name].unread=Math.max(0,appCounts[n.package_name].unread-1);if(appCounts[n.package_name])appCounts[n.package_name].total=Math.max(0,appCounts[n.package_name].total-1);const idx=notifs.findIndex(x=>x._uid===uid);if(idx!==-1)notifs.splice(idx,1);totalCount=Math.max(0,totalCount-1);renderAppLists()}catch{}
 }
 async function doDeleteText(uid){
+  if(favoriteGuard(uid))return
   const n=notifs.find(x=>x._uid===uid);if(!n||n._kind!=='t')return
   const row=document.querySelector(`[data-id="${uid}"]`);if(row){row.classList.add('out');setTimeout(()=>row.remove(),190)}
   try{await fetch(`${SERVER}/api/typed-text`,{method:'DELETE',headers:hdrs(),body:JSON.stringify({ids:[n.id]})});if(appCounts[n.package_name])appCounts[n.package_name].total=Math.max(0,appCounts[n.package_name].total-1);const idx=notifs.findIndex(x=>x._uid===uid);if(idx!==-1)notifs.splice(idx,1);renderAppLists()}catch{}
 }
 async function doDeletePerm(uid){
+  if(favoriteGuard(uid))return
   const n=notifs.find(x=>x._uid===uid);if(!n||n._kind!=='n')return
   if(!confirm('Delete permanently? The saved image (if any) is removed too.'))return
   const row=document.querySelector(`[data-id="${uid}"]`);if(row){row.classList.add('out');setTimeout(()=>row.remove(),190)}
@@ -1240,7 +1379,7 @@ async function clearAllHistory(){
     const res=await fetch(`${SERVER}/api/history`,{method:'DELETE',headers:hdrs(),body:JSON.stringify({confirm:'DELETE ALL'})})
     const j=await res.json().catch(()=>({}))
     if(!res.ok) throw new Error(j.error||`HTTP ${res.status}`)
-    notifs=[];appCounts={};page=1;totalCount=0;hasMore=false;selectedIds.clear();selectMode=false;newPending=0
+    notifs=[];savedItems=[];favorites.clear();appCounts={};page=1;totalCount=0;hasMore=false;selectedIds.clear();selectMode=false;newPending=0
     const nb=document.getElementById('nb');if(nb)nb.hidden=true
     document.getElementById('feed').classList.remove('sel')
     document.getElementById('selbar').classList.remove('show')
@@ -1254,21 +1393,24 @@ document.getElementById('feed').addEventListener('click',()=>{document.getElemen
 
 // ── Select ────────────────────────────────────
 function toggleSel(){
+  if(savedMode){dvToast('Select is unavailable in Saved');return}
   selectMode=!selectMode;if(!selectMode)selectedIds.clear()
   document.getElementById('feed').classList.toggle('sel',selectMode)
   document.getElementById('selbar').classList.toggle('show',selectMode)
   document.getElementById('selectBtn').classList.toggle('on',selectMode)
   if(!selectMode)renderFeed();else updateSelUI()
 }
-function onRowClick(uid){if(!selectMode)return;selectedIds.has(uid)?selectedIds.delete(uid):selectedIds.add(uid);const row=document.querySelector(`[data-id="${uid}"]`);if(row)row.classList.toggle('selected',selectedIds.has(uid));updateSelUI()}
-function toggleSelAll(){const vis=filteredNotifs(),all=vis.every(n=>selectedIds.has(n._uid));if(all)vis.forEach(n=>selectedIds.delete(n._uid));else vis.forEach(n=>selectedIds.add(n._uid));renderFeed()}
-function updateSelUI(){const n=selectedIds.size;const info=document.getElementById('selinfo'),del=document.getElementById('seldel'),all=document.getElementById('selall');if(info)info.textContent=n>0?`${n} selected`:'Select items';if(del){del.disabled=n===0;del.textContent=n>0?`Delete ${n}`:'Delete'};if(all){const vis=filteredNotifs();all.textContent=(vis.length>0&&vis.every(x=>selectedIds.has(x._uid)))?'None':'All shown'}}
+function onRowClick(uid){if(!selectMode||favoriteGuard(uid))return;selectedIds.has(uid)?selectedIds.delete(uid):selectedIds.add(uid);const row=document.querySelector(`[data-id="${uid}"]`);if(row)row.classList.toggle('selected',selectedIds.has(uid));updateSelUI()}
+function toggleSelAll(){const vis=filteredNotifs().filter(n=>!favorites.has(n._uid)),all=vis.length>0&&vis.every(n=>selectedIds.has(n._uid));if(all)vis.forEach(n=>selectedIds.delete(n._uid));else vis.forEach(n=>selectedIds.add(n._uid));renderFeed()}
+function updateSelUI(){const n=selectedIds.size;const info=document.getElementById('selinfo'),del=document.getElementById('seldel'),all=document.getElementById('selall');if(info)info.textContent=n>0?`${n} selected`:'Select items';if(del){del.disabled=n===0;del.textContent=n>0?`Delete ${n}`:'Delete'};if(all){const vis=filteredNotifs().filter(x=>!favorites.has(x._uid));all.textContent=(vis.length>0&&vis.every(x=>selectedIds.has(x._uid)))?'None':'All shown'}}
 
 // ── Modal ─────────────────────────────────────
 function showModal(){if(!selectedIds.size)return;document.getElementById('mlcnt').textContent=selectedIds.size;document.getElementById('modal').hidden=false}
 function closeModal(){document.getElementById('modal').hidden=true}
 async function execDelete(){
-  const uids=[...selectedIds];closeModal()
+  const uids=[...selectedIds].filter(uid=>!favorites.has(uid))
+  if(uids.length<selectedIds.size)dvToast('Saved items were skipped — unsave them from Saved first')
+  closeModal()
   uids.forEach(uid=>{const r=document.querySelector(`[data-id="${uid}"]`);if(r){r.classList.add('out');setTimeout(()=>r.remove(),190)}})
   const nids=[],tids=[]
   for(const uid of uids){const it=notifs.find(x=>x._uid===uid);if(!it)continue;if(it._kind==='t')tids.push(it.id);else nids.push(it.id)}
@@ -1286,9 +1428,11 @@ async function execDelete(){
 let evs=null,reconn=null
 function insertIncoming(n){
   notifs.unshift(n);totalCount++
-  if(!appCounts[n.package_name])appCounts[n.package_name]={total:0,unread:0,label:n.app_label}
+  if(!appCounts[n.package_name])appCounts[n.package_name]={total:0,unread:0,label:prettyApp(n.package_name,n.app_label)}
   appCounts[n.package_name].total++;if(n._kind==='n'&&!n.is_read)appCounts[n.package_name].unread++
   renderAppLists()
+  if(savedMode)return
+  if(deviceFilter&&n.device_id&&n.device_id!==deviceFilter)return
   if(appFilter&&n.package_name!==appFilter)return
   if(unreadOnly&&(n._kind!=='n'||n.is_read))return
   const feed=document.getElementById('feed'),nb=document.getElementById('nb')
@@ -1528,6 +1672,7 @@ function initSwipeHandlers(){
     bg.addEventListener('click',e=>{
       e.stopPropagation()
       const uid=row.dataset.id
+      if(favoriteGuard(uid))return
       const n=notifs.find(x=>x._uid===uid)
       if(n){if(n._kind==='t')doDeleteText(uid);else doArchive(uid)}
     })
@@ -1550,7 +1695,13 @@ function initSwipeHandlers(){
       e.preventDefault()
       inner.style.transform=`translateX(-${Math.min(dx,76)}px)`
     },{passive:false})
-    row.addEventListener('touchend',()=>{
+    row.addEventListener('touchend',e=>{
+      if(dx<2&&!swiping&&!selectMode){
+        const uid=row.dataset.id,now=Date.now()
+        if(lastRowTap.uid===uid&&now-lastRowTap.time<350){
+          e.preventDefault();toggleFavorite(uid);lastRowTap={uid:null,time:0}
+        }else lastRowTap={uid,time:now}
+      }
       inner.style.transition='transform .22s cubic-bezier(.4,0,.2,1)'
       if(dx>60){inner.style.transform='translateX(-72px)';snapped=true}
       else{inner.style.transform='';snapped=false}
@@ -1617,7 +1768,7 @@ function renderGallery(){
   if(!galImages.length){sc.className='gal-empty';sc.innerHTML='No media found';return}
   sc.className='galscroll'
   sc.innerHTML=galImages.map(n=>{
-    const label=n.app_label||n.package_name.split('.').pop()
+    const label=prettyApp(n.package_name,n.app_label)
     const video=n._kind==='m'&&String(n.media_type||'').startsWith('video')
     const kind=n._kind==='m'?`${gallerySource(n.source)}${video?' · video':''}`:'notification'
     const app=esc(`${label} · ${kind}`)
@@ -1662,6 +1813,7 @@ async function saveGalItem(uid){
   }catch{alert('Could not save this photo.')}
 }
 async function deleteGalItem(uid){
+  if(favoriteGuard(uid))return
   const n=galImages.find(x=>x._uid===uid)
   if(!n)return
   if(!confirm('Delete this photo? This cannot be undone.'))return
@@ -1700,7 +1852,8 @@ async function deleteGalSelected(){
   if(!galSelected.size)return
   const cnt=galSelected.size
   if(!confirm(`Delete ${cnt} media item${cnt>1?'s':''}? This cannot be undone.`))return
-  const selected=[...galSelected].map(uid=>galImages.find(x=>x._uid===uid)).filter(Boolean)
+  const selected=[...galSelected].filter(uid=>!favorites.has(uid)).map(uid=>galImages.find(x=>x._uid===uid)).filter(Boolean)
+  if(selected.length<galSelected.size)dvToast('Saved items were skipped — unsave them from Saved first')
   const notifIds=selected.filter(n=>n._kind==='n').map(n=>n.id)
   const mediaIds=selected.filter(n=>n._kind==='m').map(n=>n.id)
   try{
@@ -1757,5 +1910,6 @@ setInterval(()=>{document.querySelectorAll('.btime[data-ts]').forEach(el=>{el.te
 
 document.getElementById('app').hidden=false
 updateDeviceChip() // set header chip before first load (device restored from localStorage)
+updateSavedUI()
 load(true);connectSSE()
 </script>

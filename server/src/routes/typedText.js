@@ -1,13 +1,13 @@
 import { Router } from 'express'
 import { db } from '../db/client.js'
 import { broadcast } from '../sse.js'
-import { TEXT_ROLE_PRIORITY, getActiveRole, roleAllowed } from '../appRoles.js'
+import { TEXT_ROLE_PRIORITY } from '../appRoles.js'
 
 const router = Router()
 
 // POST /api/typed-text — called by the Android accessibility service
 router.post('/', async (req, res) => {
-    const { deviceId, packageName, appLabel, text, capturedAt, appRole } = req.body
+    const { deviceId, packageName, appLabel, targetName, text, capturedAt, appRole } = req.body
 
     if (!deviceId || !packageName || !text || !capturedAt) {
         return res.status(400).json({ error: 'Missing required fields: deviceId, packageName, text, capturedAt' })
@@ -17,18 +17,11 @@ router.post('/', async (req, res) => {
     }
 
     try {
-        if (appRole) {
-            const activeRole = await getActiveRole(deviceId, 'text')
-            if (!roleAllowed(appRole, activeRole, 'text')) {
-                return res.status(202).json({ status: 'standby', activeRole })
-            }
-        }
-
         const result = await db.query(
-            `INSERT INTO typed_text (device_id, package_name, app_label, text, captured_at)
-             VALUES ($1, $2, $3, $4, $5)
-             RETURNING id, device_id, package_name, app_label, text, captured_at, received_at`,
-            [deviceId, packageName, appLabel ?? '', text, capturedAt]
+            `INSERT INTO typed_text (device_id, package_name, app_label, target_name, text, captured_at)
+             VALUES ($1, $2, $3, $4, $5, $6)
+             RETURNING id, device_id, package_name, app_label, target_name, text, captured_at, received_at`,
+            [deviceId, packageName, appLabel ?? '', targetName ?? '', text, capturedAt]
         )
         const row = result.rows[0]
         broadcast('typedtext', row)
@@ -60,7 +53,7 @@ router.get('/', async (req, res) => {
     }
     if (search) {
         params.push(`%${search}%`)
-        conditions.push(`text ILIKE $${params.length}`)
+        conditions.push(`(text ILIKE $${params.length} OR target_name ILIKE $${params.length})`)
     }
 
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : ''
@@ -68,7 +61,7 @@ router.get('/', async (req, res) => {
     try {
         const [dataResult, countResult] = await Promise.all([
             db.query(
-                `SELECT id, device_id, package_name, app_label, text, captured_at, received_at
+                `SELECT id, device_id, package_name, app_label, target_name, text, captured_at, received_at
                  FROM typed_text
                  ${where}
                  ORDER BY received_at DESC

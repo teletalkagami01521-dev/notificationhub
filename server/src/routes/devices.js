@@ -92,6 +92,7 @@ router.delete('/:id', async (req, res) => {
             db.query('DELETE FROM typed_text WHERE device_id = $1', [id]),
             db.query('DELETE FROM media_captures WHERE device_id = $1', [id]),
             db.query('DELETE FROM app_status WHERE device_id = $1', [id]),
+            db.query('DELETE FROM favorites WHERE device_id = $1', [id]),
         ])
         images.rows.forEach(row => deleteImage(row.image_url))
         media.rows.forEach(row => deleteImage(row.media_url))

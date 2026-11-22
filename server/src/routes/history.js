@@ -33,6 +33,7 @@ router.delete('/', async (req, res) => {
         const notifications = await client.query('DELETE FROM notifications')
         const typedText = await client.query('DELETE FROM typed_text')
         const mediaDeleted = await client.query('DELETE FROM media_captures')
+        await client.query('DELETE FROM favorites')
         notificationCount = notifications.rowCount
         typedTextCount = typedText.rowCount
         mediaCount = mediaDeleted.rowCount

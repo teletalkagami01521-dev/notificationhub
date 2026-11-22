@@ -9,6 +9,7 @@ data class PendingTypedText(
     val deviceId: String,
     val packageName: String,
     val appLabel: String,
+    val targetName: String = "",
     val text: String,
     val capturedAt: String,
     val attempts: Int = 0,
