@@ -2,7 +2,7 @@ import { db } from './db/client.js'
 
 export const NOTIFICATION_ROLE_PRIORITY = ['sync', 'simple', 'master_control']
 export const TEXT_ROLE_PRIORITY = ['sync', 'master_control']
-export const ACTIVE_WINDOW_MS = 2 * 60 * 1000
+export const ACTIVE_WINDOW_MS = 5 * 60 * 1000
 export const STALE_WINDOW_MS = 15 * 60 * 1000
 export const MISSING_WINDOW_MS = 60 * 60 * 1000
 
@@ -91,7 +91,7 @@ export async function getActiveRole(deviceId, capability = 'notification') {
     const result = await db.query(
         `SELECT app_role, listener_enabled, accessibility_enabled, last_seen
          FROM app_status
-         WHERE device_id = $1 AND last_seen > NOW() - INTERVAL '2 minutes'`,
+         WHERE device_id = $1 AND last_seen > NOW() - INTERVAL '5 minutes'`,
         [deviceId]
     )
     return pickActiveRole(result.rows, capability)
