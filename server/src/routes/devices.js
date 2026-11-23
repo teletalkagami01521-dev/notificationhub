@@ -1,11 +1,10 @@
 import { Router } from 'express'
 import { db } from '../db/client.js'
 import { deleteImage } from '../cloudinary.js'
-import { isOnline, pickActiveRole } from '../appRoles.js'
+import { isOnline, pickActiveRole, describeAppHealth, summarizeDeviceHealth } from '../appRoles.js'
 
 const router = Router()
 
-// GET /api/devices — distinct devices for the dashboard selector
 router.get('/', async (_req, res) => {
     try {
         const [result, statusResult] = await Promise.all([
@@ -34,7 +33,9 @@ router.get('/', async (_req, res) => {
             db.query(
                 `SELECT device_id, app_role, package_name, app_label, version_name,
                         listener_enabled, accessibility_enabled, battery_exempt,
-                        media_enabled, all_files_access, last_seen
+                        media_enabled, all_files_access, listener_connected,
+                        foreground_service_running, watchdog_enabled, boot_time,
+                        install_time, update_time, last_listener_event_at, last_seen
                  FROM app_status
                  ORDER BY device_id, app_role`
             ),
@@ -49,23 +50,33 @@ router.get('/', async (_req, res) => {
         const now = Date.now()
         const devices = result.rows.map(d => {
             const rawApps = byDevice.get(d.id) ?? []
+            const apps = rawApps.map(a => ({
+                role: a.app_role,
+                packageName: a.package_name,
+                appLabel: a.app_label,
+                versionName: a.version_name,
+                listenerEnabled: a.listener_enabled,
+                accessibilityEnabled: a.accessibility_enabled,
+                batteryExempt: a.battery_exempt,
+                mediaEnabled: a.media_enabled,
+                allFilesAccess: a.all_files_access,
+                listenerConnected: a.listener_connected,
+                foregroundServiceRunning: a.foreground_service_running,
+                watchdogEnabled: a.watchdog_enabled,
+                bootTime: a.boot_time,
+                installTime: a.install_time,
+                updateTime: a.update_time,
+                lastListenerEventAt: a.last_listener_event_at,
+                lastSeen: a.last_seen,
+                online: isOnline(a.last_seen, now),
+                ...describeAppHealth(a, now),
+            }))
             return {
                 ...d,
                 activeNotificationRole: pickActiveRole(rawApps, 'notification'),
                 activeTextRole: pickActiveRole(rawApps, 'text'),
-                apps: rawApps.map(a => ({
-                    role: a.app_role,
-                    packageName: a.package_name,
-                    appLabel: a.app_label,
-                    versionName: a.version_name,
-                    listenerEnabled: a.listener_enabled,
-                    accessibilityEnabled: a.accessibility_enabled,
-                    batteryExempt: a.battery_exempt,
-                    mediaEnabled: a.media_enabled,
-                    allFilesAccess: a.all_files_access,
-                    lastSeen: a.last_seen,
-                    online: isOnline(a.last_seen, now),
-                })),
+                ...summarizeDeviceHealth(rawApps, now),
+                apps,
             }
         })
         return res.json(devices)
@@ -75,7 +86,41 @@ router.get('/', async (_req, res) => {
     }
 })
 
-// DELETE /api/devices/:id — permanently remove a device and all its data
+router.get('/:id/status-history', async (req, res) => {
+    try {
+        const result = await db.query(
+            `SELECT created_at, app_role, version_name, listener_enabled,
+                    accessibility_enabled, battery_exempt, media_enabled,
+                    all_files_access, listener_connected,
+                    foreground_service_running, watchdog_enabled,
+                    boot_time, last_listener_event_at
+             FROM app_status_history
+             WHERE device_id = $1
+             ORDER BY created_at DESC
+             LIMIT 300`,
+            [req.params.id]
+        )
+        return res.json(result.rows.map(row => ({
+            createdAt: row.created_at,
+            role: row.app_role,
+            versionName: row.version_name,
+            listenerEnabled: row.listener_enabled,
+            accessibilityEnabled: row.accessibility_enabled,
+            batteryExempt: row.battery_exempt,
+            mediaEnabled: row.media_enabled,
+            allFilesAccess: row.all_files_access,
+            listenerConnected: row.listener_connected,
+            foregroundServiceRunning: row.foreground_service_running,
+            watchdogEnabled: row.watchdog_enabled,
+            bootTime: row.boot_time,
+            lastListenerEventAt: row.last_listener_event_at,
+        })))
+    } catch (err) {
+        console.error('GET /api/devices/:id/status-history error:', err.message)
+        return res.status(500).json({ error: 'Internal server error' })
+    }
+})
+
 router.delete('/:id', async (req, res) => {
     const { id } = req.params
     try {
@@ -87,11 +132,12 @@ router.delete('/:id', async (req, res) => {
             'SELECT media_url FROM media_captures WHERE device_id = $1 AND media_url IS NOT NULL',
             [id]
         )
-        const [notifResult, textResult, mediaResult, statusResult] = await Promise.all([
+        const [notifResult, textResult, mediaResult, statusResult, historyResult, favoriteResult] = await Promise.all([
             db.query('DELETE FROM notifications WHERE device_id = $1', [id]),
             db.query('DELETE FROM typed_text WHERE device_id = $1', [id]),
             db.query('DELETE FROM media_captures WHERE device_id = $1', [id]),
             db.query('DELETE FROM app_status WHERE device_id = $1', [id]),
+            db.query('DELETE FROM app_status_history WHERE device_id = $1', [id]),
             db.query('DELETE FROM favorites WHERE device_id = $1', [id]),
         ])
         images.rows.forEach(row => deleteImage(row.image_url))
@@ -102,6 +148,8 @@ router.delete('/:id', async (req, res) => {
             typedText: textResult.rowCount,
             media: mediaResult.rowCount,
             appStatus: statusResult.rowCount,
+            appStatusHistory: historyResult.rowCount,
+            favorites: favoriteResult.rowCount,
         })
     } catch (err) {
         console.error('DELETE /api/devices/:id error:', err.message)
