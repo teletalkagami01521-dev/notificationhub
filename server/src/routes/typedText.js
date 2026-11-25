@@ -53,7 +53,7 @@ router.get('/', async (req, res) => {
     }
     if (search) {
         params.push(`%${search}%`)
-        conditions.push(`(text ILIKE $${params.length} OR target_name ILIKE $${params.length})`)
+        conditions.push(`(text ILIKE $${params.length} OR target_name ILIKE $${params.length} OR app_label ILIKE $${params.length} OR package_name ILIKE $${params.length})`)
     }
 
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : ''

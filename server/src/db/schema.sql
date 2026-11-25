@@ -24,6 +24,7 @@ CREATE INDEX IF NOT EXISTS idx_notif_received ON notifications (received_at DESC
 CREATE INDEX IF NOT EXISTS idx_notif_device   ON notifications (device_id);
 CREATE INDEX IF NOT EXISTS idx_notif_package  ON notifications (package_name);
 CREATE INDEX IF NOT EXISTS idx_notif_unread   ON notifications (is_read) WHERE is_read = FALSE;
+CREATE INDEX IF NOT EXISTS idx_notif_throttle ON notifications (device_id, package_name, received_at DESC);
 
 -- Text typed into editable fields, captured by the Android accessibility service.
 -- Password fields are never sent by the client.

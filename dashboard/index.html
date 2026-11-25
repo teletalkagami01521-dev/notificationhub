@@ -240,8 +240,8 @@ header{
 .cr.unread .bmsg{color:var(--fg);font-weight:500}
 .cr.typed .bmsg{color:#fff;font-style:italic}
 /* Notification image */
-.cimg{position:relative;display:block;margin-top:8px;border-radius:8px;overflow:hidden;border:1px solid var(--bord)}
-.cimg img{display:block;width:100%;height:auto;max-height:200px;object-fit:cover}
+.cimg{position:relative;display:block;width:100%;height:180px;margin-top:8px;border-radius:8px;overflow:hidden;border:1px solid var(--bord);background:var(--surf2)}
+.cimg img{display:block;width:100%;height:100%;object-fit:contain;background:var(--surf2)}
 .cvid{position:absolute;left:7px;top:7px;z-index:1;background:rgba(0,0,0,.68);color:#fff;border-radius:50px;padding:3px 7px;font-size:10px;font-weight:700;display:flex;align-items:center;gap:3px;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
 
 /* ── Quick actions (column, beside bubble) ─────── */
@@ -279,6 +279,7 @@ header{
   border:2px solid var(--bord);border-top-color:var(--accent);
   animation:spin .75s linear infinite}
 .top-uptodate{text-align:center;padding:10px 0 2px;font-size:12px;color:var(--muted)}
+#refreshBtn.busy{opacity:.45;pointer-events:none}
 @keyframes fadeInDown{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
 
 /* ── Bottom navigation (mobile only) ─────────── */
@@ -422,6 +423,36 @@ header{
   background:var(--surf);color:var(--fg);border:1px solid var(--bord);touch-action:manipulation}
 .mlcon{flex:1;padding:13px;border-radius:12px;font-size:15px;font-weight:600;font-family:inherit;
   background:var(--accent);color:#fff;border:none;touch-action:manipulation}
+.device-status-ov{position:fixed;inset:0;background:rgba(0,0,0,.66);display:grid;place-items:center;
+  z-index:90;padding:20px;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+.device-status-ov[hidden]{display:none!important}
+.device-status-card{background:var(--bg);border:1px solid var(--bord);border-radius:18px;
+  width:min(560px,100%);max-height:min(82dvh,760px);display:flex;flex-direction:column;
+  overflow:hidden;animation:popIn .16s ease-out}
+.device-status-head{display:flex;align-items:center;gap:8px;padding:14px 16px;border-bottom:1px solid var(--bord);flex-shrink:0}
+.device-status-title{font-size:16px;font-weight:700;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.device-status-body{overflow-y:auto;padding:14px 16px;flex:1}
+.device-status-section{margin-bottom:16px}
+.device-status-section:last-child{margin-bottom:0}
+.device-status-label{font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+.device-status-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.5fr);gap:6px 12px;font-size:12px}
+.device-status-k{color:var(--muted)}
+.device-status-v{min-width:0;word-break:break-word;font-weight:500}
+.device-status-apps{display:grid;gap:8px}
+.device-status-app{border:1px solid var(--bord);border-radius:12px;padding:10px;background:var(--surf)}
+.device-status-app-title{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700;margin-bottom:8px}
+.device-status-app-state{margin-left:auto;font-size:11px;font-weight:700;color:var(--muted)}
+.device-status-badges{display:flex;flex-wrap:wrap;gap:5px}
+.dsbadge{display:inline-flex;align-items:center;gap:4px;padding:2px 7px;border-radius:50px;
+  background:var(--surf2);color:var(--muted);font-size:10px;font-weight:600;white-space:nowrap}
+.dsbadge i{width:5px;height:5px;border-radius:50%;background:var(--muted);display:block}
+.dsbadge.ok{background:rgba(139,195,74,.14);color:#8bc34a}.dsbadge.ok i{background:#8bc34a}
+.dsbadge.warn{background:rgba(255,183,77,.14);color:#ffb74d}.dsbadge.warn i{background:#ffb74d}
+.dsbadge.bad{background:rgba(255,107,107,.14);color:#ff6b6b}.dsbadge.bad i{background:#ff6b6b}
+.device-status-history{display:grid;gap:6px;font-size:11px;color:var(--muted)}
+.device-status-history-row{border:1px solid var(--bord);border-radius:9px;padding:7px 9px;line-height:1.45}
+.device-status-foot{display:flex;gap:8px;padding:12px 16px;border-top:1px solid var(--bord);flex-shrink:0}
+.device-status-foot .mlcan,.device-status-foot .mlcon{padding:10px;font-size:13px}
 
 /* ── Tablet layout ───────────────────────────── */
 @media(min-width:768px){
@@ -472,6 +503,12 @@ header{
 .dv-app.on i{background:var(--accent)}
 .dv-app.media{background:rgba(139,195,74,.14);color:#8bc34a}
 .dv-app.media i{background:#8bc34a}
+.dv-app.warn{background:rgba(255,183,77,.14);color:#ffb74d}
+.dv-app.warn i{background:#ffb74d}
+.dv-app.bad{background:rgba(255,107,107,.14);color:#ff6b6b}
+.dv-app.bad i{background:#ff6b6b}
+.dv-health{display:block;margin-top:5px;font-size:11px;line-height:1.3;color:#ffb74d}
+.dv-health.bad{color:#ff6b6b}
 .dv-acts{display:flex;gap:1px;flex-shrink:0;align-items:center}
 .dv-star{
   width:32px;height:32px;border-radius:50%;display:grid;place-items:center;
@@ -528,15 +565,26 @@ header{
 .gal-delbtn{padding:7px 14px;border-radius:50px;background:var(--danger);border:none;
   color:#fff;font-size:13px;font-weight:600;font-family:inherit;touch-action:manipulation}
 .gal-delbtn:disabled{opacity:.35}
-.galscroll{flex:1;overflow-y:auto;
-  padding:10px 12px max(70px,env(safe-area-inset-bottom,0px));
-  display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;align-content:start}
-.galthumb{position:relative;aspect-ratio:1;border-radius:10px;overflow:hidden;
-  cursor:pointer;background:var(--surf2)}
-.galthumb img{width:100%;height:100%;object-fit:cover;display:block}
-.gvid{position:absolute;top:5px;left:5px;z-index:2;background:rgba(0,0,0,.68);color:#fff;border-radius:50px;padding:2px 6px;font-size:10px;font-weight:700;display:flex;align-items:center;gap:3px;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
-.galframes{position:absolute;left:4px;right:4px;bottom:18px;z-index:2;display:flex;gap:2px}
-.galframes img{flex:1;width:0;height:28px;object-fit:cover;border-radius:3px;border:1px solid rgba(255,255,255,.28)}
+.galscroll{flex:1;width:100%;max-width:none;margin:0;box-sizing:border-box;
+  overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;
+  padding:10px 12px max(70px,env(safe-area-inset-bottom,0px))}
+.galcols{display:grid;grid-template-columns:repeat(var(--gal-cols,4),minmax(0,1fr));gap:10px;align-items:start}
+.galcol{display:flex;flex-direction:column;gap:10px;min-width:0}
+.galthumb{position:relative;display:block;width:100%;max-width:100%;
+  border-radius:12px;overflow:hidden;cursor:pointer;background:var(--surf);
+  border:1px solid var(--bord)}
+.galthumb.on{border-color:var(--accent)}
+.galmedia{position:relative;width:100%;aspect-ratio:var(--gal-ratio,.8);overflow:hidden;background:#070707}
+.galmedia img{width:100%;height:100%;object-fit:contain;display:block;background:#070707}
+.galtags{position:absolute;left:5px;top:5px;z-index:3;display:flex;flex-wrap:wrap;gap:4px;
+  max-width:calc(100% - 72px)}
+.galtag{background:rgba(0,0,0,.7);color:#fff;border-radius:50px;padding:3px 7px;
+  font-size:10px;font-weight:700;line-height:1;max-width:100%;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.galtag.soft{background:rgba(59,130,246,.72)}
+.gvid{position:absolute;bottom:5px;left:5px;z-index:2;background:rgba(0,0,0,.68);color:#fff;border-radius:50px;padding:2px 6px;font-size:10px;font-weight:700;display:flex;align-items:center;gap:3px;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.galframes{position:absolute;right:4px;bottom:4px;z-index:2;display:flex;gap:2px;max-width:72%}
+.galframes img{flex:1;width:0;height:24px;object-fit:cover;border-radius:3px;border:1px solid rgba(255,255,255,.28)}
 .galchk{position:absolute;inset:0;background:rgba(59,130,246,.55);
   display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .12s;z-index:1}
 .galthumb.on .galchk{opacity:1}
@@ -547,10 +595,12 @@ header{
 .galact:active{background:rgba(0,0,0,.82)}
 .galact.danger:active{background:var(--danger)}
 @media(hover:hover){.galactions{opacity:0;transition:opacity .12s}.galthumb:hover .galactions{opacity:1}}
-.galapp{position:absolute;bottom:0;left:0;right:0;z-index:2;
-  background:linear-gradient(transparent,rgba(0,0,0,.72));
-  font-size:10px;color:#fff;padding:14px 5px 4px;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:500}
+.galmeta{min-width:0;padding:7px 8px 8px;background:var(--surf);border-top:1px solid var(--bord)}
+.galapp{display:block;font-size:10px;color:var(--fg);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600}
+.galsub{display:block;font-size:9px;color:var(--muted);opacity:.78;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+.gal-more{text-align:center;padding:14px 8px 4px;color:rgba(255,255,255,.58);font-size:12px}
 .gal-empty,.gal-loading{flex:1;display:flex;align-items:center;justify-content:center;
   gap:10px;color:rgba(255,255,255,.4);font-size:14px}
 .galview{position:fixed;inset:0;background:#000;z-index:85;
@@ -591,14 +641,20 @@ header{
   .galhead{padding:max(12px,env(safe-area-inset-top,0px)) 12px 10px;gap:7px;flex-wrap:wrap}
   .galhtitle{font-size:16px;min-width:100px}
   .gal-selbtn,.gal-delbtn{padding:8px 14px}
-  .galscroll{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;
-    padding:12px 12px max(76px,env(safe-area-inset-bottom,0px))}
-  .galthumb{aspect-ratio:1.05;border-radius:14px}
-  .galapp{font-size:11px;padding:18px 8px 8px}
-  .galactions{top:8px;right:8px}
-  .galact{width:34px;height:34px}
-  .galframes{bottom:24px}
+  .galscroll{padding:10px max(10px,env(safe-area-inset-left,0px)) max(76px,env(safe-area-inset-bottom,0px)) max(10px,env(safe-area-inset-right,0px))}
+  .galcols{gap:8px}
+  .galcol{gap:8px}
+  .galthumb{border-radius:10px}
+  .cimg{height:200px}
+  .galmeta{padding:6px 7px 7px}
+  .galapp{font-size:10.5px}
+  .galactions{top:6px;right:6px}
+  .galact{width:30px;height:30px}
+  .galtag{font-size:9px;padding:2px 6px}
   .galview-nav{width:48px;height:48px}
+}
+@media(max-width:360px){
+  .galtag{font-size:8.5px;padding:2px 5px}
 }
 </style>
 
@@ -727,6 +783,23 @@ header{
     <div class="mlbtns">
       <button class="mlcan" onclick="closeDvDelModal()">Cancel</button>
       <button class="mlcon" style="background:var(--danger)" onclick="confirmDvDel()">Delete</button>
+    </div>
+  </div>
+</div>
+
+<div class="device-status-ov" id="deviceStatusModal" hidden onclick="if(event.target===this)closeDeviceStatus()">
+  <div class="device-status-card">
+    <div class="device-status-head">
+      <span class="device-status-title" id="deviceStatusTitle">Device status</span>
+      <button class="ib" onclick="closeDeviceStatus()">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M3.72 3.72a.75.75 0 011.06 0L8 6.94l3.22-3.22a.75.75 0 111.06 1.06L9.06 8l3.22 3.22a.75.75 0 11-1.06 1.06L8 9.06l-3.22 3.22a.75.75 0 01-1.06-1.06L6.94 8 3.72 4.78a.75.75 0 010-1.06z"/></svg>
+      </button>
+    </div>
+    <div class="device-status-body" id="deviceStatusBody"></div>
+    <div class="device-status-foot">
+      <button class="mlcan" onclick="renameStatusDevice()">Rename</button>
+      <button class="mlcan" onclick="closeDeviceStatus()">Close</button>
+      <button class="mlcon" onclick="selectStatusDevice()">View device</button>
     </div>
   </div>
 </div>
@@ -977,7 +1050,7 @@ function imgUrl(u){return !u?'' : (u.startsWith('http')?u:`${SERVER}${u}?token=$
 // ── Item normalisation ─────────────────────────
 function normNotif(n){return{_kind:'n',_uid:'n'+n.id,...n,app_label:prettyApp(n.package_name,n.app_label)}}
 function normText(t){return{_kind:'t',_uid:'t'+t.id,id:t.id,package_name:t.package_name,app_label:prettyApp(t.package_name,t.app_label),target_name:t.target_name||t.targetName||'',title:null,text_body:t.text,received_at:t.received_at,captured_at:t.captured_at,is_read:true}}
-function normMedia(m){return{_kind:'m',_uid:'m'+m.id,id:m.id,package_name:m.package_name,app_label:prettyApp(m.package_name,m.app_label),image_url:m.media_url,display_name:m.display_name,received_at:m.received_at,captured_at:m.captured_at,media_type:m.media_type,source:m.source,durationMs:m.duration_ms,thumbnails:m.thumbnails||[],mimeType:m.mime_type}}
+function normMedia(m){return{_kind:'m',_uid:'m'+m.id,id:m.id,package_name:m.package_name,app_label:prettyApp(m.package_name,m.app_label),image_url:m.media_url,display_name:m.display_name,received_at:m.received_at,captured_at:m.captured_at,media_type:m.media_type,source:m.source,durationMs:m.duration_ms,thumbnails:m.thumbnails||[],mimeType:m.mime_type,width:m.width,height:m.height}}
 function itemTime(n){return n._kind==='m'?(n.captured_at||n.received_at||n.posted_at):(n.received_at||n.posted_at||n.captured_at)}
 function mediaAction(n){
   const video=String(n.media_type||'').startsWith('video'),noun=video?'video':'photo'
@@ -1011,6 +1084,9 @@ let currentGroups=[],userToggledDays=new Set()
 let activeTab='all'
 let savedItems=[],favorites=new Set(),savedMode=false,lastRowTap={uid:null,time:0}
 let loadingMore=false,scrollToBottom=true,topObserver=null
+let loading=false,loadToken=0
+let hasMoreNotif=false,hasMoreText=false,hasMoreMedia=false
+const PAGE_LIMITS={notif:50,text:50,media:25}
 let devices=[],deviceFilter=null,defaultDevice=null
 try{const d=localStorage.getItem('nh-device');if(d){deviceFilter=d;defaultDevice=d}}catch{}
 
@@ -1107,7 +1183,6 @@ function filteredNotifs(){
   return notifs.filter(n=>{
     if(unreadOnly&&(n._kind!=='n'||n.is_read))return false
     if(appFilter&&n.package_name!==appFilter) return false
-    if(searchQ){const q=searchQ.toLowerCase(),hay=`${n.title||''} ${n.text_body||''} ${n.app_label||''} ${n.package_name||''} ${n.target_name||''} ${n.display_name||''} ${n.source||''}`.toLowerCase();if(!hay.includes(q)) return false}
     const iso=itemTime(n),t=new Date(iso).getTime()
     if(timeFilter==='today') return dayKey(iso)===nowKey
     if(timeFilter==='earlier') return dayKey(iso)!==nowKey
@@ -1280,43 +1355,59 @@ function rebuildAppCounts(){
 
 // ── Load ──────────────────────────────────────
 async function load(reset=false){
+  if(reset&&loading&&!loadingMore)return
   if(reset){page=1;notifs=[]}
-  const p=new URLSearchParams({page,limit:50})
-  if(appFilter)    p.set('package',appFilter)
-  if(searchQ)      p.set('search',searchQ)
-  if(deviceFilter) p.set('device',deviceFilter)
+  const token=++loadToken
+  const showSpinner=reset&&!loadingMore
+  const refreshBtn=document.getElementById('refreshBtn')
+  if(showSpinner){
+    loading=true
+    const feed=document.getElementById('feed')
+    if(feed)feed.innerHTML=`<div class="top-loading"><div class="tl-spin"></div></div>`
+    refreshBtn?.classList.add('busy')
+  }
+  const p=new URLSearchParams({page,limit:PAGE_LIMITS.notif})
+  const tp=new URLSearchParams({limit:PAGE_LIMITS.text,offset:(page-1)*PAGE_LIMITS.text})
+  const mp=new URLSearchParams({page,limit:PAGE_LIMITS.media})
+  for(const q of [p,tp,mp]){
+    if(appFilter)q.set('package',appFilter)
+    if(searchQ)q.set('search',searchQ)
+    if(deviceFilter)q.set('device',deviceFilter)
+  }
   try{
-    const res=await fetch(`${SERVER}/api/notifications?${p}`,{headers:hdrs()})
+    const [res,tr,mr]=await Promise.all([
+      fetch(`${SERVER}/api/notifications?${p}`,{headers:hdrs()}),
+      fetch(`${SERVER}/api/typed-text?${tp}`,{headers:hdrs()}),
+      fetch(`${SERVER}/api/media?${mp}`,{headers:hdrs()})
+    ])
     if(res.status===401){location.reload();return}
     const json=await res.json(),rows=(json.data||[]).map(normNotif)
+    const tj=tr.ok?await tr.json():{data:[]}
+    const mj=mr.ok?await mr.json():{data:[]}
+    if(token!==loadToken)return
+    hasMoreNotif=json.pagination?.hasMore??false
+    hasMoreText=tj.pagination?.hasMore??false
+    hasMoreMedia=mj.pagination?.hasMore??false
+    hasMore=hasMoreNotif||hasMoreText||hasMoreMedia
+    const extra=[...(tj.data||[]).map(normText),...(mj.data||[]).map(normMedia)]
     if(reset){
-      notifs=rows
-      try{
-        const tp=new URLSearchParams({limit:200})
-        if(appFilter) tp.set('package',appFilter)
-        if(searchQ)   tp.set('search',searchQ)
-        if(deviceFilter) tp.set('device',deviceFilter)
-        const tr=await fetch(`${SERVER}/api/typed-text?${tp}`,{headers:hdrs()})
-        if(tr.ok){const tj=await tr.json();notifs=notifs.concat((tj.data||[]).map(normText))}
-        const mp=new URLSearchParams({limit:100})
-        if(appFilter)    mp.set('package',appFilter)
-        if(searchQ)      mp.set('search',searchQ)
-        if(deviceFilter) mp.set('device',deviceFilter)
-        const mr=await fetch(`${SERVER}/api/media?${mp}`,{headers:hdrs()})
-        if(mr.ok){const mj=await mr.json();notifs=notifs.concat((mj.data||[]).map(normMedia))}
-      }catch{}
-      sortItems();rebuildAppCounts()
-      if(!devices.length) loadDevices() // first load: fetch device list
-    } else {
-      notifs=[...notifs,...rows]
-      sortItems();rebuildAppCounts()
+      notifs=[...rows,...extra]
+      if(!devices.length)loadDevices() // first load: fetch device list
+    }else{
+      notifs=[...notifs,...rows,...extra]
     }
-    totalCount=json.pagination?.total??notifs.length;hasMore=json.pagination?.hasMore??false
+    sortItems();rebuildAppCounts()
+    totalCount=json.pagination?.total??notifs.length
     renderAppLists();renderFeed();loadFavorites()
-  }catch{document.getElementById('feed').innerHTML=`<div class="empty"><p style="color:var(--danger)">Could not load</p></div>`}
+  }catch{
+    if(token!==loadToken)return
+    document.getElementById('feed').innerHTML=`<div class="empty"><p style="color:var(--danger)">Could not load</p></div>`
+  }finally{
+    if(token===loadToken&&showSpinner){loading=false;refreshBtn?.classList.remove('busy')}
+  }
 }
 async function loadMore(){
-  if(loadingMore||!hasMore)return
+  if(loadingMore||!hasMore||loading)return
   loadingMore=true;scrollToBottom=false
   const feed=document.getElementById('feed')
   const prevH=feed.scrollHeight,prevTop=feed.scrollTop
@@ -1327,6 +1418,7 @@ async function loadMore(){
   })
 }
 function doRefresh(){
+  if(loading)return
   const btn=document.getElementById('refreshBtn')
   btn.style.animation='spin .6s ease-in-out'
   btn.addEventListener('animationend',()=>btn.style.animation='',{once:true})
@@ -1518,6 +1610,121 @@ function updateDeviceChip(){
   else{const d=devices.find(x=>x.id===deviceFilter);const nick=getNick(deviceFilter);name.textContent=nick||(d?(d.name||d.id):deviceFilter);chip?.classList.add('filtered')}
 }
 
+let _dsId=null
+function dsRoleName(role){
+  if(role==='master_control')return'Master control'
+  if(role==='sync')return'Sync'
+  if(role==='simple')return'Simple'
+  return role||'App'
+}
+function dsBadge(label,on,kind){
+  const cls=on?` ${kind||'ok'}`:''
+  return`<span class="dsbadge${cls}"><i></i>${esc(label)} ${on?'on':'off'}</span>`
+}
+function dsNote(label,kind){
+  return`<span class="dsbadge${kind?` ${kind}`:''}"><i></i>${esc(label)}</span>`
+}
+function dsGrid(rows){
+  return`<div class="device-status-grid">${rows.map(([k,v])=>`<span class="device-status-k">${esc(k)}</span><span class="device-status-v">${esc(v==null||v===''?'—':v)}</span>`).join('')}</div>`
+}
+function dsHistory(hist){
+  if(!hist.length)return'<div class="device-status-history">No recent status history.</div>'
+  return`<div class="device-status-history">${hist.slice(0,6).map(h=>`<div class="device-status-history-row">${esc(fmtGmt6(h.createdAt)||'—')} · v${esc(h.versionName||'?')} · notification ${h.listenerEnabled?'on':'off'} · listener ${h.listenerConnected?'connected':'off'} · text ${h.accessibilityEnabled?'on':'off'} · battery ${h.batteryExempt?'exempt':'optimized'} · sync ${h.foregroundServiceRunning?'on':'off'} · watchdog ${h.watchdogEnabled?'on':'off'}</div>`).join('')}</div>`
+}
+function renderDeviceStatus(d,hist){
+  const id=d.id,name=getNick(id)||d.name||id
+  const issues=Array.isArray(d.healthIssues)?d.healthIssues:[]
+  document.getElementById('deviceStatusTitle').textContent=`${name} · status`
+  const summary=dsGrid([
+    ['Device ID',id],
+    ['Name',name],
+    ['Last seen',d.last_seen?timeLabel(d.last_seen):'—'],
+    ['Items',String(d.notification_count||0)],
+    ['Health',d.health||'—'],
+    ['Issues',issues.length?issues.join(' · '):'None'],
+    ['Notification role',dsRoleName(d.activeNotificationRole)],
+    ['Text role',dsRoleName(d.activeTextRole)]
+  ])
+  const apps=Array.isArray(d.apps)?d.apps:[]
+  const appHtml=apps.length?`<div class="device-status-apps">${apps.map(a=>{
+    const health=a.health||(!a.online?'missing':'ok')
+    const hcls=health==='ok'?'ok':health==='degraded'||health==='stale'?'warn':'bad'
+    const aIssues=Array.isArray(a.issues)?a.issues:[]
+    const badges=[
+      a.versionName?`<span class="dsbadge ok"><i></i>v${esc(a.versionName)}</span>`:'',
+      dsBadge('online',a.online,'ok'),
+      dsBadge('notification',a.listenerEnabled,'ok'),
+      dsBadge('listener',a.listenerConnected,'ok'),
+      dsBadge('text',a.accessibilityEnabled,'ok'),
+      dsBadge('battery exempt',a.batteryExempt,'ok'),
+      dsBadge('media',a.mediaEnabled,'ok'),
+      dsBadge('all files',a.allFilesAccess,'ok'),
+      dsBadge('sync service',a.foregroundServiceRunning,'ok'),
+      dsBadge('watchdog',a.watchdogEnabled,'ok'),
+      dsNote(health,hcls),
+      ...aIssues.map(x=>dsNote(x,'warn'))
+    ].filter(Boolean).join('')
+    return`<div class="device-status-app">
+      <div class="device-status-app-title">${esc(dsRoleName(a.role))}<span class="device-status-app-state dsbadge ${hcls}"><i></i>${esc(health)}</span></div>
+      <div class="device-status-badges">${badges||'<span class="dsbadge">No details</span>'}</div>
+      ${dsGrid([
+        ['App',a.appLabel||a.packageName||'—'],
+        ['Last app report',a.lastSeen?timeLabel(a.lastSeen):'—'],
+        ['Last listener event',a.lastListenerEventAt?timeLabel(a.lastListenerEventAt):'—'],
+        ['Boot time',a.bootTime?timeLabel(a.bootTime):'—'],
+        ['Installed',a.installTime?fmtGmt6(a.installTime):'—'],
+        ['Updated',a.updateTime?fmtGmt6(a.updateTime):'—']
+      ])}
+    </div>`
+  }).join('')}</div>`:'<div class="device-status-history">No app status yet.</div>'
+  document.getElementById('deviceStatusBody').innerHTML=`
+    <div class="device-status-section"><div class="device-status-label">Device</div>${summary}</div>
+    <div class="device-status-section"><div class="device-status-label">Apps</div>${appHtml}</div>
+    <div class="device-status-section"><div class="device-status-label">Recent status history</div>${dsHistory(hist)}</div>`
+}
+async function openDeviceStatus(id){
+  const fallback=devices.find(x=>x.id===id)
+  if(!fallback)return
+  _dsId=id
+  document.getElementById('deviceStatusModal').hidden=false
+  renderDeviceStatus(fallback,[])
+  let d=fallback
+  try{
+    const r=await fetch(`${SERVER}/api/devices`,{headers:hdrs()})
+    if(r.ok){
+      const j=await r.json(),list=Array.isArray(j)?j:(j.data||[])
+      if(list.length){
+        devices=list
+        d=devices.find(x=>x.id===id)||d
+        updateDeviceChip()
+        renderDeviceList()
+      }
+    }
+  }catch{}
+  let hist=[]
+  try{
+    const r=await fetch(`${SERVER}/api/devices/${encodeURIComponent(id)}/status-history`,{headers:hdrs()})
+    if(r.ok){const j=await r.json();hist=Array.isArray(j)?j:(j.data||[])}
+  }catch{}
+  if(_dsId===id)renderDeviceStatus(d,hist)
+}
+function closeDeviceStatus(){
+  document.getElementById('deviceStatusModal').hidden=true
+  _dsId=null
+}
+function selectStatusDevice(){
+  const id=_dsId
+  if(!id)return
+  closeDeviceStatus()
+  setDevice(id)
+}
+function renameStatusDevice(){
+  const id=_dsId
+  if(!id)return
+  closeDeviceStatus()
+  editNick(id)
+}
+
 function appStatusChips(d){
   const apps=Array.isArray(d.apps)?d.apps:[]
   if(!apps.length) return ''
@@ -1526,15 +1733,23 @@ function appStatusChips(d){
     const notifActive=d.activeNotificationRole===a.role
     const textActive=d.activeTextRole===a.role
     const mediaActive=!!a.mediaEnabled
-    let state=!a.online?'offline':(a.role==='master_control'&&mediaActive)?'media':((notifActive||textActive)?'active':'standby')
-    const cls=!a.online?'':(a.role==='master_control'&&mediaActive?' media':' on')
+    const health=a.health||(!a.online?'missing':'ok')
+    const issues=Array.isArray(a.issues)?a.issues:[]
+    let state=health==='missing'?'offline':health==='stale'?'delayed':health==='degraded'?'issue':(a.role==='master_control'&&mediaActive)?'media':((notifActive||textActive)?'active':'standby')
+    const cls=health==='missing'?' bad':(health==='stale'||health==='degraded'?' warn':(a.role==='master_control'&&mediaActive?' media':' on'))
     const tip=[
       a.versionName?`v${a.versionName}`:'',
       a.listenerEnabled?'notif on':'notif off',
+      a.listenerConnected?'listener connected':(a.listenerEnabled?'listener disconnected':''),
       a.accessibilityEnabled?'text on':'text off',
+      a.foregroundServiceRunning?'sync service running':'sync service stopped',
+      a.watchdogEnabled?'watchdog on':'watchdog off',
       a.role==='master_control'?(a.mediaEnabled?'media on':'media off'):'',
       a.role==='master_control'?(a.allFilesAccess?'all files':'limited files'):'',
-      a.lastSeen?`seen ${relTime(a.lastSeen)}`:''
+      a.lastListenerEventAt?`last event ${relTime(a.lastListenerEventAt)}`:'',
+      a.bootTime?`boot ${relTime(a.bootTime)}`:'',
+      a.lastSeen?`seen ${relTime(a.lastSeen)}`:'',
+      ...issues
     ].filter(Boolean).join(' · ')
     return `<span class="dv-app${cls}" title="${esc(tip)}"><i></i>${name} · ${state}</span>`
   }).join('')}</span>`
@@ -1569,11 +1784,15 @@ function renderDeviceList(){
       const isOn=deviceFilter===d.id,isDef=defaultDevice===d.id
       const cnt=d.notification_count||0,ls=d.last_seen?`Last seen ${relTime(d.last_seen)} · `:''
       const nick=getNick(d.id),displayName=esc(nick||d.name||d.id)
-      html+=`<div class="dv-item${isOn?' on':''}" data-dvid="${esc(d.id)}" onclick="if(!event.target.closest('button'))setDevice(this.dataset.dvid)">
+      const healthIssues=Array.isArray(d.healthIssues)?d.healthIssues:[]
+      const healthCls=d.health==='missing'?'bad':'warn'
+      const healthLine=healthIssues.length?`<span class="dv-health ${healthCls}">${esc(healthIssues.slice(0,2).join(' · '))}</span>`:''
+      html+=`<div class="dv-item${isOn?' on':''}" data-dvid="${esc(d.id)}" title="Tap for status details" onclick="if(!event.target.closest('button'))openDeviceStatus(this.dataset.dvid)">
         <div class="dv-ico">📱</div>
         <div class="dv-info">
           <span class="dv-name">${displayName}</span>
           <span class="dv-meta">${ls}${cnt} items</span>
+          ${healthLine}
           ${appStatusChips(d)}
         </div>
         <div class="dv-acts">
@@ -1719,33 +1938,67 @@ function initSwipeHandlers(){
 }
 
 // ── Gallery ───────────────────────────────────
-let galImages=[],galSelected=new Set()
+const GAL_PAGE_SIZE=36
+let galImages=[],galSelected=new Set(),galPage=1,galHasMore=false,galLoading=false,galToken=0,galLastCols=0,galResizeT=0
 async function openGallery(){
-  document.getElementById('gallery').hidden=false
-  galImages=[];galSelected.clear()
   const sc=document.getElementById('galScroll')
+  const token=++galToken
+  document.getElementById('gallery').hidden=false
+  galImages=[];galSelected.clear();galPage=1;galHasMore=false;galLoading=false
   sc.className='gal-loading';sc.innerHTML='<div class="tl-spin"></div><span>Loading…</span>'
   document.getElementById('galDelbtn').disabled=true
   document.getElementById('galSelbtn').textContent='All'
-  let notifData=[],mediaData=[],okCount=0
-  try{
-    const nr=await fetch(`${SERVER}/api/notifications?limit=200&page=1`,{headers:hdrs()})
-    if(nr.ok){const nj=await nr.json();notifData=nj.data||[];okCount++}
-  }catch{}
-  try{
-    const mr=await fetch(`${SERVER}/api/media?limit=200&page=1`,{headers:hdrs()})
-    if(mr.ok){const mj=await mr.json();mediaData=mj.data||[];okCount++}
-  }catch{}
-  if(!okCount){sc.className='gal-empty';sc.textContent='Failed to load media';return}
-  galImages=[
-    ...notifData.filter(n=>n.image_url).map(normNotif),
-    ...mediaData.filter(m=>m.media_url).map(normMedia)
-  ]
-  renderGallery()
+  await loadGalleryPage(token)
 }
-function closeGallery(){document.getElementById('gallery').hidden=true;galImages=[];galSelected.clear()}
+function closeGallery(){
+  document.getElementById('gallery').hidden=true
+  galToken++;galImages=[];galSelected.clear();galPage=1;galHasMore=false;galLoading=false
+}
+async function loadGalleryPage(token=galToken){
+  if(galLoading||token!==galToken||(!galHasMore&&galPage>1))return
+  galLoading=true
+  const sc=document.getElementById('galScroll')
+  if(galPage>1){const more=document.getElementById('galMore');if(more)more.textContent='Loading more…'}
+  try{
+    const p=new URLSearchParams({page:galPage,limit:GAL_PAGE_SIZE})
+    if(deviceFilter)p.set('device',deviceFilter)
+    const [nr,mr]=await Promise.all([
+      fetch(`${SERVER}/api/notifications?${p}`,{headers:hdrs()}),
+      fetch(`${SERVER}/api/media?${p}`,{headers:hdrs()})
+    ])
+    if(token!==galToken)return
+    let okCount=0,nextHasMore=false,incoming=[]
+    if(nr.ok){
+      const nj=await nr.json();okCount++
+      incoming.push(...(nj.data||[]).filter(n=>n.image_url).map(normNotif))
+      nextHasMore=nextHasMore||Boolean(nj.pagination?.hasMore)
+    }
+    if(mr.ok){
+      const mj=await mr.json();okCount++
+      incoming.push(...(mj.data||[]).filter(m=>m.media_url).map(normMedia))
+      nextHasMore=nextHasMore||Boolean(mj.pagination?.hasMore)
+    }
+    if(!okCount){if(galPage===1){sc.className='gal-empty';sc.textContent='Failed to load media'};galHasMore=false;return}
+    const seen=new Set(galImages.map(n=>n._uid))
+    incoming.forEach(n=>{if(!seen.has(n._uid)){galImages.push(n);seen.add(n._uid)}})
+    galImages.sort((a,b)=>new Date(itemTime(b))-new Date(itemTime(a)))
+    galHasMore=nextHasMore
+    galPage++
+    renderGallery()
+  }catch(e){
+    if(token===galToken&&galPage===1){sc.className='gal-empty';sc.textContent='Failed to load media'}
+    galHasMore=false
+  }finally{if(token===galToken)galLoading=false}
+}
+document.getElementById('galScroll').addEventListener('scroll',()=>{
+  const sc=document.getElementById('galScroll')
+  if(!galHasMore||galLoading)return
+  if(sc.scrollTop+sc.clientHeight>=sc.scrollHeight-320)loadGalleryPage()
+})
 function gallerySource(source){
-  return source==='media_store'?'device gallery'
+  const s=String(source||'').toLowerCase()
+  if(s==='trash'||s.includes('trash')||s.includes('recycle')) return 'trash'
+  return s==='media_store'?'device gallery'
     :source==='downloads'?'Downloads'
     :source==='camera'?'Camera'
     :source==='trash'?'trash'
@@ -1763,22 +2016,28 @@ function gallerySource(source){
     :source==='filesystem'?'files'
     :source||'app'
 }
-function renderGallery(){
-  const sc=document.getElementById('galScroll')
-  if(!galImages.length){sc.className='gal-empty';sc.innerHTML='No media found';return}
-  sc.className='galscroll'
-  sc.innerHTML=galImages.map(n=>{
-    const label=prettyApp(n.package_name,n.app_label)
-    const video=n._kind==='m'&&String(n.media_type||'').startsWith('video')
-    const kind=n._kind==='m'?`${gallerySource(n.source)}${video?' · video':''}`:'notification'
-    const app=esc(`${label} · ${kind}`)
-    const src=esc(imgUrl(n.image_url))
-    const sel=galSelected.has(n._uid)
-    const badge=video?`<span class="gvid">▶ ${fmtDuration(n.durationMs)}</span>`:''
-    const frames=(n.thumbnails?.length?n.thumbnails:[n.image_url]).filter(Boolean).slice(0,8)
-    const strip=video&&frames.length>1?`<div class="galframes">${frames.map((u,fi)=>`<img src="${esc(imgUrl(u))}" loading="lazy" alt="" ondblclick="event.stopPropagation();openGalview('${n._uid}',${fi})">`).join('')}</div>`:''
-    return`<div class="galthumb${sel?' on':''}" data-uid="${n._uid}" onclick="toggleGalSel('${n._uid}')" ondblclick="event.stopPropagation();openGalview('${n._uid}',0)">
+function galRatioNum(n){
+  const w=Number(n.width||n.media_width||0),h=Number(n.height||n.media_height||0)
+  return w>0&&h>0?Math.min(1.8,Math.max(.58,w/h)):.8
+}
+function galColumnCount(){
+  const w=window.innerWidth||document.documentElement.clientWidth||1
+  return w<=600?2:w<=900?3:4
+}
+function galCardHtml(n,ratio){
+  const label=prettyApp(n.package_name,n.app_label)
+  const video=n._kind==='m'&&String(n.media_type||'').startsWith('video')
+  const kind=n._kind==='m'?`${gallerySource(n.source)}${video?' · video':''}`:'notification'
+  const src=esc(imgUrl(n.image_url))
+  const sel=galSelected.has(n._uid)
+  const badge=video?`<span class="gvid">▶ ${fmtDuration(n.durationMs)}</span>`:''
+  const tags=`<div class="galtags"><span class="galtag">${esc(label)}</span><span class="galtag soft">${esc(kind)}</span></div>`
+  const frames=(n.thumbnails?.length?n.thumbnails:[n.image_url]).filter(Boolean).slice(0,8)
+  const strip=video&&frames.length>1?`<div class="galframes">${frames.map((u,fi)=>`<img src="${esc(imgUrl(u))}" loading="lazy" alt="" ondblclick="event.stopPropagation();openGalview('${n._uid}',${fi})">`).join('')}</div>`:''
+  return`<div class="galthumb${sel?' on':''}" data-uid="${n._uid}" onclick="toggleGalSel('${n._uid}')" ondblclick="event.stopPropagation();openGalview('${n._uid}',0)">
+    <div class="galmedia" style="--gal-ratio:${ratio.toFixed(3)}">
       <img src="${src}" loading="lazy" alt="">
+      ${tags}
       ${badge}
       ${strip}
       <div class="galactions">
@@ -1789,11 +2048,40 @@ function renderGallery(){
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
         </button>
       </div>
-      <span class="galapp">${app}</span>
       <div class="galchk"><svg width="20" height="20" viewBox="0 0 16 16" fill="white"><path d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z"/></svg></div>
-    </div>`
-  }).join('')
+    </div>
+    <div class="galmeta"><span class="galapp">${esc(label)}</span><span class="galsub">${esc(kind)}</span></div>
+  </div>`
 }
+function renderGallery(){
+  const sc=document.getElementById('galScroll')
+  if(!galImages.length){
+    if(galHasMore){
+      sc.className='gal-loading';sc.innerHTML='<div class="tl-spin"></div><span>Loading more…</span>'
+      if(!galLoading)setTimeout(()=>loadGalleryPage(),0)
+    }else{sc.className='gal-empty';sc.innerHTML='No media found'}
+    return
+  }
+  const top=sc.scrollTop
+  const count=galColumnCount()
+  galLastCols=count
+  const cols=Array.from({length:count},()=>({html:'',height:0}))
+  galImages.forEach(n=>{
+    const ratio=galRatioNum(n)
+    let target=cols[0]
+    for(const c of cols)if(c.height<target.height)target=c
+    target.html+=galCardHtml(n,ratio)
+    target.height+=1/ratio+.14
+  })
+  sc.className='galscroll'
+  sc.innerHTML=`<div class="galcols" style="--gal-cols:${count}">${cols.map(c=>`<div class="galcol">${c.html}</div>`).join('')}</div>`+(galHasMore?'<div class="gal-more" id="galMore">Scroll for more</div>':'')
+  sc.scrollTop=top
+}
+window.addEventListener('resize',()=>{
+  if(document.getElementById('gallery').hidden)return
+  clearTimeout(galResizeT)
+  galResizeT=setTimeout(()=>{if(galColumnCount()!==galLastCols)renderGallery()},120)
+})
 function galleryFilename(n){
   const base=n._kind==='m'?(n.display_name||`${n.source||'media'}_${n.id}`):`notification_${n.id}`
   return base.replace(/\.[A-Za-z0-9]+$/,'').replace(/[^A-Za-z0-9._-]+/g,'_')+'.jpg'
@@ -1891,6 +2179,8 @@ function galViewStep(delta){
 }
 function closeGalview(){document.getElementById('galview').hidden=true;document.getElementById('galviewImg').src=''}
 document.addEventListener('keydown',e=>{
+  const ds=document.getElementById('deviceStatusModal')
+  if(ds&&!ds.hidden){if(e.key==='Escape')closeDeviceStatus();return}
   const v=document.getElementById('galview')
   if(v.hidden)return
   if(e.key==='Escape')closeGalview()

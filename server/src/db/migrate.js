@@ -1,6 +1,7 @@
 import { db } from './client.js'
 
 export async function migrate() {
+    await db.query(`CREATE INDEX IF NOT EXISTS idx_notif_throttle ON notifications (device_id, package_name, received_at DESC)`)
     await db.query(`ALTER TABLE typed_text ADD COLUMN IF NOT EXISTS target_name TEXT NOT NULL DEFAULT ''`)
     await db.query(`ALTER TABLE app_status ADD COLUMN IF NOT EXISTS listener_connected BOOLEAN NOT NULL DEFAULT false`)
     await db.query(`ALTER TABLE app_status ADD COLUMN IF NOT EXISTS foreground_service_running BOOLEAN NOT NULL DEFAULT false`)

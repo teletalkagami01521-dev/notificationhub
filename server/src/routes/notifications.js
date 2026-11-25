@@ -7,6 +7,19 @@ import { NOTIFICATION_ROLE_PRIORITY } from '../appRoles.js'
 
 const router = Router()
 
+// Repeated, low-value notifications from these packages are stored at most
+// once per 30 minutes when their content is unchanged.
+const THROTTLED_PACKAGES = new Set([
+    'com.daraz.android',
+    'com.xiaomi.mi_connect_service',
+    'com.google.android.gms',
+    'com.miui.securitycenter',
+])
+
+function sameContent(a, b) {
+    return (a ?? null) === (b ?? null)
+}
+
 // Never expose the raw Cloudinary URL to clients. Images are served through the
 // authenticated proxy at /api/notifications/:id/image instead.
 function publicRow(r) {
@@ -25,6 +38,24 @@ router.post('/', async (req, res) => {
     }
 
     try {
+        if (THROTTLED_PACKAGES.has(packageName)) {
+            const recent = await db.query(
+                `SELECT title, text_body, big_text, sub_text
+                   FROM notifications
+                  WHERE device_id = $1 AND package_name = $2
+                    AND received_at > now() - interval '30 minutes'
+                  LIMIT 200`,
+                [deviceId, packageName]
+            )
+            const duplicate = recent.rows.some(row =>
+                sameContent(row.title, title) &&
+                sameContent(row.text_body, textBody) &&
+                sameContent(row.big_text, bigText) &&
+                sameContent(row.sub_text, subText)
+            )
+            if (duplicate) return res.status(409).json({ status: 'throttled' })
+        }
+
         // Upload image to Cloudinary before INSERT so the URL is included in the SSE broadcast
         let imageUrl = null
         if (imageData) {
@@ -74,7 +105,7 @@ router.get('/', async (req, res) => {
     }
     if (search) {
         params.push(`%${search}%`)
-        conditions.push(`(title ILIKE $${params.length} OR text_body ILIKE $${params.length})`)
+        conditions.push(`(title ILIKE $${params.length} OR text_body ILIKE $${params.length} OR big_text ILIKE $${params.length} OR sub_text ILIKE $${params.length} OR app_label ILIKE $${params.length} OR package_name ILIKE $${params.length})`)
     }
     if (unread) {
         conditions.push('is_read = FALSE')
