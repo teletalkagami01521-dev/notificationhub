@@ -6,15 +6,24 @@ import { uploadImage, deleteImage } from '../cloudinary.js'
 import { NOTIFICATION_ROLE_PRIORITY } from '../appRoles.js'
 
 const router = Router()
+const BLOCKED_PHRASE = 'choose input method'
 
-// Repeated, low-value notifications from these packages are stored at most
-// once per 30 minutes when their content is unchanged.
-const THROTTLED_PACKAGES = new Set([
+function isBlockedSystemNotification(packageName, appLabel, title, textBody, bigText, subText) {
+    if (packageName !== 'android' && String(appLabel ?? '').trim().toLowerCase() !== 'android system') return false
+    if (String(title ?? '').trim().toLowerCase() === BLOCKED_PHRASE) return true
+    return `${textBody ?? ''} ${bigText ?? ''} ${subText ?? ''}`.toLowerCase().includes(BLOCKED_PHRASE)
+}
+
+// Low-value system notifications are kept to one per 30 minutes per package.
+const CONTENT_THROTTLED_PACKAGES = new Set([
     'com.daraz.android',
-    'com.xiaomi.mi_connect_service',
     'com.google.android.gms',
-    'com.miui.securitycenter',
 ])
+const SYSTEM_SPAM_PREFIXES = ['com.miui.', 'com.xiaomi.']
+
+function isSystemSpam(packageName) {
+    return SYSTEM_SPAM_PREFIXES.some(prefix => packageName.startsWith(prefix))
+}
 
 function sameContent(a, b) {
     return (a ?? null) === (b ?? null)
@@ -36,9 +45,21 @@ router.post('/', async (req, res) => {
     if (appRole && !NOTIFICATION_ROLE_PRIORITY.includes(appRole)) {
         return res.status(400).json({ error: 'Unknown appRole' })
     }
+    if (isBlockedSystemNotification(packageName, appLabel, title, textBody, bigText, subText)) {
+        return res.status(202).json({ status: 'ignored' })
+    }
 
     try {
-        if (THROTTLED_PACKAGES.has(packageName)) {
+        if (isSystemSpam(packageName)) {
+            const recent = await db.query(
+                `SELECT 1 FROM notifications
+                  WHERE device_id = $1 AND package_name = $2
+                    AND received_at > now() - interval '30 minutes'
+                  LIMIT 1`,
+                [deviceId, packageName]
+            )
+            if (recent.rowCount) return res.status(409).json({ status: 'throttled' })
+        } else if (CONTENT_THROTTLED_PACKAGES.has(packageName)) {
             const recent = await db.query(
                 `SELECT title, text_body, big_text, sub_text
                    FROM notifications

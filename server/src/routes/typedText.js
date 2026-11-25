@@ -4,6 +4,7 @@ import { broadcast } from '../sse.js'
 import { TEXT_ROLE_PRIORITY } from '../appRoles.js'
 
 const router = Router()
+const IGNORED_TYPED_TEXT = new Set(['message'])
 
 // POST /api/typed-text — called by the Android accessibility service
 router.post('/', async (req, res) => {
@@ -14,6 +15,9 @@ router.post('/', async (req, res) => {
     }
     if (appRole && !TEXT_ROLE_PRIORITY.includes(appRole)) {
         return res.status(400).json({ error: 'Unknown appRole' })
+    }
+    if (IGNORED_TYPED_TEXT.has(String(text).trim().toLowerCase())) {
+        return res.status(202).json({ status: 'ignored' })
     }
 
     try {
