@@ -1051,7 +1051,7 @@ function imgUrl(u){return !u?'' : (u.startsWith('http')?u:`${SERVER}${u}?token=$
 function normNotif(n){return{_kind:'n',_uid:'n'+n.id,...n,app_label:prettyApp(n.package_name,n.app_label)}}
 function normText(t){return{_kind:'t',_uid:'t'+t.id,id:t.id,package_name:t.package_name,app_label:prettyApp(t.package_name,t.app_label),target_name:t.target_name||t.targetName||'',title:null,text_body:t.text,received_at:t.received_at,captured_at:t.captured_at,is_read:true}}
 function normMedia(m){return{_kind:'m',_uid:'m'+m.id,id:m.id,package_name:m.package_name,app_label:prettyApp(m.package_name,m.app_label),image_url:m.media_url,display_name:m.display_name,received_at:m.received_at,captured_at:m.captured_at,media_type:m.media_type,source:m.source,durationMs:m.duration_ms,thumbnails:m.thumbnails||[],mimeType:m.mime_type,width:m.width,height:m.height}}
-function itemTime(n){return n._kind==='m'?(n.captured_at||n.received_at||n.posted_at):(n.received_at||n.posted_at||n.captured_at)}
+function itemTime(n){return (n._kind==='t'||n._kind==='m')?(n.captured_at||n.received_at||n.posted_at):(n.posted_at||n.received_at||n.captured_at)}
 function mediaAction(n){
   const video=String(n.media_type||'').startsWith('video'),noun=video?'video':'photo'
   switch(n.source){
@@ -1242,7 +1242,7 @@ function buildRow(n){
       <div class="cr-inner">
         <div class="cacts">${actions}</div>
         <div class="bubble">
-          <div class="bh"><span class="bname">${app}</span>${favMark}${target}<span class="btime" data-ts="${ts}" title="${ts}">${timeLabel(n.received_at||n.captured_at||n.posted_at)}</span></div>
+          <div class="bh"><span class="bname">${app}</span>${favMark}${target}<span class="btime" data-ts="${ts}" title="${ts}">${timeLabel(eventIso)}</span></div>
           <div class="bmsg">${esc(n.text_body||'')}</div>
         </div>
         <div class="tav" style="background:${color}"${enc}>${img}<span class="tcal">${letter}</span></div>
@@ -1251,7 +1251,7 @@ function buildRow(n){
   } else {
     const preview=n._kind==='m'
       ? esc(n.display_name||mediaAction(n))
-      : esc(n.title&&n.text_body?`${n.title}: ${n.text_body}`:(n.title||n.text_body||'No preview'))
+      : esc([n.sender_name?`from ${n.sender_name}`:'',n.title||'',n.text_body||'',(n.big_text&&n.big_text!==n.text_body)?n.big_text:'',n.sub_text||''].filter(Boolean).join(' · ')||'No preview')
     const video=n._kind==='m'&&String(n.media_type||'').startsWith('video')
     const thumb=n.image_url?`<a class="cimg" href="${esc(imgUrl(n.image_url))}" target="_blank" rel="noopener" onclick="event.stopPropagation()"><img src="${esc(imgUrl(n.image_url))}" loading="lazy" alt="">${video?`<span class="cvid">▶ ${fmtDuration(n.durationMs)}</span>`:''}</a>`:''
     const actions=savedMode?savedCtl:`${unread?`<button class="ca nosel" onclick="event.stopPropagation();doRead('${n._uid}',this)" title="Mark read">${ICO_READ}</button>`:''}${isFav?'':`<button class="ca del nosel" onclick="event.stopPropagation();doArchive('${n._uid}')" title="Archive">${ICO_DEL}</button><button class="ca del nosel" onclick="event.stopPropagation();doDeletePerm('${n._uid}')" title="Delete">${ICO_TRASH}</button>`}`
@@ -1540,13 +1540,41 @@ function insertIncoming(n){
     else renderFeed()
   }
 }
+function dropDeleted(prefix,ids){
+  const idSet=new Set(ids.map(String)),filter=n=>!(n._uid===prefix+String(n.id)&&idSet.has(String(n.id)))
+  let removed=0
+  for(const n of notifs)if(!filter(n))removed++
+  notifs=notifs.filter(filter)
+  savedItems=savedItems.filter(filter)
+  totalCount=Math.max(0,totalCount-removed)
+  rebuildAppCounts();renderAppLists();renderFeed();loadFavorites()
+}
+function markReadLive(id){
+  const n=notifs.find(x=>x._uid==='n'+String(id));if(!n||n.is_read)return
+  n.is_read=true
+  const row=document.querySelector(`[data-id="n${id}"]`);row?.classList.remove('unread')
+  rebuildAppCounts();renderAppLists()
+}
+let sseConnectedOnce=false
 function connectSSE(){
   const dot=document.getElementById('sdot');if(evs)evs.close()
   evs=new EventSource(`${SERVER}/api/notifications/stream?token=${token}`)
+  evs.onopen=()=>{
+    dot.className='sdot live';clearTimeout(reconn)
+    if(sseConnectedOnce)load(true)
+    sseConnectedOnce=true
+  }
   evs.addEventListener('connected',()=>{dot.className='sdot live';clearTimeout(reconn)})
   evs.addEventListener('notification',e=>{try{insertIncoming(normNotif(JSON.parse(e.data)))}catch{}})
   evs.addEventListener('typedtext',e=>{try{insertIncoming(normText(JSON.parse(e.data)))}catch{}})
   evs.addEventListener('media',e=>{try{insertIncoming(normMedia(JSON.parse(e.data)))}catch{};if(!document.getElementById('gallery').hidden&&!galSelected.size)openGallery()})
+  evs.addEventListener('notification:deleted',e=>{try{dropDeleted('n',JSON.parse(e.data).ids||[])}catch{}})
+  evs.addEventListener('typedtext:deleted',e=>{try{dropDeleted('t',JSON.parse(e.data).ids||[])}catch{}})
+  evs.addEventListener('media:deleted',e=>{try{dropDeleted('m',JSON.parse(e.data).ids||[])}catch{}})
+  evs.addEventListener('notification:archived',e=>{try{dropDeleted('n',[JSON.parse(e.data).id])}catch{}})
+  evs.addEventListener('notification:read',e=>{try{markReadLive(JSON.parse(e.data).id)}catch{}})
+  evs.addEventListener('notification:readAll',()=>{notifs.forEach(n=>{if(n._kind==='n')n.is_read=true});rebuildAppCounts();renderAppLists();renderFeed()})
+  evs.addEventListener('status',()=>{loadDevices()})
   evs.onerror=()=>{dot.className='sdot';evs.close();reconn=setTimeout(connectSSE,5000)}
 }
 
@@ -1633,7 +1661,7 @@ function dsHistory(hist){
 }
 function renderDeviceStatus(d,hist){
   const id=d.id,name=getNick(id)||d.name||id
-  const issues=Array.isArray(d.healthIssues)?d.healthIssues:[]
+  const issues=Array.isArray(d.issues)?d.issues:[]
   document.getElementById('deviceStatusTitle').textContent=`${name} · status`
   const summary=dsGrid([
     ['Device ID',id],
@@ -1784,7 +1812,7 @@ function renderDeviceList(){
       const isOn=deviceFilter===d.id,isDef=defaultDevice===d.id
       const cnt=d.notification_count||0,ls=d.last_seen?`Last seen ${relTime(d.last_seen)} · `:''
       const nick=getNick(d.id),displayName=esc(nick||d.name||d.id)
-      const healthIssues=Array.isArray(d.healthIssues)?d.healthIssues:[]
+      const healthIssues=Array.isArray(d.issues)?d.issues:[]
       const healthCls=d.health==='missing'?'bad':'warn'
       const healthLine=healthIssues.length?`<span class="dv-health ${healthCls}">${esc(healthIssues.slice(0,2).join(' · '))}</span>`:''
       html+=`<div class="dv-item${isOn?' on':''}" data-dvid="${esc(d.id)}" title="Tap for status details" onclick="if(!event.target.closest('button'))openDeviceStatus(this.dataset.dvid)">

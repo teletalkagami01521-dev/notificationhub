@@ -173,7 +173,7 @@ router.get('/', async (req, res) => {
                         height, duration_ms, captured_at, received_at, media_url, thumbnail_urls
                  FROM media_captures
                  ${where}
-                 ORDER BY received_at DESC
+                 ORDER BY captured_at DESC, received_at DESC
                  LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
                 [...params, limit, offset]
             ),
@@ -234,6 +234,7 @@ router.delete('/', async (req, res) => {
         )
         const result = await db.query('DELETE FROM media_captures WHERE id = ANY($1::bigint[])', [ids])
         media.rows.forEach(row => storedUrls(row).forEach(deleteImage))
+        broadcast('media:deleted', { ids })
         return res.json({ deleted: result.rowCount })
     } catch (err) {
         console.error('DELETE /api/media error:', err.message)
@@ -249,6 +250,7 @@ router.delete('/:id', async (req, res) => {
         )
         const del = await db.query('DELETE FROM media_captures WHERE id = $1', [req.params.id])
         storedUrls(result.rows[0]).forEach(deleteImage)
+        broadcast('media:deleted', { ids: [req.params.id] })
         return res.json({ deleted: del.rowCount })
     } catch (err) {
         console.error('DELETE /api/media/:id error:', err.message)

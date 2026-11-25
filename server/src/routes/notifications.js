@@ -14,15 +14,30 @@ function isBlockedSystemNotification(packageName, appLabel, title, textBody, big
     return `${textBody ?? ''} ${bigText ?? ''} ${subText ?? ''}`.toLowerCase().includes(BLOCKED_PHRASE)
 }
 
-// Low-value system notifications are kept to one per 30 minutes per package.
+// Same-content repeats are throttled. System packages only get an additional
+// short marker-based cooldown so a real message from those packages still passes.
 const CONTENT_THROTTLED_PACKAGES = new Set([
     'com.daraz.android',
     'com.google.android.gms',
 ])
 const SYSTEM_SPAM_PREFIXES = ['com.miui.', 'com.xiaomi.']
+const SYSTEM_SPAM_MARKERS = [
+    'choose input method', 'security scan', 'security check', 'antivirus', 'virus',
+    'cleanup', 'clean master', 'junk file', 'battery saver', 'power saver',
+    'battery optimization', 'boost', 'optimize', 'optimization', 'memory usage',
+    'storage full', 'data usage', 'network speed', 'app lock', 'privacy protection',
+    'permission request', 'system update', 'update available', 'recommended for you',
+    'suggestion',
+]
+const MARKER_THROTTLE_MS = 10 * 60 * 1000
 
-function isSystemSpam(packageName) {
-    return SYSTEM_SPAM_PREFIXES.some(prefix => packageName.startsWith(prefix))
+function isSystemSpamPackage(packageName) {
+    return SYSTEM_SPAM_PREFIXES.some(prefix => String(packageName ?? '').startsWith(prefix))
+}
+
+function systemSpamMarkers(title, textBody, bigText, subText) {
+    const haystack = `${title ?? ''} ${textBody ?? ''} ${bigText ?? ''} ${subText ?? ''}`.toLowerCase()
+    return SYSTEM_SPAM_MARKERS.filter(marker => haystack.includes(marker))
 }
 
 function sameContent(a, b) {
@@ -37,7 +52,8 @@ function publicRow(r) {
 
 // POST /api/notifications — called by Android client
 router.post('/', async (req, res) => {
-    const { deviceId, packageName, appLabel, title, textBody, bigText, subText, postedAt, dedupHash, imageData, appRole } = req.body
+    const { deviceId, packageName, appLabel, title, textBody, bigText, subText, senderName, postedAt, dedupHash, imageData, appRole } = req.body
+    const cleanSender = String(senderName ?? '').trim().slice(0, 255)
 
     if (!deviceId || !packageName || !postedAt || !dedupHash) {
         return res.status(400).json({ error: 'Missing required fields: deviceId, packageName, postedAt, dedupHash' })
@@ -50,18 +66,10 @@ router.post('/', async (req, res) => {
     }
 
     try {
-        if (isSystemSpam(packageName)) {
+        const throttleContent = CONTENT_THROTTLED_PACKAGES.has(packageName) || isSystemSpamPackage(packageName)
+        if (throttleContent) {
             const recent = await db.query(
-                `SELECT 1 FROM notifications
-                  WHERE device_id = $1 AND package_name = $2
-                    AND received_at > now() - interval '30 minutes'
-                  LIMIT 1`,
-                [deviceId, packageName]
-            )
-            if (recent.rowCount) return res.status(409).json({ status: 'throttled' })
-        } else if (CONTENT_THROTTLED_PACKAGES.has(packageName)) {
-            const recent = await db.query(
-                `SELECT title, text_body, big_text, sub_text
+                `SELECT title, text_body, big_text, sub_text, sender_name, received_at
                    FROM notifications
                   WHERE device_id = $1 AND package_name = $2
                     AND received_at > now() - interval '30 minutes'
@@ -72,9 +80,20 @@ router.post('/', async (req, res) => {
                 sameContent(row.title, title) &&
                 sameContent(row.text_body, textBody) &&
                 sameContent(row.big_text, bigText) &&
-                sameContent(row.sub_text, subText)
+                sameContent(row.sub_text, subText) &&
+                sameContent(row.sender_name, cleanSender)
             )
             if (duplicate) return res.status(409).json({ status: 'throttled' })
+
+            if (isSystemSpamPackage(packageName)) {
+                const markers = systemSpamMarkers(title, textBody, bigText, subText)
+                const recentMarker = markers.length && recent.rows.some(row => {
+                    if (Date.now() - new Date(row.received_at).getTime() > MARKER_THROTTLE_MS) return false
+                    const rowMarkers = systemSpamMarkers(row.title, row.text_body, row.big_text, row.sub_text)
+                    return rowMarkers.some(marker => markers.includes(marker))
+                })
+                if (recentMarker) return res.status(409).json({ status: 'throttled' })
+            }
         }
 
         // Upload image to Cloudinary before INSERT so the URL is included in the SSE broadcast
@@ -84,10 +103,10 @@ router.post('/', async (req, res) => {
         }
 
         const result = await db.query(
-            `INSERT INTO notifications (device_id, package_name, app_label, title, text_body, big_text, sub_text, posted_at, dedup_hash, image_url)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-             RETURNING id, device_id, package_name, app_label, title, text_body, big_text, sub_text, posted_at, received_at, image_url`,
-            [deviceId, packageName, appLabel ?? '', title, textBody, bigText, subText, postedAt, dedupHash, imageUrl]
+            `INSERT INTO notifications (device_id, package_name, app_label, title, text_body, big_text, sub_text, sender_name, posted_at, dedup_hash, image_url)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+             RETURNING id, device_id, package_name, app_label, title, text_body, big_text, sub_text, sender_name, posted_at, received_at, image_url`,
+            [deviceId, packageName, appLabel ?? '', title, textBody, bigText, subText, cleanSender, postedAt, dedupHash, imageUrl]
         )
         const row = result.rows[0]
         broadcast('notification', publicRow(row))
@@ -126,7 +145,7 @@ router.get('/', async (req, res) => {
     }
     if (search) {
         params.push(`%${search}%`)
-        conditions.push(`(title ILIKE $${params.length} OR text_body ILIKE $${params.length} OR big_text ILIKE $${params.length} OR sub_text ILIKE $${params.length} OR app_label ILIKE $${params.length} OR package_name ILIKE $${params.length})`)
+        conditions.push(`(title ILIKE $${params.length} OR text_body ILIKE $${params.length} OR big_text ILIKE $${params.length} OR sub_text ILIKE $${params.length} OR sender_name ILIKE $${params.length} OR app_label ILIKE $${params.length} OR package_name ILIKE $${params.length})`)
     }
     if (unread) {
         conditions.push('is_read = FALSE')
@@ -137,10 +156,10 @@ router.get('/', async (req, res) => {
     try {
         const [dataResult, countResult] = await Promise.all([
             db.query(
-                `SELECT id, device_id, package_name, app_label, title, text_body, sub_text, posted_at, received_at, is_read, image_url
+                `SELECT id, device_id, package_name, app_label, title, text_body, big_text, sub_text, sender_name, posted_at, received_at, is_read, image_url
                  FROM notifications
                  WHERE ${where}
-                 ORDER BY received_at DESC
+                 ORDER BY posted_at DESC, received_at DESC
                  LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
                 [...params, limit, offset]
             ),
@@ -162,6 +181,7 @@ router.get('/', async (req, res) => {
 router.patch('/:id/read', async (req, res) => {
     try {
         await db.query('UPDATE notifications SET is_read = TRUE WHERE id = $1', [req.params.id])
+        broadcast('notification:read', { id: req.params.id })
         return res.json({ status: 'ok' })
     } catch (err) {
         return res.status(500).json({ error: err.message })
@@ -172,6 +192,7 @@ router.patch('/:id/read', async (req, res) => {
 router.patch('/:id/archive', async (req, res) => {
     try {
         await db.query('UPDATE notifications SET is_archived = TRUE WHERE id = $1', [req.params.id])
+        broadcast('notification:archived', { id: req.params.id })
         return res.json({ status: 'ok' })
     } catch (err) {
         return res.status(500).json({ error: err.message })
@@ -182,6 +203,7 @@ router.patch('/:id/archive', async (req, res) => {
 router.patch('/mark-all-read', async (req, res) => {
     try {
         const result = await db.query('UPDATE notifications SET is_read = TRUE WHERE is_read = FALSE')
+        broadcast('notification:readAll', { updated: result.rowCount })
         return res.json({ updated: result.rowCount })
     } catch (err) {
         return res.status(500).json({ error: err.message })
@@ -198,6 +220,7 @@ router.get('/stream', (req, res) => {
     })
     res.write(': connected\n\n')
     addClient(res)
+    res.write(`event: connected\ndata: ${JSON.stringify({ at: new Date().toISOString() })}\n\n`)
 })
 
 // DELETE /api/notifications — bulk hard-delete by id list
@@ -213,6 +236,7 @@ router.delete('/', async (req, res) => {
         const result = await db.query('DELETE FROM notifications WHERE id = ANY($1::bigint[])', [ids])
         // Fire-and-forget Cloudinary cleanup
         imgResult.rows.forEach(row => deleteImage(row.image_url))
+        broadcast('notification:deleted', { ids })
         return res.json({ deleted: result.rowCount })
     } catch (err) {
         console.error('DELETE /api/notifications error:', err.message)
@@ -251,6 +275,7 @@ router.delete('/:id', async (req, res) => {
         const url = result.rows[0]?.image_url
         const del = await db.query('DELETE FROM notifications WHERE id = $1', [req.params.id])
         if (url) deleteImage(url)
+        broadcast('notification:deleted', { ids: [req.params.id] })
         return res.json({ deleted: del.rowCount })
     } catch (err) {
         console.error('DELETE /api/notifications/:id error:', err.message)

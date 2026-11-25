@@ -98,7 +98,7 @@ router.get('/', async (req, res) => {
                 `SELECT id, device_id, package_name, app_label, target_name, text, captured_at, received_at
                  FROM typed_text
                  ${where}
-                 ORDER BY received_at DESC
+                 ORDER BY captured_at DESC, received_at DESC
                  LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
                 [...params, limit, offset]
             ),
@@ -122,6 +122,7 @@ router.delete('/', async (req, res) => {
     if (!Array.isArray(ids) || ids.length === 0) return res.status(400).json({ error: 'ids array required' })
     try {
         const result = await db.query('DELETE FROM typed_text WHERE id = ANY($1::bigint[])', [ids])
+        broadcast('typedtext:deleted', { ids })
         return res.json({ deleted: result.rowCount })
     } catch (err) {
         console.error('DELETE /api/typed-text error:', err.message)

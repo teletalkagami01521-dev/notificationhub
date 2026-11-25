@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import { db } from '../db/client.js'
+import { broadcast } from '../sse.js'
 import { NOTIFICATION_ROLE_PRIORITY, TEXT_ROLE_PRIORITY } from '../appRoles.js'
 
 const router = Router()
@@ -100,6 +101,7 @@ router.post('/', async (req, res) => {
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)`,
             values
         )
+        broadcast('status', { deviceId, appRole, at: new Date().toISOString() })
         return res.json({ status: 'ok' })
     } catch (err) {
         console.error('POST /api/app-status error:', err.message)
