@@ -1139,6 +1139,48 @@ let hasMoreNotif=false,hasMoreText=false,hasMoreMedia=false
 const PAGE_LIMITS={notif:50,text:50,media:25}
 let devices=[],deviceFilter=null,defaultDevice=null
 try{const d=localStorage.getItem('nh-device');if(d){deviceFilter=d;defaultDevice=d}}catch{}
+const QUERY_TIMES=new Set(['all','1h','2h','6h','12h','today','earlier'])
+let queryString=''
+function buildQueryString(){
+  const p=new URLSearchParams()
+  if(appFilter)p.set('app',appFilter)
+  if(deviceFilter)p.set('device',deviceFilter)
+  if(timeFilter!=='all')p.set('time',timeFilter)
+  if(searchQ)p.set('q',searchQ)
+  if(activeTab==='unread'&&!savedMode)p.set('tab','unread')
+  const gallery=document.getElementById('gallery')
+  const view=savedMode?'saved':(gallery&&!gallery.hidden?'gallery':'')
+  if(view)p.set('view',view)
+  return p.toString()
+}
+function syncQueryState(push=true){
+  const qs=buildQueryString()
+  if(qs===queryString)return
+  queryString=qs
+  const url=location.pathname+(qs?'?'+qs:'')+location.hash
+  history[push?'pushState':'replaceState']({},'',url)
+}
+function applyQueryState(){
+  const u=new URLSearchParams(location.search)
+  appFilter=u.get('app')||null
+  const t=u.get('time');timeFilter=QUERY_TIMES.has(t)?t:'all'
+  searchQ=(u.get('q')||u.get('search')||'').trim()
+  deviceFilter=u.has('device')?(u.get('device')||null):defaultDevice
+  const view=u.get('view');savedMode=view==='saved'
+  activeTab=(u.get('tab')==='unread'&&!savedMode)?'unread':'all'
+  unreadOnly=activeTab==='unread'
+  const si=document.getElementById('si');if(si)si.value=searchQ
+  const sb=document.getElementById('sbar');if(sb)sb.hidden=!searchQ
+  document.getElementById('searchBtn')?.classList.toggle('on',!!searchQ)
+  document.querySelectorAll('.bntab').forEach(b=>b.classList.toggle('on',b.dataset.tab===activeTab))
+  document.querySelectorAll('[data-t]').forEach(b=>b.classList.toggle('on',b.dataset.t===timeFilter))
+  updateSavedUI();updateDeviceChip();renderDeviceList()
+  const gallery=document.getElementById('gallery')
+  if(view==='gallery'){if(gallery&&gallery.hidden)openGallery(false)}
+  else if(gallery&&!gallery.hidden)closeGallery(false)
+  queryString=buildQueryString()
+}
+window.addEventListener('popstate',()=>{applyQueryState();closeSheet();closeDrawer();load(true)})
 
 function visibleItems(){return savedMode?savedItems:filteredNotifs()}
 function findItem(uid){return savedItems.find(x=>x._uid===uid)||notifs.find(x=>x._uid===uid)||null}
@@ -1172,6 +1214,7 @@ function toggleSavedView(){
   if(selectMode)toggleSel()
   savedMode=!savedMode
   updateSavedUI()
+  syncQueryState()
   if(savedMode)loadFavorites()
   else renderFeed()
 }
@@ -1212,6 +1255,7 @@ function switchTab(tab){
     // Clear badge — user is now viewing unreads
     const badge=document.getElementById('unreadBadge');if(badge)badge.textContent=''
   }
+  syncQueryState()
 }
 
 // ── Sheet (mobile filter) ──────────────────────
@@ -1226,6 +1270,7 @@ function closeDrawer(){document.getElementById('drawer').classList.remove('open'
 function setTime(t){
   timeFilter=t
   document.querySelectorAll('[data-t]').forEach(b=>b.classList.toggle('on',b.dataset.t===t))
+  syncQueryState()
   renderFeed()
 }
 function filteredNotifs(){
@@ -1492,10 +1537,10 @@ function doRefresh(){
 }
 
 // ── App filter ────────────────────────────────
-function setApp(pkg){appFilter=pkg;closeDrawer();load(true)}
+function setApp(pkg){appFilter=pkg;closeDrawer();syncQueryState();load(true)}
 
 // ── Search ────────────────────────────────────
-let st2;document.getElementById('si').addEventListener('input',e=>{clearTimeout(st2);searchQ=e.target.value.trim();st2=setTimeout(()=>load(true),350)})
+let st2;document.getElementById('si').addEventListener('input',e=>{clearTimeout(st2);searchQ=e.target.value.trim();st2=setTimeout(()=>{syncQueryState();load(true)},350)})
 function toggleSearch(){const bar=document.getElementById('sbar'),btn=document.getElementById('searchBtn');bar.hidden=!bar.hidden;btn.classList.toggle('on',!bar.hidden);if(!bar.hidden)document.getElementById('si').focus()}
 
 function favoriteGuard(uid){
@@ -1962,6 +2007,7 @@ function setDevice(id){
   updateDeviceChip()
   renderDeviceList()
   closeDeviceSheet()
+  syncQueryState()
   load(true)
 }
 
@@ -2087,7 +2133,7 @@ function initSwipeHandlers(){
 // ── Gallery ───────────────────────────────────
 const GAL_PAGE_SIZE=36
 let galImages=[],galSelected=new Set(),galPage=1,galHasMore=false,galLoading=false,galToken=0,galLastCols=0,galResizeT=0
-async function openGallery(){
+async function openGallery(sync=true){
   const sc=document.getElementById('galScroll')
   const token=++galToken
   document.getElementById('gallery').hidden=false
@@ -2095,11 +2141,13 @@ async function openGallery(){
   sc.className='gal-loading';sc.innerHTML='<div class="tl-spin"></div><span>Loading…</span>'
   document.getElementById('galDelbtn').disabled=true
   document.getElementById('galSelbtn').textContent='All'
+  if(sync)syncQueryState()
   await loadGalleryPage(token)
 }
-function closeGallery(){
+function closeGallery(sync=true){
   document.getElementById('gallery').hidden=true
   galToken++;galImages=[];galSelected.clear();galPage=1;galHasMore=false;galLoading=false
+  if(sync)syncQueryState()
 }
 async function loadGalleryPage(token=galToken){
   if(galLoading||token!==galToken||(!galHasMore&&galPage>1))return
@@ -2347,7 +2395,8 @@ const st=document.createElement('style');st.textContent='@keyframes spin{from{tr
 setInterval(()=>{document.querySelectorAll('.btime[data-ts]').forEach(el=>{el.textContent=timeLabel(el.dataset.ts)})},60000)
 
 document.getElementById('app').hidden=false
-updateDeviceChip() // set header chip before first load (device restored from localStorage)
-updateSavedUI()
+queryString=location.search.replace(/^\?/,'')
+applyQueryState()
+syncQueryState(false)
 load(true);connectSSE()
 </script>
