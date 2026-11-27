@@ -63,15 +63,20 @@ router.post('/', async (req, res) => {
         dedupHash,
         imageData,
         thumbnailData,
+        relatedNotificationHash,
+        action,
     } = req.body ?? {}
 
-    if (!deviceId || !source || !mediaType || !capturedAt || !dedupHash || !imageData) {
+    const cleanAction = action == null ? null : String(action).trim().slice(0, 64)
+    if (!deviceId || !source || !mediaType || !capturedAt || !dedupHash || (!imageData && !cleanAction)) {
         return res.status(400).json({
-            error: 'Missing required fields: deviceId, source, mediaType, capturedAt, dedupHash, imageData',
+            error: 'Missing required fields: deviceId, source, mediaType, capturedAt, dedupHash, imageData or action',
         })
     }
 
-    const frames = Array.isArray(thumbnailData) && thumbnailData.length ? thumbnailData : [imageData]
+    const frames = imageData
+        ? (Array.isArray(thumbnailData) && thumbnailData.length ? thumbnailData : [imageData])
+        : []
     const uploaded = []
     try {
         for (const data of frames) {
@@ -83,7 +88,7 @@ router.post('/', async (req, res) => {
             }
             uploaded.push(url)
         }
-        if (!uploaded.length) {
+        if (!uploaded.length && !cleanAction) {
             return res.status(400).json({ error: 'No media frames supplied' })
         }
 
@@ -91,11 +96,13 @@ router.post('/', async (req, res) => {
             `INSERT INTO media_captures
                 (device_id, source, package_name, app_label, media_type, display_name,
                  mime_type, original_mime_type, size_bytes, width, height, duration_ms,
-                 captured_at, dedup_hash, media_url, thumbnail_urls)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
-             RETURNING id, device_id, source, package_name, app_label, media_type,
-                       display_name, mime_type, original_mime_type, size_bytes, width,
-                       height, duration_ms, captured_at, received_at, media_url, thumbnail_urls`,
+                   captured_at, dedup_hash, media_url, thumbnail_urls, related_notification_hash, action)
+              VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
+              RETURNING id, device_id, source, package_name, app_label, media_type,
+                         display_name, mime_type, original_mime_type, size_bytes, width,
+                           height, duration_ms, captured_at, received_at, dedup_hash, media_url, thumbnail_urls, related_notification_hash, action`,
+
+
             [
                 deviceId,
                 source,
@@ -111,10 +118,13 @@ router.post('/', async (req, res) => {
                 durationMs == null ? null : Number(durationMs),
                 capturedAt,
                 dedupHash,
-                uploaded[0],
+                uploaded[0] ?? null,
                 JSON.stringify(uploaded),
+                relatedNotificationHash == null ? null : String(relatedNotificationHash).trim().slice(0, 64),
+                cleanAction,
             ]
         )
+
         uploaded.length = 0
         const row = result.rows[0]
         broadcast('media', publicRow(row))
@@ -138,6 +148,7 @@ router.get('/', async (req, res) => {
     const type = req.query.type || null
     const source = req.query.source || null
     const search = req.query.search || null
+    const relatedHash = req.query.relatedHash || null
 
     const conditions = []
     const params = []
@@ -162,6 +173,10 @@ router.get('/', async (req, res) => {
         params.push(`%${search}%`)
         conditions.push(`(display_name ILIKE $${params.length} OR app_label ILIKE $${params.length} OR package_name ILIKE $${params.length})`)
     }
+    if (relatedHash) {
+        params.push(relatedHash)
+        conditions.push(`related_notification_hash = $${params.length}`)
+    }
 
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : ''
 
@@ -170,7 +185,8 @@ router.get('/', async (req, res) => {
             db.query(
                 `SELECT id, device_id, source, package_name, app_label, media_type,
                         display_name, mime_type, original_mime_type, size_bytes, width,
-                        height, duration_ms, captured_at, received_at, media_url, thumbnail_urls
+                         height, duration_ms, captured_at, received_at, dedup_hash, media_url, thumbnail_urls, related_notification_hash, action
+
                  FROM media_captures
                  ${where}
                  ORDER BY captured_at DESC, received_at DESC

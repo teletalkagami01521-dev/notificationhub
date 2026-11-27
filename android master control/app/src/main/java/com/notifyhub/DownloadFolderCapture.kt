@@ -19,6 +19,9 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 object DownloadFolderCapture {
 
+    private const val POLL_INTERVAL_MS = 5 * 60 * 1000L
+    private const val LOOKBACK_MS = 60_000L
+
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val scanning = AtomicBoolean(false)
     private var observer: ContentObserver? = null
@@ -69,6 +72,19 @@ object DownloadFolderCapture {
         val appContext = context.applicationContext
         scope.launch {
             scan(appContext, System.currentTimeMillis() - hours * 60 * 60 * 1000L)
+        }
+    }
+
+    fun pollTree(context: Context, lastScanMs: Long) {
+        val appContext = context.applicationContext
+        if (MediaSettings.downloadsTree(appContext) == null) return
+        val now = System.currentTimeMillis()
+        if (lastScanMs > 0L && now - lastScanMs < POLL_INTERVAL_MS) return
+        val since = if (lastScanMs > 0L) lastScanMs - LOOKBACK_MS else now - 24 * 60 * 60 * 1000L
+        scanJob?.cancel()
+        scanJob = scope.launch {
+            delay(1_500)
+            scan(appContext, since)
         }
     }
 
@@ -146,6 +162,15 @@ object DownloadFolderCapture {
         val uri = DocumentsContract.buildDocumentUriUsingTree(tree, documentId)
         val deviceId = MediaUploader.deviceId(context)
         val capturedAt = Instant.ofEpochMilli(if (modified > 0) modified else System.currentTimeMillis()).toString()
+        val match = NotificationMediaMatcher.find(
+            context = context,
+            capturedAt = capturedAt,
+            packageName = "downloads",
+            ownerPackageName = null,
+            source = "downloads",
+            path = documentId,
+            displayName = displayName
+        )
         val item = PendingMedia(
             deviceId = deviceId,
             source = "downloads",
@@ -161,9 +186,11 @@ object DownloadFolderCapture {
             durationMs = null,
             capturedAt = capturedAt,
             localUri = uri.toString(),
-            dedupHash = MediaUploader.sha256("$deviceId:$uri:$modified:$sizeBytes")
+            dedupHash = MediaUploader.sha256("$deviceId:$uri:$modified:$sizeBytes"),
+            relatedNotificationHash = match?.dedupHash
         )
         if (App.database.dao().insertMedia(item) > 0) {
+            match?.let { NotificationMediaMatcher.mark(it) }
             MediaUploader.kick(context)
         }
     }

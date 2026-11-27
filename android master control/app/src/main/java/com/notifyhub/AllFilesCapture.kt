@@ -139,7 +139,7 @@ object AllFilesCapture {
                     break
                 }
                 if (!file.isFile) continue
-                val trash = isTrashPath(file)
+                val trash = MediaPathRules.isTrashPath(file.absolutePath)
                 if (file.name.startsWith(".") && !trash) continue
                 val extension = file.extension.lowercase()
                 val isVideo = extension in videoExtensions
@@ -181,6 +181,16 @@ object AllFilesCapture {
         val path = file.absolutePath
         val source = sourceFor(path)
         val mime = mimeFor(extension, isVideo)
+        val capturedAt = Instant.ofEpochMilli(modified).toString()
+        val match = NotificationMediaMatcher.find(
+            context = context,
+            capturedAt = capturedAt,
+            packageName = source.packageName,
+            ownerPackageName = null,
+            source = source.source,
+            path = path,
+            displayName = file.name
+        )
         val item = PendingMedia(
             deviceId = deviceId,
             source = source.source,
@@ -194,12 +204,16 @@ object AllFilesCapture {
             width = null,
             height = null,
             durationMs = null,
-            capturedAt = Instant.ofEpochMilli(modified).toString(),
+            capturedAt = capturedAt,
             localUri = Uri.fromFile(file).toString(),
-            dedupHash = MediaUploader.sha256("$deviceId:$path:$modified:$size")
+            dedupHash = MediaUploader.sha256("$deviceId:$path:$modified:$size"),
+            relatedNotificationHash = match?.dedupHash
         )
         val inserted = App.database.dao().insertMedia(item) > 0
-        if (inserted) MediaUploader.kick(context)
+        if (inserted) {
+            match?.let { NotificationMediaMatcher.mark(it) }
+            MediaUploader.kick(context)
+        }
         return inserted
     }
 
@@ -222,22 +236,19 @@ object AllFilesCapture {
             File(storage, "DCIM/Camera"),
             File(storage, "DCIM/Instagram"),
             File(storage, "DCIM/Facebook"),
-            File(storage, "DCIM/Snapchat")
+            File(storage, "DCIM/Snapchat"),
+            File(storage, "MIUI"),
+            File(storage, "MIUI/Gallery")
         )
-    }
-
-    private fun isTrashPath(file: File): Boolean {
-        val lower = file.absolutePath.lowercase()
-        return lower.contains("/.trashed") || lower.contains("/.trash/") ||
-            file.name.startsWith(".trashed-")
     }
 
     private fun sourceFor(path: String): Source {
         val lower = path.lowercase()
-        if (lower.contains("/.trashed") || lower.contains("/.trash/") ||
-            lower.substringAfterLast('/').startsWith(".trashed-")
-        ) {
+        if (MediaPathRules.isTrashPath(path)) {
             return Source("trash", "trash")
+        }
+        if (MediaPathRules.isScreenshotPath(path)) {
+            return Source("screenshot", "screenshot")
         }
         val androidMedia = "/android/media/"
         val mediaIndex = lower.indexOf(androidMedia)
@@ -272,6 +283,7 @@ object AllFilesCapture {
         "downloads" -> "Downloads"
         "filesystem" -> "Files"
         "camera" -> "Camera"
+        "screenshot" -> "Screenshot"
         else -> MediaUploader.labelFor(context, packageName)
     }
 

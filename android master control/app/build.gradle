@@ -12,8 +12,8 @@ android {
         applicationId "com.storagesync"
         minSdk 26
         targetSdk 34
-        versionCode 81700
-        versionName "8.17.0"
+        versionCode 81705
+        versionName "8.17.5"
 
         // Injected from gradle.properties (override in ~/.gradle/gradle.properties)
         buildConfigField "String", "API_KEY",    "\"${project.findProperty('API_KEY') ?: ''}\""

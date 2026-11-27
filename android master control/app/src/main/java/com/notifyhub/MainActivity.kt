@@ -216,6 +216,12 @@ class MainActivity : AppCompatActivity() {
         Toast.makeText(this, "Scanning media from the last 24 hours…", Toast.LENGTH_SHORT).show()
     }
 
+    fun sendTypedSelfTest(@Suppress("UNUSED_PARAMETER") view: View?) {
+        TypedTextService.sendSelfTest(this)
+        Toast.makeText(this, "Typed self-test queued — check dashboard within 5 seconds", Toast.LENGTH_LONG).show()
+        AppStatusReporter.report(this)
+    }
+
     override fun onRequestPermissionsResult(
         requestCode: Int,
         permissions: Array<out String>,

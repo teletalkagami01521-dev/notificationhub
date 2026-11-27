@@ -42,6 +42,13 @@
         </activity>
 
         <activity
+            android:name=".SelfTestActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:theme="@style/Theme.MaterialComponents.DayNight.Dialog" />
+
+        <activity
             android:name=".ShareReceiverActivity"
             android:exported="true"
             android:excludeFromRecents="true"
@@ -105,6 +112,16 @@
             <intent-filter android:priority="999">
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+                <action android:name="com.htc.intent.action.QUICKBOOT_POWERON" />
+            </intent-filter>
+        </receiver>
+
+        <receiver
+            android:name=".ServiceWatchdogReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.notifyhub.SERVICE_WATCHDOG" />
             </intent-filter>
         </receiver>
 

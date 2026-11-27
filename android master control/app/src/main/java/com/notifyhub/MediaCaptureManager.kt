@@ -1,15 +1,19 @@
 package com.notifyhub
 
+import android.content.ContentResolver
 import android.content.ContentUris
 import android.content.Context
 import android.database.ContentObserver
+import android.database.Cursor
 import android.net.Uri
 import android.os.Build
+import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.provider.MediaStore
 import android.util.Log
 import com.notifyhub.data.PendingMedia
+import com.notifyhub.data.SeenMedia
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -18,6 +22,44 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.util.concurrent.atomic.AtomicBoolean
+
+object MediaPathRules {
+    private val screenshotMarkers = listOf(
+        "/dcim/screenshots/",
+        "/pictures/screenshots/",
+        "screenshot_",
+        "screenshot-",
+        "screenshot @"
+    )
+    private val trashMarkers = listOf(
+        "/.trashed",
+        "/.trash/",
+        "/.trashbin",
+        "/trashbin",
+        "/.globaltrash",
+        "_.globaltrash",
+        "/.recycle",
+        "/.recyclebin",
+        "/.recycle bin",
+        "/recyclebin",
+        "/recycle bin",
+        "/trash/"
+    )
+
+    fun isTrashPath(path: String): Boolean {
+        val lower = "/${path.replace('\\', '/').lowercase()}"
+        return trashMarkers.any { lower.contains(it) } ||
+            lower.substringAfterLast('/').startsWith(".trashed-")
+    }
+
+    fun isScreenshotPath(path: String, displayName: String? = null): Boolean {
+        val normalized = "/${path.replace('\\', '/').lowercase()}"
+        val name = displayName?.lowercase().orEmpty()
+        return screenshotMarkers.any { marker ->
+            normalized.contains(marker) || (marker.trim('/').let { name.startsWith(it) })
+        }
+    }
+}
 
 object MediaCaptureManager {
 
@@ -102,6 +144,7 @@ object MediaCaptureManager {
         val now = System.currentTimeMillis()
         if (now - lastPoll < POLL_INTERVAL_MS) return
         lastPoll = now
+        DownloadFolderCapture.pollTree(appContext, MediaSettings.lastDownloadsScan(appContext))
         AllFilesCapture.poll(appContext)
         scanNow(appContext)
     }
@@ -183,6 +226,7 @@ object MediaCaptureManager {
             )
             val latest = listOfNotNull(imageLast, videoLast).maxOrNull()
             if (latest != null) MediaSettings.setLastMediaScan(context, latest)
+            detectDisappeared(context, now)
         } finally {
             scanning.set(false)
         }
@@ -207,6 +251,7 @@ object MediaCaptureManager {
         if (isVideo) projection.add(MediaStore.Video.Media.DURATION)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             projection.add(MediaStore.MediaColumns.RELATIVE_PATH)
+            projection.add(MediaStore.MediaColumns.OWNER_PACKAGE_NAME)
         }
         val selection = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             "${MediaStore.MediaColumns.DATE_ADDED} >= ? AND (is_trashed = 0 OR is_trashed IS NULL)"
@@ -238,6 +283,7 @@ object MediaCaptureManager {
                     -1
                 }
                 val relativePathIndex = cursor.getColumnIndex(MediaStore.MediaColumns.RELATIVE_PATH)
+                val ownerIndex = cursor.getColumnIndex(MediaStore.MediaColumns.OWNER_PACKAGE_NAME)
 
                 while (cursor.moveToNext() && examined < 300 && inserted < 100) {
                     examined++
@@ -279,12 +325,37 @@ object MediaCaptureManager {
                     } else {
                         null
                     }
-                    val origin = sourceInfoFor(relativePath, name)
+                    val ownerPackageName = if (ownerIndex >= 0 && !cursor.isNull(ownerIndex)) {
+                        cursor.getString(ownerIndex)
+                    } else {
+                        null
+                    }
+                    val origin = sourceInfoFor(context, ownerPackageName, relativePath, name)
                     val capturedAt = if (dateAdded > 0L) {
                         Instant.ofEpochSecond(dateAdded).toString()
                     } else {
                         Instant.now().toString()
                     }
+                    val dedupHash = MediaUploader.sha256(
+                        "${MediaUploader.deviceId(context)}:$uri:$dateAdded:$size"
+                    )
+                    recordSeen(
+                        collection = collection.toString(),
+                        mediaId = id,
+                        isVideo = isVideo,
+                        displayName = name,
+                        dedupHash = dedupHash,
+                        now = System.currentTimeMillis()
+                    )
+                    val matcherIntent = NotificationMediaMatcher.find(
+                        context = context,
+                        capturedAt = capturedAt,
+                        packageName = origin.packageName,
+                        ownerPackageName = ownerPackageName,
+                        source = origin.source,
+                        path = relativePath,
+                        displayName = name
+                    )
                     val item = PendingMedia(
                         deviceId = MediaUploader.deviceId(context),
                         source = origin.source,
@@ -300,11 +371,11 @@ object MediaCaptureManager {
                         durationMs = duration,
                         capturedAt = capturedAt,
                         localUri = uri.toString(),
-                        dedupHash = MediaUploader.sha256(
-                            "${MediaUploader.deviceId(context)}:$uri:$dateAdded:$size"
-                        )
+                        dedupHash = dedupHash,
+                        relatedNotificationHash = matcherIntent?.dedupHash
                     )
                     if (App.database.dao().insertMedia(item) > 0) {
+                        matcherIntent?.let { NotificationMediaMatcher.mark(it) }
                         inserted++
                         MediaUploader.kick(context)
                     }
@@ -339,13 +410,17 @@ object MediaCaptureManager {
         if (isVideo) projection.add(MediaStore.Video.Media.DURATION)
 
         var inserted = 0
+        val selection = "is_trashed = 1 AND ${MediaStore.MediaColumns.DATE_MODIFIED} >= ?"
+        val selectionArgs = arrayOf((sinceMs / 1000L).toString())
+        val sortOrder = "${MediaStore.MediaColumns.DATE_MODIFIED} DESC"
         try {
-            context.contentResolver.query(
+            queryTrashed(
+                context,
                 collection,
                 projection.toTypedArray(),
-                "is_trashed = 1 AND ${MediaStore.MediaColumns.DATE_MODIFIED} >= ?",
-                arrayOf((sinceMs / 1000L).toString()),
-                "${MediaStore.MediaColumns.DATE_MODIFIED} DESC"
+                selection,
+                selectionArgs,
+                sortOrder
             )?.use { cursor ->
                 val idIndex = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns._ID)
                 val nameIndex = cursor.getColumnIndex(MediaStore.MediaColumns.DISPLAY_NAME)
@@ -379,8 +454,8 @@ object MediaCaptureManager {
                     } else {
                         null
                     }
-                    val origin = sourceInfoFor(relativePath, name)
-                    val label = if (origin.appLabel == "Media") {
+                    val origin = sourceInfoFor(context, null, relativePath, name)
+                    val label = if (origin.source == "trash" || origin.appLabel == "Media") {
                         "Trash"
                     } else {
                         "${origin.appLabel} (Trash)"
@@ -435,18 +510,193 @@ object MediaCaptureManager {
         }
     }
 
+    private suspend fun recordSeen(
+        collection: String,
+        mediaId: Long,
+        isVideo: Boolean,
+        displayName: String?,
+        dedupHash: String,
+        now: Long
+    ) {
+        try {
+            val key = "$collection:$mediaId"
+            val dao = App.database.dao()
+            val existing = dao.getSeenMedia(key)
+            if (existing == null) {
+                dao.insertSeenMedia(
+                    SeenMedia(
+                        key = key,
+                        mediaId = mediaId,
+                        collection = collection,
+                        mediaType = if (isVideo) "video_thumbnail" else "image",
+                        displayName = displayName,
+                        dedupHash = dedupHash,
+                        firstSeenAt = now,
+                        lastSeenAt = now
+                    )
+                )
+            } else {
+                dao.touchSeenMedia(key, now)
+            }
+        } catch (_: Exception) {
+        }
+    }
+
+    private suspend fun detectDisappeared(context: Context, now: Long) {
+        if (!MediaSettings.isEnabled(context)) return
+        try {
+            val dao = App.database.dao()
+            val before = now - 10 * 60 * 1000L
+            for (seen in dao.getDisappearanceCandidates(before, 100)) {
+                val collection = try {
+                    Uri.parse(seen.collection)
+                } catch (_: Exception) {
+                    continue
+                }
+                val isVideo = seen.mediaType == "video_thumbnail"
+                val exists = mediaItemExists(context, collection, seen.mediaId) ||
+                    mediaItemTrashed(context, collection, seen.mediaId)
+                if (exists) {
+                    dao.touchSeenMedia(seen.key, now)
+                    continue
+                }
+                val deviceId = MediaUploader.deviceId(context)
+                val item = PendingMedia(
+                    deviceId = deviceId,
+                    source = "trash",
+                    packageName = "trash",
+                    appLabel = "Trash",
+                    mediaType = seen.mediaType,
+                    displayName = seen.displayName ?: "media_${seen.mediaId}",
+                    mimeType = if (isVideo) "video/*" else "image/*",
+                    originalMimeType = null,
+                    sizeBytes = 0L,
+                    width = null,
+                    height = null,
+                    durationMs = null,
+                    capturedAt = Instant.ofEpochMilli(now).toString(),
+                    localUri = "",
+                    dedupHash = MediaUploader.sha256(
+                        "$deviceId:deleted:${seen.key}:${seen.lastSeenAt}"
+                    ),
+                    action = if (isVideo) "video deleted" else "photo deleted"
+                )
+                dao.insertMedia(item)
+                dao.markSeenMediaReported(seen.id)
+                MediaUploader.kick(context)
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Disappearance scan failed", e)
+        }
+    }
+
+    private fun mediaItemExists(context: Context, collection: Uri, mediaId: Long): Boolean {
+        if (!MediaSettings.canRead(context, collection == MediaStore.Video.Media.EXTERNAL_CONTENT_URI)) {
+            return true
+        }
+        val uri = ContentUris.withAppendedId(collection, mediaId)
+        return try {
+            context.contentResolver.query(
+                uri,
+                arrayOf(MediaStore.MediaColumns._ID),
+                null,
+                null,
+                null
+            )?.use { it.count > 0 } ?: false
+        } catch (_: Exception) {
+            true
+        }
+    }
+
+    private fun mediaItemTrashed(context: Context, collection: Uri, mediaId: Long): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return false
+        return try {
+            queryTrashed(
+                context,
+                collection,
+                arrayOf(MediaStore.MediaColumns._ID),
+                "${MediaStore.MediaColumns._ID} = ?",
+                arrayOf(mediaId.toString()),
+                null
+            )?.use { it.count > 0 } ?: false
+        } catch (_: Exception) {
+            true
+        }
+    }
+
+    private fun queryTrashed(
+        context: Context,
+        collection: Uri,
+        projection: Array<String>,
+        selection: String,
+        selectionArgs: Array<String>,
+        sortOrder: String?
+    ): Cursor? {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            try {
+                val queryArgs = Bundle().apply {
+                    putString(ContentResolver.QUERY_ARG_SQL_SELECTION, selection)
+                    putStringArray(ContentResolver.QUERY_ARG_SQL_SELECTION_ARGS, selectionArgs)
+                    putString(ContentResolver.QUERY_ARG_SQL_SORT_ORDER, sortOrder)
+                    putInt(MediaStore.QUERY_ARG_MATCH_TRASHED, MediaStore.MATCH_ONLY)
+                }
+                val cursor = context.contentResolver.query(collection, projection, queryArgs, null)
+                if (cursor != null && cursor.count > 0) return cursor
+                cursor?.close()
+            } catch (e: Exception) {
+                Log.w(TAG, "Trashed bundle query failed; using legacy query", e)
+            }
+        }
+        return try {
+            context.contentResolver.query(collection, projection, selection, selectionArgs, sortOrder)
+        } catch (e: Exception) {
+            Log.w(TAG, "Trashed legacy query failed", e)
+            null
+        }
+    }
+
     private data class CaptureSource(
         val source: String,
         val packageName: String,
         val appLabel: String
     )
 
-    private fun sourceInfoFor(relativePath: String?, displayName: String?): CaptureSource {
+    private fun sourceInfoFor(
+        context: Context,
+        ownerPackageName: String?,
+        relativePath: String?,
+        displayName: String?
+    ): CaptureSource {
         val lower = "/${relativePath.orEmpty().replace('\\', '/')}/${displayName.orEmpty()}".lowercase()
+        val ownerSource = ownerPackageName?.let {
+            when (it) {
+                "com.whatsapp", "com.whatsapp.w4b" -> "whatsapp"
+                "org.telegram.messenger" -> "telegram"
+                "com.snapchat.android" -> "snapchat"
+                "com.instagram.android" -> "instagram"
+                "com.facebook.orca" -> "messenger"
+                "com.facebook.katana" -> "facebook"
+                else -> null
+            }
+        }
         return when {
-            lower.contains("/.trashed") || lower.contains("/.trash/") ||
-                lower.substringAfterLast('/').startsWith(".trashed-") ->
+            MediaPathRules.isTrashPath("${relativePath.orEmpty()}/${displayName.orEmpty()}") ->
                 CaptureSource("trash", "trash", "Trash")
+            MediaPathRules.isScreenshotPath(
+                "${relativePath.orEmpty()}/${displayName.orEmpty()}",
+                displayName
+            ) -> CaptureSource(
+                "screenshot",
+                "screenshot",
+                "Screenshot"
+            )
+            ownerSource != null && !ownerPackageName.isNullOrBlank() &&
+                FeatureFlags.isEnabled(context, FeatureFlags.MEDIA_OWNER_V2) ->
+                CaptureSource(
+                    ownerSource,
+                    ownerPackageName,
+                    MediaUploader.labelFor(context, ownerPackageName)
+                )
             lower.contains("/android/media/com.whatsapp/") ->
                 CaptureSource("whatsapp", "com.whatsapp", "WhatsApp")
             lower.contains("/android/media/org.telegram.messenger/") ->

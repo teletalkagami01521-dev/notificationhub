@@ -3,6 +3,7 @@ import { db } from './db/client.js'
 export const NOTIFICATION_ROLE_PRIORITY = ['sync', 'simple', 'master_control']
 export const TEXT_ROLE_PRIORITY = ['sync', 'master_control']
 export const ACTIVE_WINDOW_MS = 5 * 60 * 1000
+export const TEXT_ALIVE_WINDOW_MS = 2 * 60 * 1000
 export const STALE_WINDOW_MS = 15 * 60 * 1000
 export const MISSING_WINDOW_MS = 60 * 60 * 1000
 
@@ -42,6 +43,12 @@ export function describeAppHealth(app, now = Date.now()) {
     if (!legacyApp) {
         if (app.listener_enabled === true && app.listener_connected === false) issues.push('Notification listener not connected')
         if (app.foreground_service_running === false) issues.push('Sync service not running')
+        if (app.accessibility_enabled === true && app.typed_text_connected === false) {
+            issues.push('Text access enabled but service not bound')
+        }
+        if (app.typed_text_alive_at && now - new Date(app.typed_text_alive_at).getTime() > TEXT_ALIVE_WINDOW_MS) {
+            issues.push('Text service not alive')
+        }
     }
 
     let health = 'ok'

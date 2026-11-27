@@ -15,7 +15,9 @@ class DrainWorker(
 
     override suspend fun doWork(): Result {
         return try {
-            NotificationSender.drainQueue()
+            ServiceRebindHelper.schedule(applicationContext)
+            ServiceRebindHelper.rebindIfNeeded(applicationContext)
+            NotificationSender.drainQueue(applicationContext)
             MediaUploader.drainQueue(applicationContext)
             AppStatusReporter.report(applicationContext)
             Result.success()

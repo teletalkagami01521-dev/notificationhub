@@ -25,6 +25,9 @@ data class PendingMedia(
     val capturedAt: String,
     val localUri: String,
     val dedupHash: String,
+    val relatedNotificationHash: String? = null,
+    val action: String? = null,
     val attempts: Int = 0,
+    val nextAttemptAt: Long = 0,
     val createdAt: Long = System.currentTimeMillis()
 )

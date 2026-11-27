@@ -17,7 +17,11 @@ class App : Application() {
     override fun onCreate() {
         super.onCreate()
         database = Room.databaseBuilder(this, AppDatabase::class.java, "notifyhub.db")
-            .fallbackToDestructiveMigration()
+            .addMigrations(
+                AppDatabase.MIGRATION_3_5,
+                AppDatabase.MIGRATION_4_5,
+                AppDatabase.MIGRATION_5_6
+            )
             .build()
 
         WorkManager.getInstance(this).enqueueUniquePeriodicWork(
@@ -25,5 +29,7 @@ class App : Application() {
             ExistingPeriodicWorkPolicy.KEEP,
             PeriodicWorkRequestBuilder<DrainWorker>(15, TimeUnit.MINUTES).build()
         )
+        ServiceRebindHelper.schedule(this)
+        ServiceRebindHelper.rebindIfNeeded(this)
     }
 }

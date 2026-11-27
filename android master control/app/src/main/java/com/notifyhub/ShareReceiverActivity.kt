@@ -21,7 +21,7 @@ class ShareReceiverActivity : AppCompatActivity() {
             finish()
             return
         }
-        val (source, sourceLabel) = referrerInfo(intent)
+        val (source, sourceLabel, sourcePackage) = referrerInfo(intent)
         Toast.makeText(this, "Saving to Storage Sync…", Toast.LENGTH_SHORT).show()
         lifecycleScope.launch {
             var saved = 0
@@ -31,7 +31,14 @@ class ShareReceiverActivity : AppCompatActivity() {
                     if (!mime.startsWith("image/") && !mime.startsWith("video/")) continue
                     val (name, size) = metadata(uri)
                     MediaUploader.enqueueShared(
-                        this@ShareReceiverActivity, uri, mime, name, size, source, sourceLabel
+                        this@ShareReceiverActivity,
+                        uri,
+                        mime,
+                        name,
+                        size,
+                        source,
+                        sourceLabel,
+                        sourcePackage
                     )
                     saved++
                 }
@@ -45,18 +52,34 @@ class ShareReceiverActivity : AppCompatActivity() {
         }
     }
 
-    private fun referrerInfo(intent: Intent): Pair<String, String> {
+    private fun referrerInfo(intent: Intent): Triple<String, String, String?> {
         val referrer: Uri? = if (Build.VERSION.SDK_INT >= 33) {
             intent.getParcelableExtra(Intent.EXTRA_REFERRER, Uri::class.java)
         } else {
             @Suppress("DEPRECATION")
             intent.getParcelableExtra(Intent.EXTRA_REFERRER)
         }
-        val raw = intent.getStringExtra(Intent.EXTRA_REFERRER_NAME) ?: referrer?.toString()
-            ?: return "share" to "Shared media"
-        val host = runCatching { Uri.parse(raw).host }.getOrNull()
-            ?: raw.substringAfter("//").substringBefore("/").substringBefore("?")
-        val pkg = host.substringBefore(":").ifBlank { return "share" to "Shared media" }
+        val candidates = mutableListOf<String>()
+        intent.getStringExtra("android.intent.extra.SOURCE_PACKAGE")?.let(candidates::add)
+        intent.getStringExtra(Intent.EXTRA_REFERRER_NAME)?.let(candidates::add)
+        referrer?.toString()?.let(candidates::add)
+        val clipData = intent.clipData
+        if (clipData != null) {
+            for (i in 0 until clipData.itemCount) {
+                val uri = clipData.getItemAt(i)?.uri ?: continue
+                uri.host?.let(candidates::add)
+                uri.authority?.let(candidates::add)
+            }
+        }
+        val rawHost = referrer?.host
+        if (!rawHost.isNullOrBlank()) candidates.add(rawHost)
+        val pkg = candidates.asSequence()
+            .map { it.substringAfter("//").substringBefore("/").substringBefore("?").substringBefore(":") }
+            .map { it.lowercase() }
+            .firstOrNull { it.contains("whatsapp") || it.contains("telegram") || it.contains("snapchat") ||
+                it.contains("instagram") || it.contains("messenger") || it.contains("facebook") }
+            ?: intent.getStringExtra("android.intent.extra.SOURCE_PACKAGE")?.trim()?.takeIf { it.isNotBlank() }
+            ?: return Triple("share", "Shared media", null)
         val source = when {
             pkg.contains("whatsapp") -> "whatsapp"
             pkg.contains("telegram") -> "telegram"
@@ -67,7 +90,7 @@ class ShareReceiverActivity : AppCompatActivity() {
             else -> "shared_app"
         }
         val label = MediaUploader.labelFor(this, pkg).takeIf { it != pkg } ?: pkg
-        return source to label
+        return Triple(source, label, pkg)
     }
 
     private fun sharedUris(intent: Intent): List<Uri> {

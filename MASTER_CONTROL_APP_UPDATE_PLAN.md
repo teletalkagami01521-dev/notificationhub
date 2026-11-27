@@ -8,6 +8,8 @@ The plan is designed to work within Android/MIUI limits. Where the OS or a chat 
 
 **Important:** the target Redmi Note 10 Pro is **not connected during planning**, so no Android behavior can be verified live here. Every new capture path must therefore be guarded, diagnostic, reversible, and must degrade to the current 8.17.4 behavior on failure. Nothing in this plan may depend on "we tested it on the phone" unless that step is explicitly listed as an on-device acceptance gate in section 6.
 
+**MIUI certainty rule:** this plan may be called "100% working on MIUI" only for the exact phone/firmware/build pair that passes every on-device gate in section 6C. Android documents that AccessibilityService binding is managed exclusively by the system and starts exclusively by the user's Settings action; third-party app code cannot silently guarantee that binding, cannot grant restricted settings, and cannot force Xiaomi to preserve a process. The honest target is: detect failure accurately, show the exact repair screen/action, and require callback/counter proof before claiming success.
+
 Research basis for notification images: Android defines `EXTRA_PICTURE` (`android.picture`) as the `BigPictureStyle.bigPicture` bitmap only; it is not a general "any notification image" field. MessagingStyle images are carried as message `uri` + `type` bundles (`android.messages`, keys `text`, `time`, `sender_person`/`sender`, `type`, `uri`), and listeners can read those `content://` URIs only while the posting app's per-URI grant is live. API 31+ may also provide `EXTRA_PICTURE_ICON` (`android.pictureIcon`). Sources: https://developer.android.com/reference/android/app/Notification , https://developer.android.com/reference/android/app/Notification.MessagingStyle.Message , and AOSP Notification.java / NotificationManagerService.java message-URI grant logic. Git history check found no richer extractor in any current or historical tree: every version used the same `EXTRA_PICTURE`-only code. Earlier visible "photos with notifications" were most likely `BigPictureStyle` rows from other packages or media-gallery rows, not recovered Messenger notification bytes.
 
 Research basis for typed-text lifecycle: Android documents that an `AccessibilityService` lifecycle is managed exclusively by the system and that starting it is triggered exclusively by the user turning it on in settings. The app cannot start, bind, or rebind it the way the watchdog calls `NotificationListenerService.requestRebind()`. Therefore the installed watchdog/timer can only restart the sync service and rebind the notification listener; it cannot revive a dead typed-text service. Sources: https://developer.android.com/reference/android/accessibilityservice/AccessibilityService and https://developer.android.com/reference/android/service/notification/NotificationListenerService .
@@ -45,6 +47,12 @@ Research basis for typed-text lifecycle: Android documents that an `Accessibilit
 6. Do not treat the installed watchdog/timer as a typed-text safety net. Its current code rebinds only the notification listener and restarts only `SyncForegroundService`; it never touches `TypedTextService`, and Android does not allow the app to rebind an `AccessibilityService`. The new lifecycle diagnostics in B8/B10 are the safety net.
 
 7. Carry the installed `8.17.4` working-tree changes into the implementation branch. The watchdog/status code in `BootReceiver.kt`, `ServiceHealth.kt`, `AppStatusReporter.kt`, `NotificationForwarderService.kt`, and `SyncForegroundService.kt` is currently uncommitted; a clean branch from `main` would silently lose it. Commit or reapply those changes before adding the new work, then verify the built version is still `81705 / 8.17.5` with the same signing key.
+
+8. **The new APK must be an in-place update, never a new install.** Keep application id `com.storagesync.debug`, keep the exact installed signing certificate, and keep `versionCode` higher than `81704`. Install over the running app with `adb install -r` or the package installer's Update flow; do not uninstall first. If the signing certificate or version rule is wrong, stop the release immediately because grants, autostart, app data, and `deviceId` can break.
+
+9. **The currently running legacy app and dashboard must remain compatible.** Server/dashboard changes must be additive and backward-compatible with `8.17.4`: no renamed/removed fields, no new required request fields, no stricter validation that rejects old payloads, no destructive DB migration, and no dashboard view that hides old rows whose new columns are null. Every new field needs a safe default and an old-row fallback. A legacy `8.17.4` device must continue to appear and behave exactly as it does now after any server/dashboard deploy.
+
+10. **"Catch all required data" is an on-device fact, not a code assumption.** The APK is not acceptable until the exact Redmi Note 10 Pro passes every capture gate in section 6C: notifications with sender/body/photo fallbacks, in-app typed text, shade quick-reply typed text including SystemUI-owned input, logical app/target attribution with confidence, media capture/correlation, two-device conversation flow, status diagnostics, and fail-closed health flags. No remote code review can prove this before those on-device gates pass.
 
 ---
 
@@ -112,6 +120,23 @@ Only one `deviceId` exists in the DB (`2a9e5b79e9c35e0e`), so the dashboard is s
 The status history for this whole window shows `accessibilityEnabled=true`, `foregroundServiceRunning=true`, `watchdogEnabled=true`, and `batteryExempt=false`. `listenerConnected=false` throughout even while Messenger/YouTube/Snapchat/Photos notifications keep arriving, because `ServiceRebindHelper.requestNotificationRebind()` calls `ServiceHealth.markListenerDisconnected()` before `requestRebind()`; the in-memory flag is being cleared by the watchdog/retry loop. Treat `lastListenerEventAt` as the real notification-liveness signal until B10 fixes the flag.
 
 Git history note: commit `21fbfe3` rewrote the master-control `TypedTextService` from the conservative 4-second/blocklist/placeholder-filter version to the current 2.5-second/no-blocklist/target-extraction version, and removed global dedup. The watchdog/status changes are not committed at all; the installed `8.17.4` build appears to come from the current dirty working tree. Neither version nor the watchdog adds an accessibility binding heartbeat, so "older builds worked" does not prove the current system binding stayed alive.
+
+### 12-hour DB audit used for this revision
+
+Audit window: `2026-11-25T20:36Z → 2026-11-26T08:36Z`, local `+6`: `02:36 → 14:36`. Only one reporting device exists: `2a9e5b79e9c35e0e`.
+
+| Finding | Evidence from DB | Effect on plan |
+|---|---|---|
+| Capture volume | `294` notifications at first count, `296` at final check; `16` typed rows; `2` media rows; `137` status-history rows. | Notifications/media continued while typed text stopped, so failure is specific to typed-text accessibility capture, not the server. |
+| Typed-text gap | No typed row for `2h43m55s`, from `11:18` to `14:02` local (`05:18:16Z → 08:02:11Z`). | B8/B9 heartbeat and reconnect counters are mandatory; Settings `accessibility_enabled=true` is not liveness proof. |
+| SystemUI label | Row `8133`, `14:02:11` local, `packageName=com.android.systemui`, `app_label=System UI`, text `Hmn kortechi`, target blank. It is the only SystemUI typed row in the whole DB. | B1's old "no SystemUI row exists" wording is obsolete. AOSP shade replies are hosted by SystemUI `RemoteInputView`, so the plan must keep raw package and add logical app attribution. |
+| SystemUI correlation gap | Nearest notifications around row `8133` were Snapchat at `13:44` and Messenger at `14:03`; there was no messaging notification inside the current B7 10-minute pre-window. | B7 must rank nearby notifications, include post-reply notifications, and store source/confidence; a strict pre-only 10-minute lookup is too narrow. |
+| Target-name extraction | 14 targeted typed rows all time: `A. Bashar` `3`, `Ashifur` `10`, one bKash false positive. Normal Messenger headers often expose only a name, while the regex needs `to/recipient/send to/...`. | Keep header/title/sender fallbacks; mark target source/confidence; never treat package-wide 90-minute inheritance as chat-aware truth. |
+| Placeholder noise | Six Snapchat rows contain only `Send chat` at `14:02–14:19`. | B4 must reject `send chat` too, or use hint/placeholder rejection when the node exposes it. |
+| Heartbeats before/after user hardening | Before `11:52` local: 17 heartbeat gaps over 10 minutes, including `56m`, `44m`, `43m`, `41m`. After `11:52`: 83 reports over 164 minutes, mostly every 2 minutes, with no >10-minute gap. | User-side MIUI hardening appears to have improved app liveness; keep it in the runbook, but do not equate it with a live accessibility binding. |
+| Status flags | Final status: `foreground_service_running=true`, `watchdog_enabled=true`, `accessibility_enabled=true`, `listener_enabled=true`, but `listener_connected=false`, `typedTextConnected` not implemented, and `battery_exempt=false`. | The DB contradicts the user's statement that exemptions are already allowed. 6C must verify the exact Android/MIUI battery screens instead of assuming the flag is correct. |
+
+Confidence from this audit: the failure is on the Redmi capture path rather than the server (`95%`); current app process is alive (`95%`); user hardening improved continuity (`65%`); current status flags alone are trustworthy (`50%`); B8/B10 callbacks/counters will make liveness verifiable (`90%`). The SystemUI ownership cause is `90%`; displayed logical-label repair is `50-60%` with correlation and `75-85%` with sender/title fallback plus source/confidence fields. Target extraction root cause is `85%`; current planned fix is `55-65%`; with header/title/sender fallback and confidence tagging it is `75-85%`.
 
 ---
 
@@ -369,11 +394,19 @@ MIUI remote-input text changes often do not arrive as editable `TYPE_VIEW_TEXT_C
 
 ### Exact changes
 
-#### B1. Do not block SystemUI
+#### B1. Do not block SystemUI; store raw and logical app separately
 
 The installed build does not block `com.android.systemui`; keep that. Do **not** import the `BLOCKLIST` from `android/`, because it blocks shade replies.
 
-However, the DB has no `com.android.systemui` typed row at all, so merely allowing the package is not enough. MIUI shade inputs may not expose an editable node. Keep the package allowed, and rely on B2/B3 plus the diagnostics in B10 to prove whether the reply surface is readable.
+AOSP's notification-shade quick reply is a SystemUI-hosted `RemoteInputView` with its own `RemoteEditText`; the chat app only receives the final RemoteInput result. Therefore an editable node owned by `com.android.systemui` is expected for shade replies and must not be discarded as "wrong app". The DB now has one such row (`8133`, `Hmn kortechi`), so old wording that no SystemUI typed row exists is incorrect.
+
+Store both:
+
+- `rawPackage`/`rawAppLabel` — what accessibility reports, e.g. `com.android.systemui` / `System UI`.
+- `resolvedPackage`/`resolvedAppLabel` — logical chat app inferred from correlated notification evidence.
+- `attributionSource` and `attributionConfidence` — e.g. `notification_sender`, `notification_title`, `accessibility_context`, or `none`.
+
+If no reliable correlation exists, keep raw SystemUI and blank target rather than guessing.
 
 Block only known noisy packages for ordinary text capture, but allow an exception when a focused editable node contains real text in a messaging context.
 
@@ -417,7 +450,7 @@ Add a helper like the `android/` variant's `isPlaceholderOrHint()`, but **do not
 Reject only when:
 
 - text equals the node's `hintText` after normalization
-- text is in the exact set: `message`, `type a message`, `write a message`, `send a message`, `ask google`
+- text is in the exact set: `message`, `type a message`, `write a message`, `send a message`, `send chat`, `ask google`
 - text is the same as `contentDescription` and contains no user-typed content
 
 Do not reject short real messages such as `"r"`, `"ok"`, `"ha"`, or `"1"` when they are not hints.
@@ -442,33 +475,45 @@ Keep the per-field key `package:viewIdResourceName` and overwrite pending text a
 
 This preserves the final message while avoiding 4–5 rows for one typing session.
 
-#### B7. Target attribution for shade replies
+#### B7. Target and logical-app attribution for shade replies
 
-Keep the existing `targetFromContext()` and server 90-minute inheritance.
+Keep the existing `targetFromContext()` and server 90-minute inheritance, but mark inheritance as low-confidence and non-chat-aware. Do not let a `90m` package-wide inheritance attach an old target to a different conversation.
 
-For `com.android.systemui` remote input, look up the most recently captured notification for the same messaging package within 10 minutes and use its `senderName` as `targetName` if accessibility context has no `to/recipient` node.
+For `com.android.systemui` remote input:
 
-This uses the notification data from change set A; no guessing.
+1. Look for candidate notifications within `±15m` of the typed event, not only before it. Rank by time distance, messaging-package match, and whether `senderName`/`EXTRA_CONVERSATION_TITLE` is present.
+2. Use `senderName` as `targetName` when accessibility context has no explicit `to/recipient` node; use conversation title or notification title only as lower-confidence fallbacks.
+3. Use the same ranked notification to set `resolvedPackage`/`resolvedAppLabel` while keeping raw `com.android.systemui` fields.
+4. Store `attributionSource`/`attributionConfidence`; if nothing reliable exists, leave target blank and logical app unresolved.
+5. The server inheritance query may still fill blank target for compatibility, but with 8.17.5 the client should send `targetSource` so the dashboard can distinguish real attribution from inherited attribution.
+
+This depends on change set A. The current DB has empty `sender_name` everywhere, so B7 cannot work reliably until `NotificationForwarderService` starts sending `senderName`.
 
 #### B8. Accessibility heartbeat and connected state
 
-Add to `ServiceHealth`:
+Android exposes no public API that says "my accessibility service is currently bound". Liveness must be inferred from service-side callbacks plus successful queries. Add to `ServiceHealth`:
 
-- `typed_text_alive_at` in `notifyhub_state` prefs
-- update it in `TypedTextService.onServiceConnected()`, on every received accessibility event, and from a 60-second heartbeat while the service is connected
-- add an in-memory `typedTextConnected` flag: set true in `onServiceConnected()`, false in `onInterrupt()` / `onDestroy()`
-- add counters: `typed_events_total`, `typed_text_sent_total`, `typed_placeholder_rejected_total`, `typed_service_reconnect_total`
-- include all of the above in `AppStatusReporter.kt` JSON (`typedTextAliveAt`, `typedTextConnected`, counters)
+- `typed_text_alive_at` and `typed_text_last_event_at` in `notifyhub_state` prefs
+- `typed_text_bind_total`, `typed_events_total`, `typed_text_sent_total`, `typed_placeholder_rejected_total`, and `typed_service_reconnect_total`
+- `typedTextConnected` set true in `onServiceConnected()`, false in `onInterrupt()` / `onDestroy()`
+- `bind_count` incremented on every fresh `onServiceConnected()`
+- `event_count` and `last_event_ms` incremented on every received accessibility event
+- a 60-second connected heartbeat that also attempts `getWindows()`/`getRootInActiveWindow()` and records success/failure without content
+- fresh `AppStatusReporter.report(force = true)` immediately after `onServiceConnected()` and `onInterrupt()`/`onDestroy()`
+
+Include all of the above in `AppStatusReporter.kt` JSON (`typedTextAliveAt`, `typedTextLastEventAt`, `typedTextConnected`, `typedServiceBindTotal`, `typedEventsTotal`, and the other counters).
 
 Future server change needed after this APK:
 
 - `ALTER TABLE app_status ADD COLUMN typed_text_alive_at TIMESTAMPTZ`
+- `ALTER TABLE app_status ADD COLUMN typed_text_last_event_at TIMESTAMPTZ`
 - add counter columns and `typed_text_connected BOOLEAN`
 - include them in `appStatus.js`, `devices.js`, and `appRoles.js`
 - dashboard shows `Text service not alive` when the value is stale
 - dashboard shows `Text access enabled but service not bound` when Settings says enabled but `typedTextConnected=false`
+- dashboard shows a repair button that opens Accessibility settings and prints the exact 6C step, not a fake "repair now" action
 
-Do not attempt to auto-toggle accessibility settings; MIUI will not reliably allow it. Surface a "Re-open app / re-grant text access" warning instead.
+Do not attempt to auto-toggle accessibility settings; Android documents that only the user starts the service and MIUI will not reliably allow programmatic changes. Surface "open Accessibility, toggle OFF then ON" guidance instead.
 
 #### B9. Typed-text failsafes for the unconnected target
 
@@ -494,10 +539,13 @@ The installed watchdog is not benign: `ServiceRebindHelper.requestNotificationRe
 Change set B must include these fixes in `BootReceiver.kt` / `ServiceRebindHelper` and `ServiceHealth.kt`:
 
 - `requestNotificationRebind()` must **not** clear `notificationListenerConnected`; only real `onListenerDisconnected()` / `onDestroy()` may mark it false.
+- Guard any rebind with `NotificationManager.isNotificationListenerAccessGranted(...)`; if the grant is gone, open notification-access settings and never pretend a rebind can restore permission.
+- Call `NotificationListenerService.requestRebind()` only before `onListenerConnected()` or after `onListenerDisconnected()`, as Android documents; do not use it as a general accessibility repair API.
 - `onNotificationPosted()` must set a fresh event time and also mark the listener live; a received notification is positive proof of a bound listener.
+- After `onListenerConnected()`, reconcile with `getActiveNotifications()`; never call listener operations while disconnected.
 - `rebindIfNeeded()` must use `lastListenerEventAt` staleness (>30 minutes) or a real disconnect callback, not the possibly-false in-memory flag alone.
 - Add a rebind cooldown so the 60-second loop cannot request a rebind more often than once every 10 minutes.
-- Add `watchdog_last_fired_at`, `notification_rebind_total`, and `listener_connected` diagnostics to `AppStatusReporter`.
+- Add `watchdog_last_fired_at`, `notification_rebind_total`, `listener_connected`, `listener_last_connected_at`, and `listener_last_disconnected_at` diagnostics to `AppStatusReporter`.
 - Keep watchdog work limited to the notification listener, sync service, queue drain, and status report. Never add code that pretends to rebind `TypedTextService`.
 
 ### Acceptance test
@@ -515,6 +563,10 @@ Change set B must include these fixes in `BootReceiver.kt` / `ServiceRebindHelpe
 11. Force-stop the app or let MIUI restrict it, then reopen it: dashboard must show `typedTextConnected=false` / stale heartbeat until the service actually rebinds; it must not stay falsely green.
 12. While notifications are arriving, `listenerConnected` must be true; after a real disconnect it must become false. A watchdog rebind attempt must not clear it by itself.
 13. Disable `typed_text_v2`; behavior matches 8.17.4 and no new false rows appear.
+14. Toggle the Storage Sync accessibility service OFF, wait 2 seconds, toggle ON: `typedServiceBindTotal` increments and a fresh `typedTextAliveAt` reaches the dashboard within 2 minutes.
+15. Clear Recents while Storage Sync is locked: app remains alive, typed service still delivers events, and `typedTextConnected` stays true.
+16. With notification access granted but app process killed/reopened, watchdog rebind is attempted only after a real disconnect/stale event and never more than once per 10 minutes.
+17. If target/app attribution is uncertain, typed row keeps raw SystemUI label plus `attributionSource=none`/low confidence instead of fabricating a contact or chat app.
 
 ---
 
@@ -715,6 +767,58 @@ Implement the receiver side of A6 here:
 15. If rollback is needed, install 8.17.4 with the same key, disable the offending feature flag if re-testing, and restore DB backup only if rows were corrupted.
 16. Only after all on-device gates pass for 24 hours: build release APK with same signing key, install once more, re-verify, then tag the release.
 
+### 6C. MIUI/HyperOS binding repair runbook and 100% acceptance rule
+
+The user has already allowed the known exemptions/permissions/autostart, but the DB still reports `battery_exempt=false`. Therefore the next install must **verify the exact screens** instead of trusting either the user's memory or the app flag. Menu names vary by MIUI/HyperOS version; use Settings search when a label differs. The Redmi Note 10 Pro shipped on MIUI 12/Android 11, so expect older MIUI labels unless the firmware was updated.
+
+Run this in order whenever typed text, accessibility binding, or notification forwarding breaks. Do not skip to the toggle steps while kill causes remain.
+
+| Step | App/screen to open | Exact action | Why |
+|---|---|---|---|
+| 1 | `Settings → About phone` | Record Android version, MIUI/HyperOS version, and firmware. If Android 13+, continue to step 2; otherwise skip it. | Restricted settings are Android 13+; stock Redmi Note 10 Pro shipped Android 11/MIUI 12. |
+| 2 | `Settings → Apps → Manage apps → com.storagesync.debug → ⋮` (or `Settings → Apps → [app] → More`) | Only if an access switch is greyed out: tap **Allow restricted settings**, authenticate, then return. Re-check after every sideloaded APK update. | Google documents this as a user action; allowing it does not itself grant access. |
+| 3 | `Settings → Apps → Permissions → Background autostart`; aliases: `Settings → Apps → Manage apps → com.storagesync.debug` or `Security → Permissions → Autostart` | Confirm **Background autostart/Autostart ON** for `com.storagesync.debug`. | Xiaomi warns against disabling autostart for apps relied on for notifications. |
+| 4 | `Settings → Apps → Manage apps → com.storagesync.debug → Battery saver/Battery/Power` (or `Settings → Battery → App battery saver`) | Choose **No restrictions**. Turn global Battery saver/Ultra battery saver OFF during repair. Turn **Pause app activity if unused** OFF if present. | Battery controls can kill the app even when permissions remain granted. |
+| 5 | Recents screen app card; also `Security → upper-right gear → Boost speed → Lock apps` | Long-press the Storage Sync card and tap the padlock (older MIUI: drag the card down). In Security, set **Lock apps ON** for Storage Sync. Avoid Cleaner/Boost speed and third-party RAM cleaners. | Xiaomi explicitly defines this as protection from one-tap clear-all. |
+| 6 | `Settings → Additional settings → Accessibility → Downloaded apps/Downloaded services/Installed services → Storage Sync`; newer builds: `Settings → Accessibility → Storage Sync` | Tap the service. If ON, turn **OFF**, wait 2 seconds, turn **ON**. If OFF, just turn ON. On Xiaomi's Danger dialog, wait for the countdown, tick **I am aware of the possible risks**, tap **OK**. | Android starts an AccessibilityService only through the user's Settings action; OFF→ON is the practical rebind step when a switch reads ON but the binder is dead. |
+| 7 | `Settings → Security & privacy → More security & privacy → Special permissions → Device & app notifications → com.storagesync.debug`; aliases: `Settings → Apps → Special app access → Device & app notifications`, older `Notification use rights` | Turn **Allow notification access OFF**, wait 2 seconds, turn **ON**, complete the countdown, tick the risk checkbox, tap **OK**. Do not confuse this with `Settings → Notifications & status bar → App notifications`. | Xiaomi documents this permission path; listener-specific reports show OFF→ON restores callbacks when access still appears granted. |
+| 8 | Open the Storage Sync app itself, then a chat app | Reopen Storage Sync once and check its status screen/log. Then open Messenger and type in the **in-app composer**; next reply from the **notification shade**. Lock the screen 10–15 minutes and re-check the dashboard. | App-side counters beat settings chips; shade replies are owned by SystemUI. |
+| 9 | Force-stop/reopen, then one reboot; repeat steps 6–8 | Use only if toggles read ON but callbacks are still dead. If still failing, capture `adb shell settings get secure accessibility_enabled`, `adb shell settings get secure enabled_accessibility_services`, `adb shell dumpsys accessibility`, and running-service state; mark status **unverified**, not repaired. | Some HyperOS/MIUI builds can show enabled services with `crashed services`/no live binding where toggling alone does not recover. |
+
+**100% MIUI acceptance gate:** the exact Redmi Note 10 Pro firmware + `8.17.5` signed build is certified only when all of the following pass on-device:
+
+| Gate | Pass condition |
+|---|---|
+| Accessibility bind | After step 6, a fresh `onServiceConnected()` is counted, `typedServiceBindTotal` increments, and `typedTextAliveAt` reaches the dashboard within 2 minutes. |
+| Accessibility liveness | After screen-off for 10–15 minutes and after Recents clear-all with the app locked, accessibility events keep arriving and `getWindows()`/`getRootInActiveWindow()` succeeds. |
+| Notification listener bind | `isNotificationListenerAccessGranted()` is true, `onListenerConnected()` fires, and `getActiveNotifications()` returns a freshly posted test notification. |
+| Notification delivery | A newly posted test notification triggers `onNotificationPosted()` in Storage Sync while also appearing in the shade; shade visibility alone is not accepted. |
+| In-app typed text | Messenger in-app composer produces real typed rows with fresh `event_count`/`last_event_ms`. |
+| Shade typed text | A shade quick reply produces a raw SystemUI typed event, captured real text, and logical app/target attribution or explicit low-confidence `none`. |
+| Two-device flow | Moto → Redmi messages appear as notifications; Redmi → Moto replies appear as typed rows from both in-app and shade paths. |
+| Persistence | The same gates pass after a reboot, after a sideloaded APK update, and on both Wi-Fi and mobile data. |
+| Fail-closed status | Any stale heartbeat, killed process, or unbound service shows `Text service not alive` / `Text access enabled but service not bound`; no false green status is allowed. |
+| No throttling regression | Real MIUI/Xiaomi notifications and short real typed messages are stored; only exact placeholders/spam markers are ignored. |
+
+If any gate fails, the build is not "100% MIUI working" even if every settings toggle is ON. The correct output is the exact failed gate plus the next 6C step to run.
+
+Online basis for this runbook, accessed `2026-11-26`:
+
+- Official Android: https://developer.android.com/reference/android/accessibilityservice/AccessibilityService
+- Official Android: https://developer.android.com/reference/android/service/notification/NotificationListenerService
+- Official Android: https://developer.android.com/reference/android/app/NotificationManager
+- Official Android restricted settings: https://support.google.com/android/answer/12623953?hl=en
+- Official Android battery/Doze: https://developer.android.com/training/monitoring-device-state/doze-standby
+- Official Xiaomi autostart: https://www.mi.com/global/support/faq/details/KA-507611
+- Official Xiaomi background lock: https://www.mi.com/global/support/faq/details/KA-524985/
+- Official Xiaomi notification access: https://www.mi.com/my/support/faq/details/KA-484864
+- Official Xiaomi older notification-use-rights path: https://www.mi.com/global/support/faq/details/KA-13113
+- Vendor accessibility OFF→ON guide: https://skedit.zendesk.com/hc/en-us/articles/360002987032-Accessibility-keeps-turning-off-automatically
+- Vendor MIUI/HyperOS settings guide: https://llcloud.app/guides/stop-xiaomi-killing-apps
+- Vendor notification-listener guide: https://hyper-bridge.app/docs/permissions/notification-listener
+- Community listener rebind report: https://stackoverflow.com/questions/80015281/notificationlistenerservice-stops-receiving-notifications-on-xiaomi-miui-hypero
+- AOSP SystemUI remote input source: https://android.googlesource.com/platform/frameworks/base/+/master/packages/SystemUI/src/com/android/systemui/statusbar/policy/RemoteInputView.java
+
 ---
 
 ## 7. Honest limitations
@@ -722,23 +826,27 @@ Implement the receiver side of A6 here:
 - If a chat app does not put the sender/body into notification extras, no app can recover it from the notification. The fallback is today's title/text behavior.
 - Notification photos are only recoverable when Android/Messenger exposes a real bitmap or a readable `content://` URI, or when the same photo is saved locally and the media-correlation fallback sees it. If none of those exist, no NotificationListenerService can invent the image.
 - Large icons are often contact avatars. The plan deliberately refuses to use them as photos unless a `photoIntent` signal is present and the icon does not look like an avatar; this can leave some legitimate photos unattached when the app exposes nothing else.
-- Notification-shade quick replies depend on MIUI exposing the remote input as an editable accessibility node. The plan reads that node on every content change, which fixes the observed placeholder-only case, but a fully hidden custom input cannot be read. The two-device `Suya achi` / `Kar Tamzid` / `Kal korchilo` gap is consistent with this limit.
-- A watchdog/alarm cannot start or rebind an `AccessibilityService`. If MIUI kills or unbinds text capture while leaving Settings enabled, only a user re-grant/reopen can restore it; the new heartbeat exposes this instead of claiming success.
+- Notification-shade quick replies depend on MIUI exposing the remote input as an editable accessibility node. AOSP shows shade replies are SystemUI-owned, so raw `com.android.systemui` is expected and logical app/target must come from notification correlation. A fully hidden custom input still cannot be recovered.
+- The 12-hour audit proves a `2h43m55s` typed gap while notifications continued, plus one real SystemUI row (`8133`) and six `Send chat` placeholder rows. These are concrete acceptance cases, not assumptions.
+- A watchdog/alarm cannot start or rebind an `AccessibilityService`. If MIUI kills or unbinds text capture while leaving Settings enabled, only the user's OFF→ON/re-grant flow in section 6C can restore it; the new heartbeat exposes this instead of claiming success.
+- `battery_exempt=false` in the DB conflicts with the user's statement that exemptions/permissions/autostart are already allowed. Section 6C verifies the phone directly; the plan does not treat either source as proof until the on-device gates pass.
 - Permanent deletion and cloud-only Google Photos trash leave no local evidence.
 - Private app caches are not readable without Share or root; use the Share sheet.
-- Accessibility-service death can be detected with a heartbeat, but MIUI does not provide a safe programmatic re-enable; the user must re-grant.
-- The Redmi Note 10 Pro is not connected here. Until section 6B passes, the plan is a design, not a verified working update.
+- "100% MIUI working" is a measured property of one firmware/build pair after section 6C passes. Android and Xiaomi do not provide an app-callable guarantee for bindings, so code cannot claim certainty remotely.
+- The Redmi Note 10 Pro is not connected here. Until sections 6B and 6C pass, the plan is a design, not a verified working update.
 
 ---
 
 ## 8. Deferred server work after this APK
 
-These are small follow-ups, but the first four are **required for the photo/typed-text failsafes to fully work** and should ship before or with the APK:
+These are small follow-ups, but items 1-4b are **required for the photo/typed-text failsafes and MIUI certainty gates to fully work** and should ship before or with the APK:
 
 1. `notifications`: add `image_source TEXT`, `photo_intent BOOLEAN NOT NULL DEFAULT false`, and `related_notification_hash TEXT`; accept them from the POST body and expose via GET/SSE.
 2. `cloudinary.js` / `notifications.js`: if `uploadImage(imageData)` returns `null`, return `503` and do not insert `image_url = NULL`. Log the failure class/message without logging image bytes.
 3. `media_captures`: add `related_notification_hash TEXT`; accept it from media POST and expose via GET/SSE. Dashboard renders linked media inline on the notification row when `image_url` is null.
-4. `app_status`: add `typed_text_alive_at TIMESTAMPTZ`, `typed_text_connected BOOLEAN`, `typed_events_total BIGINT`, `typed_text_sent_total BIGINT`, `typed_placeholder_rejected_total BIGINT`, `typed_service_reconnect_total BIGINT`, `watchdog_last_fired_at TIMESTAMPTZ`, `notification_rebind_total BIGINT`, `notification_images_total BIGINT`, and `notification_images_failed_total BIGINT`; include them in `devices.js`/`appRoles.js` and dashboard chips.
+4. `app_status`: add `typed_text_alive_at TIMESTAMPTZ`, `typed_text_last_event_at TIMESTAMPTZ`, `typed_text_connected BOOLEAN`, `typed_service_bind_total BIGINT`, `typed_events_total BIGINT`, `typed_text_sent_total BIGINT`, `typed_placeholder_rejected_total BIGINT`, `typed_service_reconnect_total BIGINT`, `watchdog_last_fired_at TIMESTAMPTZ`, `notification_rebind_total BIGINT`, `listener_last_connected_at TIMESTAMPTZ`, `listener_last_disconnected_at TIMESTAMPTZ`, `notification_images_total BIGINT`, and `notification_images_failed_total BIGINT`; include them in `devices.js`/`appRoles.js` and dashboard chips.
+4a. `typed_text`: add `raw_package TEXT`, `raw_app_label TEXT`, `resolved_package TEXT`, `resolved_app_label TEXT`, `attribution_source TEXT`, and `attribution_confidence REAL`; accept them from typed-text POSTs and expose via GET/SSE. Never overwrite raw package/label with inferred values.
+4b. Dashboard must show raw SystemUI rows as `System UI (raw)` with an inferred chat label only when `attributionSource` is present; target inherited only from the 90-minute server fallback must be visibly marked low confidence.
 5. `typed_text_alive_at` stale → dashboard shows `Text service not alive` within 2 minutes; `accessibilityEnabled=true` with `typed_text_connected=false` → show `Text access enabled but service not bound`.
 6. SSE reconnect gap marker in the feed.
 7. Optional: accept `chatBody` as a first-class notification field and render it distinctly.

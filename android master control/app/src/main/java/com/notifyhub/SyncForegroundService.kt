@@ -2,6 +2,7 @@ package com.notifyhub
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.app.Service
 import android.content.Intent
 import android.content.pm.ServiceInfo
@@ -17,12 +18,19 @@ class SyncForegroundService : Service() {
     companion object {
         const val CHANNEL_ID = "notifyhub_sync"
         const val NOTIF_ID = 1
+
+        @Volatile var running = false
+            private set
     }
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val networkCallback = object : ConnectivityManager.NetworkCallback() {
         override fun onAvailable(network: Network) {
             scope.launch {
+                try {
+                    NotificationSender.drainQueue(this@SyncForegroundService)
+                } catch (_: Exception) {
+                }
                 try {
                     MediaUploader.drainQueue(this@SyncForegroundService)
                 } catch (_: Exception) {
@@ -33,15 +41,30 @@ class SyncForegroundService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        running = true
         createSilentChannel()
+        val flags = if (android.os.Build.VERSION.SDK_INT >= 31) {
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        } else {
+            PendingIntent.FLAG_UPDATE_CURRENT
+        }
+        val openApp = PendingIntent.getActivity(
+            this,
+            0,
+            Intent(this, SelfTestActivity::class.java),
+            flags
+        )
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle("Storage Sync status")
-            .setContentText("Slide to close this.")
+            .setContentText("Tap to open settings and tests")
+            .setContentIntent(openApp)
             .setSilent(true)
             .setPriority(NotificationCompat.PRIORITY_MIN)
             .build()
         startForegroundWithType(NOTIF_ID, notification)
+        ServiceRebindHelper.schedule(this)
+        ServiceRebindHelper.rebindIfNeeded(this)
         MediaCaptureManager.start(this)
         AppStatusReporter.report(this)
         try {
@@ -76,7 +99,10 @@ class SyncForegroundService : Service() {
         scope.launch {
             while (isActive) {
                 try {
-                    NotificationSender.drainQueue()
+                    ServiceRebindHelper.rebindIfNeeded(this@SyncForegroundService)
+                } catch (_: Exception) {}
+                try {
+                    NotificationSender.drainQueue(this@SyncForegroundService)
                 } catch (_: Exception) {}
                 try {
                     MediaUploader.drainQueue(this@SyncForegroundService)
@@ -98,6 +124,7 @@ class SyncForegroundService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onDestroy() {
+        running = false
         try {
             getSystemService(ConnectivityManager::class.java)
                 .unregisterNetworkCallback(networkCallback)

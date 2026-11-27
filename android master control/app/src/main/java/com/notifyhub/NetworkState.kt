@@ -20,8 +20,15 @@ object NetworkState {
         return !capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED)
     }
 
+    fun hasNetwork(context: Context): Boolean {
+        val manager = context.getSystemService(ConnectivityManager::class.java) ?: return false
+        val network = manager.activeNetwork ?: return false
+        val capabilities = manager.getNetworkCapabilities(network) ?: return false
+        return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+    }
+
     fun canUpload(context: Context): Boolean =
-        !MediaSettings.isWifiOnly(context) || !isMetered(context)
+        hasNetwork(context) && (!MediaSettings.isWifiOnly(context) || !isMetered(context))
 
     fun profile(context: Context): Profile {
         return if (isMetered(context)) {

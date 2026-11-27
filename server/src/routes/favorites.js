@@ -19,18 +19,35 @@ function mediaUrls(row) {
 async function loadItem(itemKey, itemId) {
     if (itemKey === 'n') {
         const result = await db.query(
-            `SELECT id, device_id, package_name, app_label, title, text_body, big_text, sub_text,
-                    posted_at, received_at, is_read, is_archived, image_url
-             FROM notifications WHERE id = $1`,
+            `SELECT n.id, n.device_id, n.package_name, n.app_label, n.title, n.text_body, n.big_text, n.sub_text,
+                    n.sender_name, n.chat_body, n.posted_at, n.received_at, n.dedup_hash, n.is_read, n.is_archived,
+                    n.image_url, n.image_source, n.photo_intent, n.related_notification_hash,
+                    rm.id AS related_media_id, rm.media_url AS related_media_url,
+                    (SELECT mt.thumbnail_urls FROM media_captures mt WHERE mt.id = rm.id) AS related_media_thumbnails
+             FROM notifications n
+             LEFT JOIN LATERAL (
+                 SELECT id, media_url FROM media_captures
+                 WHERE related_notification_hash = n.dedup_hash
+                 ORDER BY captured_at ASC, id ASC LIMIT 1
+             ) rm ON TRUE
+             WHERE n.id = $1`,
             [itemId]
         )
         const row = result.rows[0]
         if (!row) return null
-        return { ...row, image_url: row.image_url ? `/api/notifications/${row.id}/image` : null }
+        const thumbnails = mediaUrls({ media_url: row.related_media_url, thumbnail_urls: row.related_media_thumbnails })
+        return {
+            ...row,
+            image_url: row.image_url ? `/api/notifications/${row.id}/image` : null,
+            related_media_url: row.related_media_url ? `/api/media/${row.related_media_id}/file` : null,
+            related_media_thumbnails: thumbnails.map((_, index) => `/api/media/${row.related_media_id}/frames/${index}/file`)
+        }
     }
     if (itemKey === 't') {
         const result = await db.query(
-            `SELECT id, device_id, package_name, app_label, target_name, text, captured_at, received_at
+            `SELECT id, device_id, package_name, app_label, target_name, raw_package, raw_app_label,
+                    resolved_package, resolved_app_label, attribution_source, attribution_confidence,
+                    target_source, text, captured_at, received_at
              FROM typed_text WHERE id = $1`,
             [itemId]
         )
@@ -39,7 +56,7 @@ async function loadItem(itemKey, itemId) {
     const result = await db.query(
         `SELECT id, device_id, source, package_name, app_label, media_type, display_name,
                 mime_type, original_mime_type, size_bytes, width, height, duration_ms,
-                captured_at, received_at, media_url, thumbnail_urls
+                captured_at, received_at, dedup_hash, media_url, thumbnail_urls, related_notification_hash, action
          FROM media_captures WHERE id = $1`,
         [itemId]
     )

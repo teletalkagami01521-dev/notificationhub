@@ -9,6 +9,7 @@
     <string name="accessibility_service_label">Storage Sync text capture</string>
     <string name="accessibility_service_description">Captures text you type in apps and saves it to your personal Storage Sync server. Password fields are ignored.</string>
     <string name="btn_accessibility_access">Grant Text Capture Access</string>
+    <string name="btn_typed_self_test">Send test typed event</string>
     <string name="btn_media_access">Grant Photo &amp; Video Access</string>
     <string name="btn_all_files_access">Grant All Files Access</string>
     <string name="btn_downloads_folder">Choose Downloads Subfolder</string>

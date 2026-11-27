@@ -34,9 +34,16 @@ router.get('/', async (_req, res) => {
                 `SELECT device_id, app_role, package_name, app_label, version_name,
                         listener_enabled, accessibility_enabled, battery_exempt,
                         media_enabled, all_files_access, listener_connected,
-                        foreground_service_running, watchdog_enabled, boot_time,
-                        install_time, update_time, last_listener_event_at, last_seen
-                 FROM app_status
+                         foreground_service_running, watchdog_enabled, boot_time,
+                         install_time, update_time, last_listener_event_at,
+                         typed_text_alive_at, typed_text_last_event_at, typed_text_connected,
+                         typed_service_bind_total, typed_events_total, typed_text_sent_total,
+                         typed_placeholder_rejected_total, typed_service_reconnect_total,
+                         watchdog_last_fired_at, notification_rebind_total,
+                         listener_last_connected_at, listener_last_disconnected_at,
+                         notification_images_total, notification_images_failed_total, last_seen
+                  FROM app_status
+
                  ORDER BY device_id, app_role`
             ),
         ])
@@ -67,6 +74,20 @@ router.get('/', async (_req, res) => {
                 installTime: a.install_time,
                 updateTime: a.update_time,
                 lastListenerEventAt: a.last_listener_event_at,
+                typedTextAliveAt: a.typed_text_alive_at,
+                typedTextLastEventAt: a.typed_text_last_event_at,
+                typedTextConnected: a.typed_text_connected,
+                typedServiceBindTotal: a.typed_service_bind_total,
+                typedEventsTotal: a.typed_events_total,
+                typedTextSentTotal: a.typed_text_sent_total,
+                typedPlaceholderRejectedTotal: a.typed_placeholder_rejected_total,
+                typedServiceReconnectTotal: a.typed_service_reconnect_total,
+                watchdogLastFiredAt: a.watchdog_last_fired_at,
+                notificationRebindTotal: a.notification_rebind_total,
+                listenerLastConnectedAt: a.listener_last_connected_at,
+                listenerLastDisconnectedAt: a.listener_last_disconnected_at,
+                notificationImagesTotal: a.notification_images_total,
+                notificationImagesFailedTotal: a.notification_images_failed_total,
                 lastSeen: a.last_seen,
                 online: isOnline(a.last_seen, now),
                 ...describeAppHealth(a, now),

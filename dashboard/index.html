@@ -1048,12 +1048,61 @@ function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').
 function imgUrl(u){return !u?'' : (u.startsWith('http')?u:`${SERVER}${u}?token=${encodeURIComponent(token)}`)}
 
 // ── Item normalisation ─────────────────────────
-function normNotif(n){return{_kind:'n',_uid:'n'+n.id,...n,app_label:prettyApp(n.package_name,n.app_label)}}
-function normText(t){return{_kind:'t',_uid:'t'+t.id,id:t.id,package_name:t.package_name,app_label:prettyApp(t.package_name,t.app_label),target_name:t.target_name||t.targetName||'',title:null,text_body:t.text,received_at:t.received_at,captured_at:t.captured_at,is_read:true}}
-function normMedia(m){return{_kind:'m',_uid:'m'+m.id,id:m.id,package_name:m.package_name,app_label:prettyApp(m.package_name,m.app_label),image_url:m.media_url,display_name:m.display_name,received_at:m.received_at,captured_at:m.captured_at,media_type:m.media_type,source:m.source,durationMs:m.duration_ms,thumbnails:m.thumbnails||[],mimeType:m.mime_type,width:m.width,height:m.height}}
+function normNotif(n){
+  const repeatIds=Array.isArray(n.repeat_ids)&&n.repeat_ids.length?n.repeat_ids.map(String):[String(n.id)]
+  const item={_kind:'n',_uid:'n'+n.id,...n,app_label:prettyApp(n.package_name,n.app_label),related_thumbnails:n.related_media_thumbnails||[],related_image_url:n.related_media_url||null,repeat_count:Number(n.repeat_count)||1,repeat_ids:repeatIds,repeat_unread_count:Number(n.repeat_unread_count??(n.is_read===false?1:0))}
+  applyPendingRelatedMedia(item)
+  return item
+}
+function repeatKey(n){
+  if(!n||n._kind!=='n')return null
+  const ms=new Date(itemTime(n)).getTime();if(!ms)return null
+  return [
+    Math.floor(ms/60000),n.device_id||'',n.package_name||'',String(n.app_label||''),
+    String(n.title||''),String(n.text_body||''),String(n.big_text||''),String(n.sub_text||''),
+    String(n.sender_name||''),String(n.chat_body||''),String(n.image_source||''),
+    !!n.photo_intent,!!n.image_url,String(n.conversation_title||'')
+  ].join('\u0001')
+}
+function normText(t){
+  const logicalPkg=t.resolved_package||t.package_name
+  const rawSystem=t.raw_package==='com.android.systemui'||t.package_name==='com.android.systemui'
+  return{_kind:'t',_uid:'t'+t.id,id:t.id,package_name:logicalPkg,app_label:prettyApp(logicalPkg,t.resolved_app_label||t.app_label),raw_package:t.raw_package||t.package_name,raw_app_label:t.raw_app_label||t.app_label,raw_system:rawSystem,target_name:t.target_name||t.targetName||'',target_source:t.target_source||t.targetSource||'',attribution_source:t.attribution_source||'',attribution_confidence:Number(t.attribution_confidence)||0,title:null,text_body:t.text,received_at:t.received_at,captured_at:t.captured_at,is_read:true}
+}
+function normMedia(m){return{_kind:'m',_uid:'m'+m.id,id:m.id,package_name:m.package_name,app_label:prettyApp(m.package_name,m.app_label),image_url:m.media_url,display_name:m.display_name,received_at:m.received_at,captured_at:m.captured_at,media_type:m.media_type,source:m.source,durationMs:m.duration_ms,thumbnails:m.thumbnails||[],mimeType:m.mime_type,width:m.width,height:m.height,action:m.action||null,related_notification_hash:m.related_notification_hash||null}}
+function mergeRelatedMedia(n,m){
+  const thumbs=[...(n.related_thumbnails||[])]
+  for(const t of (m.thumbnails||[]))if(!thumbs.includes(t))thumbs.push(t)
+  const imageUrl=n.related_image_url||m.image_url||thumbs[0]||null
+  if(n.related_image_url===imageUrl&&JSON.stringify(n.related_thumbnails||[])===JSON.stringify(thumbs))return false
+  n.related_image_url=imageUrl
+  n.related_thumbnails=thumbs
+  return true
+}
+function applyPendingRelatedMedia(n){
+  const hash=n.dedup_hash,m=pendingRelatedMedia.get(hash)
+  if(!hash||!m)return false
+  if(!mergeRelatedMedia(n,m))return false
+  pendingRelatedMedia.delete(hash)
+  return true
+}
+function attachRelatedMedia(m){
+  const hash=m.related_notification_hash
+  if(!hash)return false
+  let changed=false
+  pendingRelatedMedia.set(hash,m)
+  for(const n of [...notifs,...savedItems]){
+    if(n._kind!=='n'||n.dedup_hash!==hash)continue
+    if(mergeRelatedMedia(n,m))changed=true
+    pendingRelatedMedia.delete(hash)
+  }
+  return changed
+}
 function itemTime(n){return (n._kind==='t'||n._kind==='m')?(n.captured_at||n.received_at||n.posted_at):(n.posted_at||n.received_at||n.captured_at)}
 function mediaAction(n){
   const video=String(n.media_type||'').startsWith('video'),noun=video?'video':'photo'
+  if(n.action)return n.action
+  if(n.source==='screenshot')return `${noun} screenshot saved`
   switch(n.source){
     case 'trash':return `${noun} trashed`
     case 'downloads':return `${noun} downloaded`
@@ -1084,7 +1133,8 @@ let currentGroups=[],userToggledDays=new Set()
 let activeTab='all'
 let savedItems=[],favorites=new Set(),savedMode=false,lastRowTap={uid:null,time:0}
 let loadingMore=false,scrollToBottom=true,topObserver=null
-let loading=false,loadToken=0
+let loading=false,loadToken=0,sseGapMarker=''
+let pendingRelatedMedia=new Map()
 let hasMoreNotif=false,hasMoreText=false,hasMoreMedia=false
 const PAGE_LIMITS={notif:50,text:50,media:25}
 let devices=[],deviceFilter=null,defaultDevice=null
@@ -1236,13 +1286,18 @@ function buildRow(n){
   const rowClass=`cr${isText?' typed':''}${unread?' unread':''}${sel?' selected':''}${savedMode?' savedmode':''}`
 
   if(isText){
-    const target=n.target_name?`<span class="btarget" title="To ${esc(n.target_name)}">to ${esc(n.target_name)}</span>`:''
+    const targetParts=[]
+    if(n.target_name)targetParts.push(`<span class="btarget" title="To ${esc(n.target_name)}">to ${esc(n.target_name)}</span>`)
+    if(n.target_source==='server_inherited')targetParts.push('<span class="btarget" title="Target inferred from recent activity">inferred</span>')
+    if(Number(n.attribution_confidence)>0&&Number(n.attribution_confidence)<0.6)targetParts.push('<span class="btarget" title="Low-confidence app attribution">uncertain</span>')
+    const target=targetParts.join('')
+    const rawNote=n.raw_system?`<span class="btarget" title="Raw accessibility source">SystemUI input · ${esc(n.raw_app_label||'System UI')}</span>`:''
     const actions=savedMode?savedCtl:`<button class="ca del nosel" onclick="event.stopPropagation();doDeleteText('${n._uid}')" title="Delete">${ICO_TRASH}</button>`
     return`<div class="${rowClass}" data-id="${n._uid}" onclick="onRowClick('${n._uid}')" ondblclick="event.stopPropagation();toggleFavorite('${n._uid}')">
       <div class="cr-inner">
         <div class="cacts">${actions}</div>
         <div class="bubble">
-          <div class="bh"><span class="bname">${app}</span>${favMark}${target}<span class="btime" data-ts="${ts}" title="${ts}">${timeLabel(eventIso)}</span></div>
+          <div class="bh"><span class="bname">${app}</span>${favMark}${target}${rawNote}<span class="btime" data-ts="${ts}" title="${ts}">${timeLabel(eventIso)}</span></div>
           <div class="bmsg">${esc(n.text_body||'')}</div>
         </div>
         <div class="tav" style="background:${color}"${enc}>${img}<span class="tcal">${letter}</span></div>
@@ -1251,15 +1306,23 @@ function buildRow(n){
   } else {
     const preview=n._kind==='m'
       ? esc(n.display_name||mediaAction(n))
-      : esc([n.sender_name?`from ${n.sender_name}`:'',n.title||'',n.text_body||'',(n.big_text&&n.big_text!==n.text_body)?n.big_text:'',n.sub_text||''].filter(Boolean).join(' · ')||'No preview')
+      : esc([n.sender_name?`from ${n.sender_name}`:'',n.title||'',n.chat_body&&n.chat_body!==n.text_body?n.chat_body:n.text_body||'',(n.big_text&&n.big_text!==n.text_body)?n.big_text:'',n.sub_text||''].filter(Boolean).join(' · ')||'No preview')
     const video=n._kind==='m'&&String(n.media_type||'').startsWith('video')
-    const thumb=n.image_url?`<a class="cimg" href="${esc(imgUrl(n.image_url))}" target="_blank" rel="noopener" onclick="event.stopPropagation()"><img src="${esc(imgUrl(n.image_url))}" loading="lazy" alt="">${video?`<span class="cvid">▶ ${fmtDuration(n.durationMs)}</span>`:''}</a>`:''
+    const mainThumb=n.image_url?`<a class="cimg" href="${esc(imgUrl(n.image_url))}" target="_blank" rel="noopener" onclick="event.stopPropagation()"><img src="${esc(imgUrl(n.image_url))}" loading="lazy" alt="">${video?`<span class="cvid">▶ ${fmtDuration(n.durationMs)}</span>`:''}</a>`:''
+    const relatedSrc=n.related_image_url||n.related_thumbnails?.[0]
+    const inlineThumb=(n._kind==='n'&&relatedSrc)?`<a class="cimg" href="${esc(imgUrl(relatedSrc))}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Related media"><img src="${esc(imgUrl(relatedSrc))}" loading="lazy" alt="">${n.related_thumbnails?.length>1?`<span class="cvid">+${n.related_thumbnails.length-1}</span>`:''}</a>`:''
+    const sourceNotes=[]
+    if(n._kind==='n'&&n.photo_intent)sourceNotes.push('<span class="btarget" title="Photo shown in notification but not extractable">photo pending</span>')
+    if(n._kind==='n'&&n.image_source)sourceNotes.push(`<span class="btarget" title="Notification image source">${esc(n.image_source)}</span>`)
+    if(n._kind==='n'&&Number(n.repeat_count)>1)sourceNotes.push(`<span class="btarget" title="${n.repeat_count} identical notifications in this minute">×${n.repeat_count}</span>`)
+    const sourceNote=sourceNotes.join('')
+    const thumb=mainThumb||inlineThumb
     const actions=savedMode?savedCtl:`${unread?`<button class="ca nosel" onclick="event.stopPropagation();doRead('${n._uid}',this)" title="Mark read">${ICO_READ}</button>`:''}${isFav?'':`<button class="ca del nosel" onclick="event.stopPropagation();doArchive('${n._uid}')" title="Archive">${ICO_DEL}</button><button class="ca del nosel" onclick="event.stopPropagation();doDeletePerm('${n._uid}')" title="Delete">${ICO_TRASH}</button>`}`
     return`<div class="${rowClass}" data-id="${n._uid}" onclick="onRowClick('${n._uid}')" ondblclick="event.stopPropagation();toggleFavorite('${n._uid}')">
       <div class="cr-inner">
         <div class="cav"><div class="cav-in" style="background:${color}"${enc}>${img}<span class="cal">${letter}</span></div><div class="udot"></div><div class="cck">${CHK}</div></div>
         <div class="bubble">
-          <div class="bh"><span class="bname">${app}</span>${favMark}${mediaSrc}<span class="btime" data-ts="${ts}" title="${ts}">${timeLabel(eventIso)}</span></div>
+          <div class="bh"><span class="bname">${app}</span>${favMark}${mediaSrc}${sourceNote}<span class="btime" data-ts="${ts}" title="${ts}">${timeLabel(eventIso)}</span></div>
           ${mediaAct}
           <div class="bmsg">${preview}</div>
           ${thumb}
@@ -1284,7 +1347,8 @@ function renderFeed(){
   // Chat layout: oldest day at visual top, newest at visual bottom
   // Render groups in reverse (oldest first in HTML = top of scroll)
   // Items within each day also reversed (oldest first = bottom of day group)
-  let html=hasMore
+  let html=sseGapMarker?`<div class="top-uptodate" title="${esc(sseGapMarker)}">${esc(sseGapMarker)}</div>`:''
+  html+=hasMore
     ?`<div class="top-loading"><div class="tl-spin"></div></div>`
     :`<div class="top-uptodate">· Beginning of history ·</div>`
   html+=`<div id="topSentinel" class="top-sentinel"></div>`
@@ -1334,7 +1398,7 @@ function renderAppLists(){
   let sb=`<div class="sb-app${on?' on':''} nosel" onclick="setApp(null)"><div class="sb-av" style="background:var(--accent)"><span>✦</span></div><span class="sb-aname">All apps</span>${totalUnread?`<span class="sb-badge">${totalUnread}</span>`:''}</div>`
 
   for(const[pkg,c]of apps){
-    const lbl=prettyApp(pkg,c.label),isOn=appFilter===pkg,pj=JSON.stringify(pkg)
+    const lbl=prettyApp(pkg,c.label),isOn=appFilter===pkg,pj=JSON.stringify(pkg).replace(/"/g,'&quot;')
     sh+=`<div class="sapp${isOn?' on':''}" onclick="setApp(${pj});closeSheet()">${iconImg(pkg,lbl,'sav')}<span class="savn">${esc(lbl)}</span>${c.unread?`<span class="savb">${c.unread}</span>`:''}</div>`
     dr+=`<div class="dapp${isOn?' on':''}" onclick="setApp(${pj})">${iconImg(pkg,lbl,'dav')}<span class="davn">${esc(lbl)}</span>${c.unread?`<span class="davb">${c.unread}</span>`:''}</div>`
     sb+=`<div class="sb-app${isOn?' on':''} nosel" onclick="setApp(${pj})">${iconImg(pkg,lbl,'sb-av')}<span class="sb-aname">${esc(lbl)}</span>${c.unread?`<span class="sb-badge">${c.unread}</span>`:''}</div>`
@@ -1390,6 +1454,7 @@ async function load(reset=false){
     hasMoreMedia=mj.pagination?.hasMore??false
     hasMore=hasMoreNotif||hasMoreText||hasMoreMedia
     const extra=[...(tj.data||[]).map(normText),...(mj.data||[]).map(normMedia)]
+    extra.forEach(n=>{if(n._kind==='m')attachRelatedMedia(n)})
     if(reset){
       notifs=[...rows,...extra]
       if(!devices.length)loadDevices() // first load: fetch device list
@@ -1399,6 +1464,7 @@ async function load(reset=false){
     sortItems();rebuildAppCounts()
     totalCount=json.pagination?.total??notifs.length
     renderAppLists();renderFeed();loadFavorites()
+    sseGapMarker=''
   }catch{
     if(token!==loadToken)return
     document.getElementById('feed').innerHTML=`<div class="empty"><p style="color:var(--danger)">Could not load</p></div>`
@@ -1440,13 +1506,25 @@ function favoriteGuard(uid){
 // ── Actions ───────────────────────────────────
 async function doRead(uid,btn){
   const n=notifs.find(x=>x._uid===uid);if(!n||n._kind!=='n')return
-  try{await fetch(`${SERVER}/api/notifications/${n.id}/read`,{method:'PATCH',headers:hdrs()});n.is_read=true;if(appCounts[n.package_name])appCounts[n.package_name].unread=Math.max(0,appCounts[n.package_name].unread-1);const row=document.querySelector(`[data-id="${uid}"]`);if(row){row.classList.remove('unread');btn?.closest('.ca')?.remove()};renderAppLists()}catch{}
+  try{
+    const res=await fetch(`${SERVER}/api/notifications/read`,{method:'PATCH',headers:hdrs(),body:JSON.stringify({ids:n.repeat_ids||[n.id]})})
+    if(!res.ok)throw new Error()
+    n.is_read=true;n.repeat_unread_count=0
+    if(appCounts[n.package_name])appCounts[n.package_name].unread=Math.max(0,appCounts[n.package_name].unread-1)
+    const row=document.querySelector(`[data-id="${uid}"]`);if(row){row.classList.remove('unread');btn?.closest('.ca')?.remove()}
+    renderAppLists()
+  }catch{}
 }
 async function doArchive(uid){
   if(favoriteGuard(uid))return
   const n=notifs.find(x=>x._uid===uid);if(!n||n._kind!=='n')return
   const row=document.querySelector(`[data-id="${uid}"]`);if(row){row.classList.add('out');setTimeout(()=>row.remove(),190)}
-  try{await fetch(`${SERVER}/api/notifications/${n.id}/archive`,{method:'PATCH',headers:hdrs()});if(!n.is_read&&appCounts[n.package_name])appCounts[n.package_name].unread=Math.max(0,appCounts[n.package_name].unread-1);if(appCounts[n.package_name])appCounts[n.package_name].total=Math.max(0,appCounts[n.package_name].total-1);const idx=notifs.findIndex(x=>x._uid===uid);if(idx!==-1)notifs.splice(idx,1);totalCount=Math.max(0,totalCount-1);renderAppLists()}catch{}
+  try{
+    const res=await fetch(`${SERVER}/api/notifications/archive`,{method:'PATCH',headers:hdrs(),body:JSON.stringify({ids:n.repeat_ids||[n.id]})})
+    if(!res.ok)throw new Error()
+    if(appCounts[n.package_name]){if(!n.is_read)appCounts[n.package_name].unread=Math.max(0,appCounts[n.package_name].unread-1);appCounts[n.package_name].total=Math.max(0,appCounts[n.package_name].total-1)}
+    const idx=notifs.findIndex(x=>x._uid===uid);if(idx!==-1)notifs.splice(idx,1);totalCount=Math.max(0,totalCount-1);renderAppLists()
+  }catch{}
 }
 async function doDeleteText(uid){
   if(favoriteGuard(uid))return
@@ -1459,7 +1537,12 @@ async function doDeletePerm(uid){
   const n=notifs.find(x=>x._uid===uid);if(!n||n._kind!=='n')return
   if(!confirm('Delete permanently? The saved image (if any) is removed too.'))return
   const row=document.querySelector(`[data-id="${uid}"]`);if(row){row.classList.add('out');setTimeout(()=>row.remove(),190)}
-  try{await fetch(`${SERVER}/api/notifications/${n.id}`,{method:'DELETE',headers:hdrs()});if(!n.is_read&&appCounts[n.package_name])appCounts[n.package_name].unread=Math.max(0,appCounts[n.package_name].unread-1);if(appCounts[n.package_name])appCounts[n.package_name].total=Math.max(0,appCounts[n.package_name].total-1);const idx=notifs.findIndex(x=>x._uid===uid);if(idx!==-1)notifs.splice(idx,1);totalCount=Math.max(0,totalCount-1);renderAppLists()}catch{}
+  try{
+    const res=await fetch(`${SERVER}/api/notifications`,{method:'DELETE',headers:hdrs(),body:JSON.stringify({ids:n.repeat_ids||[n.id]})})
+    if(!res.ok)throw new Error()
+    if(appCounts[n.package_name]){if(!n.is_read)appCounts[n.package_name].unread=Math.max(0,appCounts[n.package_name].unread-1);appCounts[n.package_name].total=Math.max(0,appCounts[n.package_name].total-1)}
+    const idx=notifs.findIndex(x=>x._uid===uid);if(idx!==-1)notifs.splice(idx,1);totalCount=Math.max(0,totalCount-1);renderAppLists()
+  }catch{}
 }
 async function purgeImages(){
   if(!confirm('Delete saved image files for archived notifications? The notification rows are kept.'))return
@@ -1505,7 +1588,7 @@ async function execDelete(){
   closeModal()
   uids.forEach(uid=>{const r=document.querySelector(`[data-id="${uid}"]`);if(r){r.classList.add('out');setTimeout(()=>r.remove(),190)}})
   const nids=[],tids=[]
-  for(const uid of uids){const it=notifs.find(x=>x._uid===uid);if(!it)continue;if(it._kind==='t')tids.push(it.id);else nids.push(it.id)}
+  for(const uid of uids){const it=notifs.find(x=>x._uid===uid);if(!it)continue;if(it._kind==='t')tids.push(it.id);else nids.push(...(it.repeat_ids||[it.id]))}
   try{
     if(nids.length) await fetch(`${SERVER}/api/notifications`,{method:'DELETE',headers:hdrs(),body:JSON.stringify({ids:nids})})
     if(tids.length) await fetch(`${SERVER}/api/typed-text`,{method:'DELETE',headers:hdrs(),body:JSON.stringify({ids:tids})})
@@ -1519,6 +1602,18 @@ async function execDelete(){
 // ── SSE ───────────────────────────────────────
 let evs=null,reconn=null
 function insertIncoming(n){
+  if(n._kind==='n'){
+    const key=repeatKey(n)
+    const existing=key?notifs.find(x=>repeatKey(x)===key):null
+    if(existing){
+      for(const id of n.repeat_ids||[n.id])if(!existing.repeat_ids.map(String).includes(String(id)))existing.repeat_ids.push(String(id))
+      existing.repeat_count=existing.repeat_ids.length
+      if(!n.is_read){existing.is_read=false;existing.repeat_unread_count=(existing.repeat_unread_count||0)+1}
+      if(appCounts[existing.package_name]&&!appCounts[existing.package_name].unread)appCounts[existing.package_name].unread=1
+      renderFeed();renderAppLists()
+      return
+    }
+  }
   notifs.unshift(n);totalCount++
   if(!appCounts[n.package_name])appCounts[n.package_name]={total:0,unread:0,label:prettyApp(n.package_name,n.app_label)}
   appCounts[n.package_name].total++;if(n._kind==='n'&&!n.is_read)appCounts[n.package_name].unread++
@@ -1540,8 +1635,12 @@ function insertIncoming(n){
     else renderFeed()
   }
 }
+function rowHasId(n,prefix,idSet){
+  if(n._uid===prefix+String(n.id)&&idSet.has(String(n.id)))return true
+  return prefix==='n'&&Array.isArray(n.repeat_ids)&&n.repeat_ids.some(id=>idSet.has(String(id)))
+}
 function dropDeleted(prefix,ids){
-  const idSet=new Set(ids.map(String)),filter=n=>!(n._uid===prefix+String(n.id)&&idSet.has(String(n.id)))
+  const idSet=new Set(ids.map(String)),filter=n=>!rowHasId(n,prefix,idSet)
   let removed=0
   for(const n of notifs)if(!filter(n))removed++
   notifs=notifs.filter(filter)
@@ -1550,9 +1649,11 @@ function dropDeleted(prefix,ids){
   rebuildAppCounts();renderAppLists();renderFeed();loadFavorites()
 }
 function markReadLive(id){
-  const n=notifs.find(x=>x._uid==='n'+String(id));if(!n||n.is_read)return
-  n.is_read=true
-  const row=document.querySelector(`[data-id="n${id}"]`);row?.classList.remove('unread')
+  const idStr=String(id),n=notifs.find(x=>x._kind==='n'&&(String(x.id)===idStr||(x.repeat_ids||[]).map(String).includes(idStr)))
+  if(!n||n.is_read)return
+  n.repeat_unread_count=Math.max(0,(n.repeat_unread_count||1)-1)
+  if(n.repeat_unread_count===0)n.is_read=true
+  const row=document.querySelector(`[data-id="${n._uid}"]`);row?.classList.remove('unread')
   rebuildAppCounts();renderAppLists()
 }
 let sseConnectedOnce=false
@@ -1561,19 +1662,22 @@ function connectSSE(){
   evs=new EventSource(`${SERVER}/api/notifications/stream?token=${token}`)
   evs.onopen=()=>{
     dot.className='sdot live';clearTimeout(reconn)
-    if(sseConnectedOnce)load(true)
+    if(sseConnectedOnce&&!loading){
+      sseGapMarker='Live updates reconnected · history refreshed to cover the gap'
+      load(true)
+    }
     sseConnectedOnce=true
   }
   evs.addEventListener('connected',()=>{dot.className='sdot live';clearTimeout(reconn)})
   evs.addEventListener('notification',e=>{try{insertIncoming(normNotif(JSON.parse(e.data)))}catch{}})
   evs.addEventListener('typedtext',e=>{try{insertIncoming(normText(JSON.parse(e.data)))}catch{}})
-  evs.addEventListener('media',e=>{try{insertIncoming(normMedia(JSON.parse(e.data)))}catch{};if(!document.getElementById('gallery').hidden&&!galSelected.size)openGallery()})
+  evs.addEventListener('media',e=>{try{const m=normMedia(JSON.parse(e.data));const linked=attachRelatedMedia(m);insertIncoming(m);if(linked)renderFeed()}catch{};if(!document.getElementById('gallery').hidden&&!galSelected.size)openGallery()})
   evs.addEventListener('notification:deleted',e=>{try{dropDeleted('n',JSON.parse(e.data).ids||[])}catch{}})
   evs.addEventListener('typedtext:deleted',e=>{try{dropDeleted('t',JSON.parse(e.data).ids||[])}catch{}})
   evs.addEventListener('media:deleted',e=>{try{dropDeleted('m',JSON.parse(e.data).ids||[])}catch{}})
-  evs.addEventListener('notification:archived',e=>{try{dropDeleted('n',[JSON.parse(e.data).id])}catch{}})
-  evs.addEventListener('notification:read',e=>{try{markReadLive(JSON.parse(e.data).id)}catch{}})
-  evs.addEventListener('notification:readAll',()=>{notifs.forEach(n=>{if(n._kind==='n')n.is_read=true});rebuildAppCounts();renderAppLists();renderFeed()})
+  evs.addEventListener('notification:archived',e=>{try{const d=JSON.parse(e.data);dropDeleted('n',d.ids||[d.id])}catch{}})
+  evs.addEventListener('notification:read',e=>{try{const d=JSON.parse(e.data);for(const id of d.ids||[d.id])markReadLive(id)}catch{}})
+  evs.addEventListener('notification:readAll',()=>{notifs.forEach(n=>{if(n._kind==='n'){n.is_read=true;n.repeat_unread_count=0}});rebuildAppCounts();renderAppLists();renderFeed()})
   evs.addEventListener('status',()=>{loadDevices()})
   evs.onerror=()=>{dot.className='sdot';evs.close();reconn=setTimeout(connectSSE,5000)}
 }
@@ -1652,6 +1756,11 @@ function dsBadge(label,on,kind){
 function dsNote(label,kind){
   return`<span class="dsbadge${kind?` ${kind}`:''}"><i></i>${esc(label)}</span>`
 }
+function dsTextServiceBadge(a){
+  return a.typedTextConnected==null
+    ? dsNote('text service unknown','warn')
+    : dsBadge('text service',a.typedTextConnected,'ok')
+}
 function dsGrid(rows){
   return`<div class="device-status-grid">${rows.map(([k,v])=>`<span class="device-status-k">${esc(k)}</span><span class="device-status-v">${esc(v==null||v===''?'—':v)}</span>`).join('')}</div>`
 }
@@ -1684,6 +1793,11 @@ function renderDeviceStatus(d,hist){
       dsBadge('notification',a.listenerEnabled,'ok'),
       dsBadge('listener',a.listenerConnected,'ok'),
       dsBadge('text',a.accessibilityEnabled,'ok'),
+      dsTextServiceBadge(a),
+      dsNote(`text alive ${a.typedTextAliveAt?relTime(a.typedTextAliveAt):'never'}`,a.typedTextAliveAt&&Date.now()-new Date(a.typedTextAliveAt).getTime()<=120000?'ok':'warn'),
+      dsNote(`binds ${a.typedServiceBindTotal||0}`,'ok'),
+      dsNote(`reconnects ${a.typedServiceReconnectTotal||0}`,'ok'),
+      dsNote(`listener rebinds ${a.notificationRebindTotal||0}`,'ok'),
       dsBadge('battery exempt',a.batteryExempt,'ok'),
       dsBadge('media',a.mediaEnabled,'ok'),
       dsBadge('all files',a.allFilesAccess,'ok'),
@@ -1770,6 +1884,11 @@ function appStatusChips(d){
       a.listenerEnabled?'notif on':'notif off',
       a.listenerConnected?'listener connected':(a.listenerEnabled?'listener disconnected':''),
       a.accessibilityEnabled?'text on':'text off',
+      a.typedTextConnected==null?'text service status unknown':(a.typedTextConnected?'text service bound':'text service unbound'),
+      a.typedTextAliveAt?`text alive ${relTime(a.typedTextAliveAt)}`:'text never alive',
+      `text binds ${a.typedServiceBindTotal||0} · reconnects ${a.typedServiceReconnectTotal||0}`,
+      `listener rebinds ${a.notificationRebindTotal||0}`,
+      `notification images ${a.notificationImagesTotal||0} · failed ${a.notificationImagesFailedTotal||0}`,
       a.foregroundServiceRunning?'sync service running':'sync service stopped',
       a.watchdogEnabled?'watchdog on':'watchdog off',
       a.role==='master_control'?(a.mediaEnabled?'media on':'media off'):'',
@@ -2026,6 +2145,7 @@ document.getElementById('galScroll').addEventListener('scroll',()=>{
 function gallerySource(source){
   const s=String(source||'').toLowerCase()
   if(s==='trash'||s.includes('trash')||s.includes('recycle')) return 'trash'
+  if(s==='screenshot')return 'Screenshot'
   return s==='media_store'?'device gallery'
     :source==='downloads'?'Downloads'
     :source==='camera'?'Camera'

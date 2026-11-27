@@ -13,6 +13,7 @@ import com.notifyhub.data.PendingMedia
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -31,6 +32,11 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 
 object MediaUploader {
+
+    private const val BATCH_SIZE = 5
+    private const val BATCH_DELAY_MS = 150L
+    private const val BASE_RETRY_MS = 10_000L
+    private const val MAX_RETRY_MS = 30 * 60 * 1000L
 
     private val client = OkHttpClient.Builder()
         .connectTimeout(15, TimeUnit.SECONDS)
@@ -62,7 +68,8 @@ object MediaUploader {
         displayName: String,
         sizeBytes: Long,
         source: String = "share",
-        sourceLabel: String = "Shared media"
+        sourceLabel: String = "Shared media",
+        sourcePackage: String? = null
     ) {
         val appContext = context.applicationContext
         try {
@@ -74,6 +81,16 @@ object MediaUploader {
                 cached.outputStream().use { output -> input.copyTo(output) }
             } ?: return
 
+            val capturedAt = java.time.Instant.now().toString()
+            val match = NotificationMediaMatcher.find(
+                context = appContext,
+                capturedAt = capturedAt,
+                packageName = sourcePackage ?: source,
+                ownerPackageName = sourcePackage,
+                source = source,
+                path = cached.absolutePath,
+                displayName = safeName
+            )
             val item = PendingMedia(
                 deviceId = deviceId(appContext),
                 source = source,
@@ -87,11 +104,13 @@ object MediaUploader {
                 width = null,
                 height = null,
                 durationMs = null,
-                capturedAt = java.time.Instant.now().toString(),
+                capturedAt = capturedAt,
                 localUri = Uri.fromFile(cached).toString(),
-                dedupHash = sha256("${deviceId(appContext)}:${cached.absolutePath}:${cached.length()}")
+                dedupHash = sha256("${deviceId(appContext)}:${cached.absolutePath}:${cached.length()}"),
+                relatedNotificationHash = match?.dedupHash
             )
             if (App.database.dao().insertMedia(item) > 0) {
+                match?.let { NotificationMediaMatcher.mark(it) }
                 drainQueue(appContext)
             } else {
                 cached.delete()
@@ -105,29 +124,34 @@ object MediaUploader {
         try {
             if (!NetworkState.canUpload(context)) return
             val dao = App.database.dao()
-            for (item in dao.getPendingMedia()) {
+            val now = System.currentTimeMillis()
+            for (item in dao.getPendingMedia(now, BATCH_SIZE)) {
                 if (!NetworkState.canUpload(context)) break
                 val ok = upload(context, item)
                 if (ok) {
                     dao.deleteMedia(item.id)
                     deleteCachedShare(context, item.localUri)
                 } else {
-                    dao.incrementAttemptsMedia(item.id)
-                    if (item.attempts >= 2) {
-                        dao.deleteMedia(item.id)
-                        deleteCachedShare(context, item.localUri)
-                    }
+                    dao.markAttemptMedia(item.id, now + retryDelay(item.attempts))
                 }
+                delay(BATCH_DELAY_MS)
             }
         } finally {
             draining.set(false)
         }
     }
 
+    private fun retryDelay(attempts: Int): Long {
+        val shift = attempts.coerceIn(0, 12)
+        return minOf(MAX_RETRY_MS, BASE_RETRY_MS shl shift)
+    }
+
     fun labelFor(context: Context, packageName: String): String {
         if (packageName == "media_store") return "Media"
         if (packageName == "downloads") return "Downloads"
         if (packageName == "share") return "Shared media"
+        if (packageName == "shared_app") return "Shared media"
+        if (packageName == "screenshot") return "Screenshot"
         if (packageName == "trash") return "Trash"
         if (packageName == "camera") return "Camera"
         if (packageName == "filesystem") return "Files"
@@ -154,7 +178,8 @@ object MediaUploader {
 
     private fun upload(context: Context, item: PendingMedia): Boolean {
         return try {
-            val prepared = prepare(context, item) ?: return false
+            val actionOnly = !item.action.isNullOrBlank()
+            val prepared = if (actionOnly) null else prepare(context, item) ?: return false
             val json = JSONObject().apply {
                 put("deviceId", item.deviceId)
                 put("source", item.source)
@@ -162,18 +187,23 @@ object MediaUploader {
                 put("appLabel", item.appLabel)
                 put("mediaType", item.mediaType)
                 put("displayName", item.displayName)
-                put("mimeType", prepared.imageData.substringAfter("data:").substringBefore(";"))
+                put("mimeType", prepared?.imageData?.substringAfter("data:")?.substringBefore(";") ?: item.mimeType)
                 put("originalMimeType", item.originalMimeType ?: item.mimeType)
                 put("sizeBytes", item.sizeBytes)
-                put("width", prepared.width)
-                put("height", prepared.height)
-                if (prepared.durationMs != null) put("durationMs", prepared.durationMs)
+                put("width", prepared?.width ?: item.width)
+                put("height", prepared?.height ?: item.height)
+                val durationMs = prepared?.durationMs ?: item.durationMs
+                if (durationMs != null) put("durationMs", durationMs)
                 put("capturedAt", item.capturedAt)
-                put("dedupHash", prepared.hash)
-                put("imageData", prepared.imageData)
-                val frames = JSONArray()
-                prepared.frameData.forEach { frames.put(it) }
-                put("thumbnailData", frames)
+                put("dedupHash", prepared?.hash ?: item.dedupHash)
+                item.relatedNotificationHash?.let { put("relatedNotificationHash", it) }
+                item.action?.let { put("action", it) }
+                if (prepared != null) {
+                    put("imageData", prepared.imageData)
+                    val frames = JSONArray()
+                    prepared.frameData.forEach { frames.put(it) }
+                    put("thumbnailData", frames)
+                }
             }
             val body = json.toString().toRequestBody("application/json".toMediaType())
             val request = Request.Builder()
