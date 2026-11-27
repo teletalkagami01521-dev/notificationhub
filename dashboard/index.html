@@ -1381,6 +1381,8 @@ function buildRow(n){
 // ── Render feed ───────────────────────────────
 function renderFeed(){
   const feed=document.getElementById('feed'),vis=visibleItems()
+  const prevH=feed.scrollHeight,prevTop=feed.scrollTop
+  const wasAtBottom=!prevH||feed.scrollHeight-feed.scrollTop-feed.clientHeight<120
   if(!vis.length){
     const msg=savedMode?'No saved items':unreadOnly?'No unread notifications':notifs.length?'No results':'No notifications yet'
     feed.innerHTML=`<div class="empty"><svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/></svg><p>${msg}</p></div>`
@@ -1406,7 +1408,8 @@ function renderFeed(){
   }
   feed.innerHTML=html;updateSelUI()
 
-  if(scrollToBottom) requestAnimationFrame(()=>feed.scrollTop=feed.scrollHeight)
+  if(scrollToBottom&&wasAtBottom) requestAnimationFrame(()=>feed.scrollTop=feed.scrollHeight)
+  else if(prevH) requestAnimationFrame(()=>{feed.scrollTop=Math.max(0,prevTop+(feed.scrollHeight-prevH))})
   initTopObserver()
   if(!selectMode) requestAnimationFrame(initSwipeHandlers)
 }
@@ -1520,13 +1523,7 @@ async function load(reset=false){
 async function loadMore(){
   if(loadingMore||!hasMore||loading)return
   loadingMore=true;scrollToBottom=false
-  const feed=document.getElementById('feed')
-  const prevH=feed.scrollHeight,prevTop=feed.scrollTop
-  page++;await load(false)
-  requestAnimationFrame(()=>{
-    feed.scrollTop=prevTop+(feed.scrollHeight-prevH)
-    loadingMore=false;scrollToBottom=true
-  })
+  page++;try{await load(false)}finally{requestAnimationFrame(()=>{loadingMore=false;scrollToBottom=true})}
 }
 function doRefresh(){
   if(loading)return
