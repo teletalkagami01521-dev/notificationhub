@@ -108,6 +108,12 @@ function publicRow(r) {
             `/api/media/${r.related_media_id}/frames/${index}/file`),
         repeat_count: Number(r.repeat_count ?? 1),
         repeat_ids: Array.isArray(r.repeat_ids) ? r.repeat_ids.map(String) : [String(r.id)],
+        repeat_items: Array.isArray(r.repeat_items) ? r.repeat_items.map(item => ({
+            ...item,
+            id: String(item.id),
+            image_url: item.image_url ? `/api/notifications/${item.id}/image` : null,
+            is_read: item.is_read !== false,
+        })) : undefined,
         repeat_unread_count: Number(r.repeat_unread_count ?? (r.is_read === false ? 1 : 0)),
     }
 }
@@ -274,8 +280,15 @@ router.get('/', async (req, res) => {
                          SELECT ${groupColumns},
                                 (ARRAY_AGG(id ORDER BY posted_at DESC, received_at DESC, id DESC))[1] AS id,
                                 ARRAY_AGG(id ORDER BY posted_at DESC, received_at DESC, id DESC) AS repeat_ids,
-                                ARRAY_AGG(dedup_hash ORDER BY posted_at DESC, received_at DESC, id DESC) AS repeat_hashes,
-                                COUNT(*)::int AS repeat_count,
+                                 ARRAY_AGG(dedup_hash ORDER BY posted_at DESC, received_at DESC, id DESC) AS repeat_hashes,
+                                 JSON_AGG(JSON_BUILD_OBJECT(
+                                     'id', id, 'posted_at', posted_at, 'received_at', received_at,
+                                     'is_read', is_read, 'dedup_hash', dedup_hash, 'image_url', image_url,
+                                     'title', title, 'text_body', text_body, 'sender_name', sender_name,
+                                     'chat_body', chat_body, 'big_text', big_text, 'sub_text', sub_text,
+                                     'notification_key', notification_key
+                                 ) ORDER BY posted_at DESC, received_at DESC, id DESC) AS repeat_items,
+                                 COUNT(*)::int AS repeat_count,
                                 COUNT(*) FILTER (WHERE is_read = FALSE)::int AS repeat_unread_count,
                                 MAX(posted_at) AS posted_at,
                                 MAX(received_at) AS received_at,
@@ -283,11 +296,11 @@ router.get('/', async (req, res) => {
                           FROM filtered f
                           GROUP BY 1,2,3,4,5,6,7,8,9,10,11,12,13,14
                         ), representative AS (
-                          SELECT g.id, g.device_id, g.package_name, g.app_label, g.title, g.text_body, g.big_text, g.sub_text, g.sender_name, g.chat_body, g.posted_at, g.received_at, n.dedup_hash, (g.repeat_unread_count = 0) AS is_read, g.image_url, g.image_source, g.photo_intent, n.related_notification_hash, n.notification_key, n.channel_id, n.category, n.group_key, n.sort_key, n.conversation_title, n.flags, n.extras_json, g.repeat_ids, g.repeat_hashes, g.repeat_count, g.repeat_unread_count
+                          SELECT g.id, g.device_id, g.package_name, g.app_label, g.title, g.text_body, g.big_text, g.sub_text, g.sender_name, g.chat_body, g.posted_at, g.received_at, n.dedup_hash, (g.repeat_unread_count = 0) AS is_read, g.image_url, g.image_source, g.photo_intent, n.related_notification_hash, n.notification_key, n.channel_id, n.category, n.group_key, n.sort_key, n.conversation_title, n.flags, n.extras_json, g.repeat_ids, g.repeat_hashes, g.repeat_items, g.repeat_count, g.repeat_unread_count
                           FROM groups g
                           JOIN notifications n ON n.id = g.id
                        )
-                       SELECT r.id, r.device_id, r.package_name, r.app_label, r.title, r.text_body, r.big_text, r.sub_text, r.sender_name, r.chat_body, r.posted_at, r.received_at, r.dedup_hash, r.is_read, r.image_url, r.image_source, r.photo_intent, r.related_notification_hash, r.notification_key, r.channel_id, r.category, r.group_key, r.sort_key, r.conversation_title, r.flags, r.extras_json, r.repeat_ids, r.repeat_count, r.repeat_unread_count,
+                       SELECT r.id, r.device_id, r.package_name, r.app_label, r.title, r.text_body, r.big_text, r.sub_text, r.sender_name, r.chat_body, r.posted_at, r.received_at, r.dedup_hash, r.is_read, r.image_url, r.image_source, r.photo_intent, r.related_notification_hash, r.notification_key, r.channel_id, r.category, r.group_key, r.sort_key, r.conversation_title, r.flags, r.extras_json, r.repeat_ids, r.repeat_items, r.repeat_count, r.repeat_unread_count,
                               rm.id AS related_media_id, rm.media_url AS related_media_url,
                               (SELECT mt.thumbnail_urls FROM media_captures mt WHERE mt.id = rm.id) AS related_media_thumbnails
                        FROM representative r

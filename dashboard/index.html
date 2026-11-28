@@ -622,6 +622,19 @@ header{
 .favmark{color:var(--warn);font-size:12px;line-height:1;flex-shrink:0}
 .btarget{font-size:10px;font-weight:600;color:rgba(255,255,255,.75);background:rgba(0,0,0,.16);
   border-radius:50px;padding:1px 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:110px}
+.repeat-toggle{font-family:inherit;border:0;cursor:pointer;touch-action:manipulation}
+.repeat-toggle.on{background:var(--accent);color:#fff}
+.repeat-panel{position:relative;z-index:1;margin:0 max(14px,env(safe-area-inset-right,0px)) 6px calc(max(14px,env(safe-area-inset-left,0px)) + 46px);
+  padding:5px 9px;background:var(--surf);border:1px solid var(--bord);border-top:0;
+  border-radius:0 0 10px 10px;user-select:text;-webkit-user-select:text}
+.rep-row{display:flex;align-items:center;gap:7px;padding:4px 0;min-width:0}
+.rep-row+.rep-row{border-top:1px solid var(--bord)}
+.rep-meta{display:flex;align-items:center;gap:6px;flex:1;min-width:0;flex-wrap:wrap;
+  font-size:11px;line-height:1.35;color:var(--muted)}
+.rep-id{font-weight:700;color:var(--fg);font-variant-numeric:tabular-nums}
+.rep-time{font-variant-numeric:tabular-nums}
+.rep-unread{font-size:9px;font-weight:700;color:var(--accent);text-transform:uppercase}
+.repimg{width:26px;height:26px;flex-shrink:0;object-fit:cover;border-radius:5px;border:1px solid var(--bord);background:var(--surf2)}
 .cr.savedmode .cacts .ca:not(.favremove){display:none}
 @media(max-width:600px){
   header{padding-left:max(12px,env(safe-area-inset-left,0px));padding-right:max(10px,env(safe-area-inset-right,0px));gap:3px}
@@ -635,6 +648,7 @@ header{
     padding-right:max(10px,env(safe-area-inset-right,0px))}
   .cr:not(.typed) .cr-inner{padding-right:calc(max(10px,env(safe-area-inset-right,0px)) + 20%)}
   .cr.typed .cr-inner{padding-left:calc(max(10px,env(safe-area-inset-left,0px)) + 20%)}
+  .repeat-panel{margin:0 max(10px,env(safe-area-inset-right,0px)) 6px calc(max(10px,env(safe-area-inset-left,0px)) + 44px)}
   .bubble{padding:10px 13px}
   .bmsg{font-size:14.5px;line-height:1.48}
   .ca{width:32px;height:32px}
@@ -1129,7 +1143,7 @@ function sortItems(){notifs.sort((a,b)=>new Date(itemTime(b))-new Date(itemTime(
 let notifs=[],appFilter=null,searchQ='',timeFilter='all',unreadOnly=false
 let page=1,totalCount=0,hasMore=false,newPending=0
 let appCounts={},selectMode=false,selectedIds=new Set()
-let currentGroups=[],userToggledDays=new Set()
+let currentGroups=[],userToggledDays=new Set(),expandedGroups=new Set()
 let activeTab='all'
 let savedItems=[],favorites=new Set(),savedMode=false,lastRowTap={uid:null,time:0}
 let loadingMore=false,scrollToBottom=true,topObserver=null
@@ -1312,7 +1326,24 @@ const ICO_DEL=`<svg width="12" height="12" viewBox="0 0 16 16" fill="currentColo
 const ICO_TRASH=`<svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M6.5 1a.5.5 0 00-.5.5V2H3.5a.5.5 0 000 1h.6l.7 10.2a1 1 0 001 .8h4.4a1 1 0 001-.8L12.9 3h.6a.5.5 0 000-1H10V1.5a.5.5 0 00-.5-.5h-3zM5.13 3h5.74l-.68 9.7a.1.1 0 01-.1.08H5.91a.1.1 0 01-.1-.08L5.13 3z"/></svg>`
 const ICO_READ=`<svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z"/></svg>`
 const ICO_UNSAVE=`<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.3l3 6.1 6.7 1-4.9 4.7 1.2 6.7L12 17.8 6 20.8l1.2-6.7-4.9-4.7 6.7-1z"/></svg>`
-
+function repeatItemFromNotif(n){
+  return {id:String(n.id),posted_at:n.posted_at||null,received_at:n.received_at||null,is_read:n.is_read!==false,dedup_hash:n.dedup_hash||null,image_url:n.image_url||null,title:n.title||'',text_body:n.text_body||'',sender_name:n.sender_name||'',chat_body:n.chat_body||'',big_text:n.big_text||'',sub_text:n.sub_text||'',notification_key:n.notification_key||null}
+}
+function toggleRepeat(uid){expandedGroups.has(uid)?expandedGroups.delete(uid):expandedGroups.add(uid);renderFeed()}
+function repeatItemsFor(n){
+  const src=Array.isArray(n.repeat_items)&&n.repeat_items.length?n.repeat_items:(n.repeat_ids||[n.id]).map(id=>({...repeatItemFromNotif(n),id:String(id)}))
+  const seen=new Set()
+  return src.map(x=>({...x,id:String(x.id)})).filter(x=>{if(seen.has(x.id))return false;seen.add(x.id);return true}).sort((a,b)=>new Date(itemTime(b))-new Date(itemTime(a)))
+}
+function repeatDetailHtml(n){
+  const items=repeatItemsFor(n)
+  if(!items.length)return''
+  return`<div class="repeat-panel" onclick="event.stopPropagation()" ondblclick="event.stopPropagation()">${items.map(item=>{
+    const iso=itemTime(item),img=item.image_url?`<img class="repimg" src="${esc(imgUrl(item.image_url))}" loading="lazy" alt="">`:''
+    const note=[item.title||'',item.sender_name?`from ${item.sender_name}`:'',item.text_body||''].filter(Boolean).join(' · ')
+    return`<div class="rep-row">${img}<div class="rep-meta"><span class="rep-id">#${esc(item.id)}</span><span class="rep-time" title="${esc(iso)}">${timeLabel(iso)}</span>${item.is_read===false?'<span class="rep-unread">unread</span>':''}${note?`<span>${esc(note)}</span>`:''}</div></div>`
+  }).join('')}</div>`
+}
 function buildRow(n){
   const sel=selectedIds.has(n._uid)
   const isText=n._kind==='t'
@@ -1359,7 +1390,10 @@ function buildRow(n){
     const sourceNotes=[]
     if(n._kind==='n'&&n.photo_intent)sourceNotes.push('<span class="btarget" title="Photo shown in notification but not extractable">photo pending</span>')
     if(n._kind==='n'&&n.image_source)sourceNotes.push(`<span class="btarget" title="Notification image source">${esc(n.image_source)}</span>`)
-    if(n._kind==='n'&&Number(n.repeat_count)>1)sourceNotes.push(`<span class="btarget" title="${n.repeat_count} identical notifications in this minute">×${n.repeat_count}</span>`)
+    const repeatCount=Number(n.repeat_count)||1
+    const expanded=n._kind==='n'&&repeatCount>1&&expandedGroups.has(n._uid)
+    const repeatPanel=expanded?repeatDetailHtml(n):''
+    if(n._kind==='n'&&repeatCount>1)sourceNotes.push(`<button type="button" class="btarget repeat-toggle${expanded?' on':''}" onclick="event.stopPropagation();toggleRepeat('${n._uid}')" ondblclick="event.stopPropagation()" aria-expanded="${expanded}" title="${expanded?'Collapse':'Expand'} ${repeatCount} identical notifications in this minute">×${repeatCount} ${expanded?'▴':'▾'}</button>`)
     const sourceNote=sourceNotes.join('')
     const thumb=mainThumb||inlineThumb
     const actions=savedMode?savedCtl:`${unread?`<button class="ca nosel" onclick="event.stopPropagation();doRead('${n._uid}',this)" title="Mark read">${ICO_READ}</button>`:''}${isFav?'':`<button class="ca del nosel" onclick="event.stopPropagation();doArchive('${n._uid}')" title="Archive">${ICO_DEL}</button><button class="ca del nosel" onclick="event.stopPropagation();doDeletePerm('${n._uid}')" title="Delete">${ICO_TRASH}</button>`}`
@@ -1374,6 +1408,7 @@ function buildRow(n){
         </div>
         <div class="cacts">${actions}</div>
       </div>
+      ${repeatPanel}
     </div>`
   }
 }
@@ -1649,7 +1684,10 @@ function insertIncoming(n){
     const existing=key?notifs.find(x=>repeatKey(x)===key):null
     if(existing){
       for(const id of n.repeat_ids||[n.id])if(!existing.repeat_ids.map(String).includes(String(id)))existing.repeat_ids.push(String(id))
-      existing.repeat_count=existing.repeat_ids.length
+      if(!Array.isArray(existing.repeat_items)||!existing.repeat_items.length)existing.repeat_items=(existing.repeat_ids||[existing.id]).map(id=>({...repeatItemFromNotif(existing),id:String(id)}))
+      const seen=new Set(existing.repeat_items.map(x=>String(x.id)))
+      for(const item of (Array.isArray(n.repeat_items)&&n.repeat_items.length?n.repeat_items:[repeatItemFromNotif(n)]))if(!seen.has(String(item.id))){seen.add(String(item.id));existing.repeat_items.push(item)}
+      existing.repeat_count=existing.repeat_items.length
       if(!n.is_read){existing.is_read=false;existing.repeat_unread_count=(existing.repeat_unread_count||0)+1}
       if(appCounts[existing.package_name]&&!appCounts[existing.package_name].unread)appCounts[existing.package_name].unread=1
       renderFeed();renderAppLists()
@@ -2089,10 +2127,12 @@ function initSwipeHandlers(){
     // Touch state
     let sx=0,sy=0,dx=0,swiping=false,snapped=false
     row.addEventListener('touchstart',e=>{
+      if(e.target.closest('.repeat-panel')){dx=0;swiping=false;return}
       sx=e.touches[0].clientX;sy=e.touches[0].clientY;dx=0;swiping=false
       inner.style.transition='none'
     },{passive:true})
     row.addEventListener('touchmove',e=>{
+      if(e.target.closest('.repeat-panel'))return
       const cx=e.touches[0].clientX,cy=e.touches[0].clientY
       dx=sx-cx
       if(!swiping){
@@ -2105,6 +2145,7 @@ function initSwipeHandlers(){
       inner.style.transform=`translateX(-${Math.min(dx,76)}px)`
     },{passive:false})
     row.addEventListener('touchend',e=>{
+      if(e.target.closest('.repeat-panel')){dx=0;swiping=false;return}
       if(dx<2&&!swiping&&!selectMode){
         const uid=row.dataset.id,now=Date.now()
         if(lastRowTap.uid===uid&&now-lastRowTap.time<350){
